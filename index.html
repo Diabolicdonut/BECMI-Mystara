@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Known World Referee</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg:#090b08;
+    --panel:#11160f;
+    --ink:#d9e6c8;
+    --dim:#92a482;
+    --line:#394633;
+    --accent:#c9d86a;
+    --warn:#efc071;
+    --bad:#e48677;
+    --good:#9fd58b;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family:Consolas,"Courier New",monospace; }
+  body { display:flex; justify-content:center; }
+  #app { width:min(1180px,100%); min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+  header { padding:18px 20px 12px; border-bottom:1px solid var(--line); background:linear-gradient(#12170f,#0c100b); }
+  h1 { margin:0; font-size:clamp(20px,4vw,34px); letter-spacing:.06em; color:var(--accent); }
+  .subtitle { margin-top:5px; color:var(--dim); font-size:13px; }
+  .statusbar { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:12px; }
+  .badge { border:1px solid var(--line); padding:4px 7px; background:#0b0f09; }
+  .status-off { color:var(--warn); }
+  .status-good { color:var(--good); }
+  .status-bad { color:var(--bad); }
+  main { display:grid; grid-template-columns:minmax(0,1fr) 310px; min-height:0; }
+  #terminal { padding:20px; overflow:auto; min-height:65vh; white-space:pre-wrap; line-height:1.45; }
+  #terminal .system { color:var(--dim); }
+  #terminal .prompt { color:var(--accent); }
+  #terminal .warning { color:var(--warn); }
+  #terminal .error { color:var(--bad); }
+  #terminal .ai { color:#c6d8f0; }
+  aside { border-left:1px solid var(--line); background:var(--panel); padding:16px; overflow:auto; }
+  aside h2 { margin:0 0 8px; font-size:14px; color:var(--accent); }
+  aside section { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; }
+  aside p, aside li { color:var(--dim); font-size:12px; line-height:1.45; }
+  aside ul { padding-left:18px; margin:6px 0; }
+  footer { border-top:1px solid var(--line); padding:12px 14px 16px; background:#0b0f09; }
+  form { display:flex; gap:8px; }
+  input, textarea { background:#050704; color:var(--ink); border:1px solid #53634a; padding:10px; font:inherit; outline:none; }
+  #command { flex:1; min-width:0; padding:12px; }
+  input:focus, textarea:focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  button { background:#1d2819; color:var(--accent); border:1px solid #53634a; padding:10px 14px; font:inherit; cursor:pointer; }
+  button:hover { background:#293621; }
+  button:disabled { cursor:not-allowed; opacity:.55; }
+  .tiny { margin-top:8px; color:var(--dim); font-size:11px; line-height:1.4; }
+  .field-label { display:block; color:var(--dim); font-size:11px; margin:8px 0 5px; }
+  .stack { display:grid; gap:7px; }
+  .button-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .button-row button { padding:7px 9px; font-size:11px; }
+  #gameToken { width:100%; }
+  #notes { width:100%; min-height:170px; padding:8px; }
+  .connection-copy { overflow-wrap:anywhere; }
+  @media (max-width:800px) {
+    main { grid-template-columns:1fr; }
+    aside { border-left:0; border-top:1px solid var(--line); }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>KNOWN WORLD REFEREE</h1>
+    <div class="subtitle">BECM browser foundation · Northern Karameikos · Cloudflare AI referee connection</div>
+    <div class="statusbar">
+      <span class="badge" id="whereBadge">Location: —</span>
+      <span class="badge" id="timeBadge">Time: —</span>
+      <span class="badge" id="lightBadge">Light: —</span>
+      <span class="badge status-off" id="aiBadge">AI referee: not configured</span>
+    </div>
+  </header>
+
+  <main>
+    <div id="terminal" role="log" aria-live="polite"></div>
+    <aside>
+      <section>
+        <h2>AI REFEREE</h2>
+        <p class="connection-copy">Backend: <strong>becmi-mystara.diabolicdonut.workers.dev</strong></p>
+        <label class="field-label" for="gameToken">Private GAME_TOKEN access code</label>
+        <input id="gameToken" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the shorter Cloudflare access code">
+        <div class="button-row">
+          <button type="button" id="saveTokenButton">SAVE CODE</button>
+          <button type="button" id="testAiButton">TEST AI</button>
+          <button type="button" id="forgetTokenButton">FORGET CODE</button>
+        </div>
+        <p id="aiHelp">The access code is saved only in this browser. Your OpenAI API key remains inside Cloudflare and is never placed in this page.</p>
+      </section>
+
+      <section>
+        <h2>QUICK COMMANDS</h2>
+        <ul>
+          <li>look</li><li>north / south / east / west</li><li>search</li><li>wait</li><li>light torch</li><li>party</li><li>status</li><li>inventory</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>PARTY</h2>
+        <div id="partyPanel"></div>
+      </section>
+
+      <section>
+        <h2>PLAYER NOTES</h2>
+        <textarea id="notes" placeholder="Keep your own map notes here..."></textarea>
+        <p>Notes save automatically in this browser.</p>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    <form id="commandForm">
+      <input id="command" autocomplete="off" spellcheck="false" placeholder="What does the party do?" autofocus>
+      <button type="submit" id="enterButton">ENTER</button>
+    </form>
+    <div class="tiny">Rules and campaign state remain local and deterministic. The AI supplies bounded referee conversation and narration; it cannot directly change hit points, inventory, location, dice, or saved state.</div>
+  </footer>
+</div>
+<script>
+(() => {
+  'use strict';
+
+  const APP_VERSION = '0.1.3';
+  const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
+  const STORAGE = {
+    save: 'knownWorldRefereeSave',
+    notes: 'knownWorldRefereeNotes',
+    token: 'knownWorldRefereeGameToken'
+  };
+
+  const terminal = document.getElementById('terminal');
+  const command = document.getElementById('command');
+  const enterButton = document.getElementById('enterButton');
+  const whereBadge = document.getElementById('whereBadge');
+  const timeBadge = document.getElementById('timeBadge');
+  const lightBadge = document.getElementById('lightBadge');
+  const aiBadge = document.getElementById('aiBadge');
+  const partyPanel = document.getElementById('partyPanel');
+  const notes = document.getElementById('notes');
+  const gameToken = document.getElementById('gameToken');
+  const saveTokenButton = document.getElementById('saveTokenButton');
+  const testAiButton = document.getElementById('testAiButton');
+  const forgetTokenButton = document.getElementById('forgetTokenButton');
+  const aiHelp = document.getElementById('aiHelp');
+
+  const world = {
+    penhaligon: {
+      name: 'Penhaligon, East Gate', outdoor:true,
+      desc: 'The eastern gate of Penhaligon stands open behind you. The Duke’s Road runs north between low stone walls and autumn fields. A painted signboard creaks beside the gatehouse. Beyond it, the country rises toward dark wooded hills.',
+      exits:{north:'kingsroad', west:'market'}
+    },
+    market: {
+      name:'Penhaligon Market', outdoor:true,
+      desc:'Canvas awnings crowd a muddy square. Drovers bargain over mules, a cooper hammers iron hoops into place, and an inn called the Brazen Shield faces the market well. Travelers speak quietly of trouble farther north.',
+      exits:{east:'penhaligon'},
+      searchText:'Among the notices you find a request for capable travelers willing to carry messages toward Stallanford. Another handbill warns of bandits near an abandoned toll house.'
+    },
+    kingsroad: {
+      name:"Duke's Road, North of Penhaligon", outdoor:true,
+      desc:'The road climbs north through pasture and scattered oak. Penhaligon’s walls are still visible to the south. A weathered wayside shrine stands east of the road; an older cart track branches northwest.',
+      exits:{south:'penhaligon', east:'shrine', west:'oldroad', north:'ford'}
+    },
+    shrine: {
+      name:'Wayside Shrine', outdoor:true,
+      desc:'A small stone shrine shelters beneath an ancient oak. Melted candle stubs cover the ledge before a carved image of a mounted warrior. Someone has left three copper coins and a sprig of dried rosemary.',
+      exits:{west:'kingsroad'},
+      searchText:'Behind the shrine you find boot prints leading toward the old cart track. They are recent and belong to several travelers.'
+    },
+    ford: {
+      name:'Roadside Ford', outdoor:true,
+      desc:'A shallow stream crosses the road over flat stones. Wheel ruts continue north toward Stallanford, but evening mist is gathering in the low ground. Returning to Penhaligon before dark would still be possible.',
+      exits:{south:'kingsroad'}
+    },
+    oldroad: {
+      name:'Abandoned Cart Track', outdoor:true,
+      desc:'The old track is half swallowed by weeds. It winds west between close-set trees. After a quarter mile, you see the roofless shell of a toll house beside the road.',
+      exits:{east:'kingsroad', west:'tollhouse'}
+    },
+    tollhouse: {
+      name:'Ruined Toll House', outdoor:true,
+      desc:'Only two walls and part of the chimney remain standing. Nettles fill the old common room. A stone stair descends through a broken doorway into a cellar where the daylight quickly fails.',
+      exits:{east:'oldroad', down:'cellar'},
+      searchText:'Under a fallen shutter you find a waxed scrap bearing a crude mark: a circle crossed by three vertical lines.'
+    },
+    cellar: {
+      name:'Toll House Cellar', outdoor:false,
+      desc:'The stair ends in a cellar twenty feet east to west and fifteen feet north to south. Empty barrel hoops lie near the south wall. A low passage opens to the west. The air smells of damp stone.',
+      exits:{up:'tollhouse', west:'passage'}
+    },
+    passage: {
+      name:'Low Stone Passage', outdoor:false,
+      desc:'The passage runs west for thirty feet, scarcely five feet high. Water glistens on the floor. At its end stands a swollen wooden door banded with rusted iron.',
+      exits:{east:'cellar', west:'cistern'}
+    },
+    cistern: {
+      name:'Old Cistern Chamber', outdoor:false,
+      desc:'A round chamber opens beyond the door. A dry stone cistern occupies the center. The northern wall is faced with smoother blocks than the rest of the room. There is no obvious exit except the door behind you.',
+      exits:{east:'passage'},
+      secret:{direction:'north', destination:'sealed'},
+      searchText:'One of the smooth northern stones shifts slightly under pressure. A narrow concealed doorway opens inward.'
+    },
+    sealed: {
+      name:'Sealed Records Room', outdoor:false,
+      desc:'The concealed doorway admits you to a cramped chamber. Rotting shelves line the walls. Most of the papers have become black pulp, but an iron coffer remains beneath the western shelf. This is the end of the current test area.',
+      exits:{south:'cistern'},
+      searchText:'The coffer is locked. Scratched into its lid is the same crossed-circle mark found above.'
+    }
+  };
+
+  const initialState = () => ({
+    version:APP_VERSION,
+    location:'penhaligon',
+    day:1,
+    minutes:8*60,
+    turn:0,
+    torchLit:false,
+    torchMinutes:0,
+    torches:6,
+    rations:28,
+    gold:122,
+    seed:(Date.now()>>>0),
+    eventLog:[],
+    searched:{},
+    discoveredSecrets:{},
+    party:[
+      {name:'Aldric', role:'Fighter 1', hp:7, maxHp:7, ac:3},
+      {name:'Mara', role:'Cleric 1', hp:5, maxHp:5, ac:4},
+      {name:'Elwyn', role:'Magic-User 1', hp:3, maxHp:3, ac:9},
+      {name:'Corwin', role:'Thief 1', hp:4, maxHp:4, ac:7}
+    ]
+  });
+
+  let state = initialState();
+  let aiBusy = false;
+
+  function rng(max) {
+    state.seed = (Math.imul(1664525, state.seed) + 1013904223) >>> 0;
+    return (state.seed % max) + 1;
+  }
+
+  function esc(value) {
+    return String(value).replace(/[&<>]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[character]));
+  }
+
+  function write(text, cls='') {
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.innerHTML = esc(text).replace(/\n/g,'<br>');
+    terminal.appendChild(div);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  function clockText() {
+    const hour = Math.floor(state.minutes/60)%24;
+    const minute = state.minutes%60;
+    const suffix = hour>=12?'PM':'AM';
+    const displayHour = ((hour+11)%12)+1;
+    return `Day ${state.day}, ${displayHour}:${String(minute).padStart(2,'0')} ${suffix}`;
+  }
+
+  function hasSecret(locationId) {
+    return Boolean(state.discoveredSecrets && state.discoveredSecrets[locationId]);
+  }
+
+  function updatePanels() {
+    whereBadge.textContent = `Location: ${world[state.location].name}`;
+    timeBadge.textContent = `Time: ${clockText()}`;
+    lightBadge.textContent = world[state.location].outdoor
+      ? 'Light: daylight'
+      : (state.torchLit ? `Light: torch (${state.torchMinutes} min)` : 'Light: darkness');
+    partyPanel.innerHTML = state.party.map(member =>
+      `<p><strong>${esc(member.name)}</strong><br>${esc(member.role)} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}</p>`
+    ).join('');
+  }
+
+  function setAiStatus(kind, text) {
+    aiBadge.className = 'badge';
+    if (kind === 'good') aiBadge.classList.add('status-good');
+    else if (kind === 'bad') aiBadge.classList.add('status-bad');
+    else aiBadge.classList.add('status-off');
+    aiBadge.textContent = `AI referee: ${text}`;
+  }
+
+  function getStoredToken() {
+    return (localStorage.getItem(STORAGE.token) || '').trim();
+  }
+
+  function refreshTokenUi() {
+    const token = getStoredToken();
+    gameToken.value = token;
+    if (token) {
+      setAiStatus('good', 'access code saved');
+      aiHelp.textContent = 'The access code is saved in this browser. Use TEST AI to verify the Cloudflare and OpenAI connection.';
+    } else {
+      setAiStatus('off', 'not configured');
+      aiHelp.textContent = 'Enter the GAME_TOKEN you created in Cloudflare. This is the shorter access code, not the OpenAI API key.';
+    }
+  }
+
+  function addEvent(text) {
+    state.eventLog.push(`[${clockText()}] ${text}`);
+    if (state.eventLog.length > 80) state.eventLog.shift();
+  }
+
+  function advance(minutes, reason) {
+    state.minutes += minutes;
+    while (state.minutes >= 1440) {
+      state.minutes -= 1440;
+      state.day++;
+    }
+    if (state.torchLit) {
+      state.torchMinutes -= minutes;
+      if (state.torchMinutes <= 0) {
+        state.torchLit = false;
+        state.torchMinutes = 0;
+        write('The torch gutters out. Darkness closes around the party.','warning');
+        addEvent('Torch expired.');
+      }
+    }
+    if (minutes >= 10) {
+      state.turn += Math.floor(minutes/10);
+      if (!world[state.location].outdoor && state.turn%2 === 0) wanderingCheck();
+    }
+    if (reason) addEvent(reason);
+    updatePanels();
+  }
+
+  function wanderingCheck() {
+    const result = rng(6);
+    addEvent(`Hidden wandering check: 1d6 = ${result}.`);
+    if (result === 1) {
+      const events = [
+        'A faint scraping sound travels through the stone passage, then stops.',
+        'Somewhere in the darkness, a loose pebble clicks across the floor.',
+        'A cold draft carries the smell of wet fur from deeper underground.'
+      ];
+      write(events[rng(events.length)-1], 'warning');
+    }
+  }
+
+  function canSee() {
+    return world[state.location].outdoor || state.torchLit;
+  }
+
+  function visibleExits() {
+    const location = world[state.location];
+    const exits = Object.keys(location.exits);
+    if (location.secret && hasSecret(state.location)) exits.push(location.secret.direction);
+    return exits;
+  }
+
+  function look() {
+    if (!canSee()) {
+      write('It is completely dark. You can feel stone beneath your boots, but cannot safely examine the area.','warning');
+      return;
+    }
+    write(world[state.location].desc);
+    write(`Obvious ways: ${visibleExits().join(', ')}.`, 'system');
+  }
+
+  function move(direction) {
+    const location = world[state.location];
+    let destination = location.exits[direction];
+    if (!destination && location.secret && hasSecret(state.location) && location.secret.direction === direction) {
+      destination = location.secret.destination;
+    }
+    if (!destination) {
+      write(`You cannot go ${direction} from here.`,'warning');
+      return;
+    }
+    if (!world[destination].outdoor && !state.torchLit) {
+      write('The way ahead is dark. Light a torch before proceeding.','warning');
+      return;
+    }
+    state.location = destination;
+    advance(10,`Party moved ${direction} to ${world[destination].name}.`);
+    look();
+  }
+
+  function search() {
+    if (!canSee()) {
+      write('Searching by touch in complete darkness would reveal little and risks overlooking danger.','warning');
+      return;
+    }
+    advance(10,`Party searched ${world[state.location].name}.`);
+    const location = world[state.location];
+    if (location.secret && !hasSecret(state.location)) {
+      const roll = rng(6);
+      addEvent(`Hidden secret-door search: 1d6 = ${roll}.`);
+      if (roll === 1 || state.searched[state.location]) {
+        state.discoveredSecrets[state.location] = true;
+        write(location.searchText || 'You discover something concealed.');
+      } else {
+        state.searched[state.location] = true;
+        write('After a careful search, you find nothing conclusive.');
+      }
+    } else if (location.searchText) {
+      write(location.searchText);
+    } else {
+      write('You search the area carefully but find nothing beyond what is already apparent.');
+    }
+  }
+
+  function lightTorch() {
+    if (state.torchLit) {
+      write('A torch is already burning.');
+      return;
+    }
+    if (state.torches <= 0) {
+      write('The party has no torches remaining.','warning');
+      return;
+    }
+    state.torches--;
+    state.torchLit = true;
+    state.torchMinutes = 60;
+    addEvent('A torch was lit.');
+    write('Flame catches along the pitch-soaked head of a torch. It will burn for approximately one hour.');
+    updatePanels();
+  }
+
+  function party() {
+    write(state.party.map(member =>
+      `${member.name} — ${member.role}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}`
+    ).join('\n'));
+  }
+
+  function inventory() {
+    write(`Party stores:\n${state.torches} torches\n${state.rations} person-days of rations\n${state.gold} gp in pooled coin`);
+  }
+
+  function status() {
+    write(`${world[state.location].name}\n${clockText()}\nExploration turns elapsed: ${state.turn}\nLight: ${world[state.location].outdoor?'daylight':state.torchLit?`torch, ${state.torchMinutes} minutes remaining`:'none'}\nAI backend: ${WORKER_URL}`);
+  }
+
+  function events() {
+    write(state.eventLog.length ? state.eventLog.slice(-20).join('\n') : 'No events have been logged yet.','system');
+  }
+
+  function roll(expression) {
+    const match = /^(\d{1,2})d(\d{1,4})(?:\s*([+-])\s*(\d+))?$/.exec(expression.trim());
+    if (!match) {
+      write('Use a dice expression such as: roll 2d6 or roll 1d20+2','warning');
+      return;
+    }
+    const count = +match[1];
+    const sides = +match[2];
+    const modifier = match[3] ? (match[3] === '+' ? +match[4] : -match[4]) : 0;
+    if (count < 1 || count > 50 || sides < 2 || sides > 1000) {
+      write('That dice expression is outside the allowed range.','warning');
+      return;
+    }
+    const values = Array.from({length:count},()=>rng(sides));
+    const total = values.reduce((sum,value)=>sum+value,0)+modifier;
+    write(`${expression}: [${values.join(', ')}]${modifier?` ${modifier>=0?'+':'-'} ${Math.abs(modifier)}`:''} = ${total}`);
+    addEvent(`Visible roll ${expression} = ${total}.`);
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE.save,JSON.stringify(state));
+    localStorage.setItem(STORAGE.notes,notes.value);
+    write('Campaign saved in this browser.');
+  }
+
+  function normalizeLoadedState(candidate) {
+    return {
+      ...initialState(),
+      ...candidate,
+      searched: candidate.searched || {},
+      discoveredSecrets: candidate.discoveredSecrets || {},
+      eventLog: Array.isArray(candidate.eventLog) ? candidate.eventLog : [],
+      party: Array.isArray(candidate.party) ? candidate.party : initialState().party,
+      version: APP_VERSION
+    };
+  }
+
+  function load() {
+    const raw = localStorage.getItem(STORAGE.save);
+    if (!raw) {
+      write('No saved campaign was found in this browser.','warning');
+      return;
+    }
+    try {
+      state = normalizeLoadedState(JSON.parse(raw));
+      write('Campaign loaded.');
+      updatePanels();
+      look();
+    } catch (error) {
+      console.error(error);
+      write('The saved campaign could not be read.','warning');
+    }
+  }
+
+  function newGame() {
+    if (confirm('Erase the current unsaved campaign and begin again?')) {
+      state = initialState();
+      terminal.innerHTML = '';
+      boot();
+    }
+  }
+
+  function help() {
+    write(`COMMANDS\nlook — repeat the current description\nnorth, south, east, west, up, down — move\ngo north — natural movement phrasing also works\nsearch — spend one 10-minute turn searching\nwait — spend one 10-minute turn\nlight torch — light a one-hour torch\nextinguish torch — put out the current torch\nparty — show adventurers\ninventory — show pooled supplies\nstatus — show time, turns, light, and backend\nevents — show the recent rules log\nroll 2d6 — make a visible dice roll\nsave / load — use this browser's local storage\nreferee [question] — ask the connected AI referee\nAny unrecognized natural-language command is also sent to the AI referee.\nnew game — restart the prototype\nclear — clear the transcript`);
+  }
+
+  function buildRefereePrompt(playerInput, connectionTest=false) {
+    if (connectionTest) {
+      return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
+    }
+
+    const location = world[state.location];
+    const partySummary = state.party.map(member =>
+      `${member.name}, ${member.role}, HP ${member.hp}/${member.maxHp}, AC ${member.ac}`
+    ).join('; ');
+    const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
+
+    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- This request is conversational guidance and bounded narration only.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what information or future procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\nLocation: ${location.name}\nDescription: ${canSee() ? location.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleExits().join(', ') : 'None visible in darkness.'}\nTime: ${clockText()}\nLight: ${location.outdoor ? 'daylight' : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, ${state.gold} gp pooled\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+  }
+
+  function friendlyAiError(error, status) {
+    if (status === 401) return 'Cloudflare rejected the GAME_TOKEN. Re-enter the access code you stored as GAME_TOKEN in the Worker settings, then press SAVE CODE.';
+    if (status === 403) return 'Cloudflare rejected this website origin. In the Worker code, ALLOWED_ORIGIN must be exactly https://diabolicdonut.github.io and the game must be opened from GitHub Pages rather than as a local file.';
+    if (status === 502) return 'Cloudflare reached the Worker, but the OpenAI request failed. Check that OPENAI_API_KEY exists as a Cloudflare secret and that the API account has available billing or credits.';
+    if (status === 413) return 'The referee request was too large for the Worker.';
+    if (error instanceof TypeError) return 'The browser could not reach the Cloudflare Worker. Check the Worker address, deployment, and CORS settings.';
+    return error?.message || 'The AI referee request failed.';
+  }
+
+  async function callReferee(playerInput, options={}) {
+    const token = getStoredToken();
+    if (!token) {
+      setAiStatus('off','access code needed');
+      write('Enter your Cloudflare GAME_TOKEN in the AI REFEREE panel, press SAVE CODE, and then try again.','warning');
+      gameToken.focus();
+      return null;
+    }
+    if (aiBusy) {
+      write('The referee is already considering another request.','warning');
+      return null;
+    }
+
+    aiBusy = true;
+    enterButton.disabled = true;
+    testAiButton.disabled = true;
+    setAiStatus('off','contacting Cloudflare…');
+    if (!options.silent) write('The referee considers the situation…','system');
+
+    try {
+      const response = await fetch(WORKER_URL, {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'X-Game-Token':token
+        },
+        body:JSON.stringify({input:buildRefereePrompt(playerInput, Boolean(options.connectionTest))})
+      });
+
+      let data = {};
+      try { data = await response.json(); } catch { data = {}; }
+
+      if (!response.ok) {
+        const error = new Error(data.error || `Worker returned HTTP ${response.status}.`);
+        error.status = response.status;
+        throw error;
+      }
+
+      const text = typeof data.text === 'string' ? data.text.trim() : '';
+      if (!text) throw new Error('The Worker returned no referee text.');
+
+      setAiStatus('good','connected');
+      if (options.connectionTest) {
+        write(`AI connection successful: ${text}`,'ai');
+      } else {
+        write(`REFEREE: ${text}`,'ai');
+        addEvent(`AI referee answered a bounded query: ${playerInput.slice(0,120)}`);
+      }
+      return text;
+    } catch (error) {
+      const status = error.status || 0;
+      const message = friendlyAiError(error,status);
+      setAiStatus('bad','connection error');
+      write(message,'error');
+      console.error(error);
+      return null;
+    } finally {
+      aiBusy = false;
+      enterButton.disabled = false;
+      testAiButton.disabled = false;
+      command.focus();
+    }
+  }
+
+  function parseNaturalDirection(input) {
+    const match = /^(?:go|walk|head|move|travel|proceed|continue)\s+(?:to\s+the\s+)?(north|south|east|west|up|down)$/i.exec(input.trim());
+    return match ? match[1].toLowerCase() : null;
+  }
+
+  async function handle(raw) {
+    const input = raw.trim();
+    if (!input) return;
+    write(`> ${input}`,'prompt');
+
+    const normalized = input.toLowerCase().replace(/\s+/g,' ');
+    const abbreviations = {n:'north',s:'south',e:'east',w:'west',u:'up',d:'down'};
+    const naturalDirection = parseNaturalDirection(input);
+
+    if (abbreviations[normalized]) return move(abbreviations[normalized]);
+    if (['north','south','east','west','up','down'].includes(normalized)) return move(normalized);
+    if (naturalDirection) return move(naturalDirection);
+    if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
+    if (normalized === 'search' || normalized.startsWith('search ')) return search();
+    if (normalized === 'wait' || normalized === 'rest 10 minutes') {
+      advance(10,'Party waited one exploration turn.');
+      write('Ten minutes pass.');
+      return;
+    }
+    if (normalized === 'light torch' || normalized === 'torch') return lightTorch();
+    if (normalized === 'extinguish torch' || normalized === 'put out torch') {
+      if (state.torchLit) {
+        state.torchLit = false;
+        addEvent('Torch extinguished.');
+        write('The torch is extinguished.');
+        updatePanels();
+      } else {
+        write('No torch is burning.');
+      }
+      return;
+    }
+    if (normalized === 'party') return party();
+    if (normalized === 'inventory' || normalized === 'supplies') return inventory();
+    if (normalized === 'status') return status();
+    if (normalized === 'events' || normalized === 'log') return events();
+    if (normalized === 'save') return save();
+    if (normalized === 'load') return load();
+    if (normalized === 'new game' || normalized === 'restart') return newGame();
+    if (normalized === 'help' || normalized === '?') return help();
+    if (normalized === 'clear') {
+      terminal.innerHTML = '';
+      return;
+    }
+    if (normalized.startsWith('roll ')) return roll(input.slice(5));
+    if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
+    if (normalized.startsWith('referee ')) return callReferee(input.slice(8));
+    if (normalized.startsWith('ask referee ')) return callReferee(input.slice(12));
+
+    return callReferee(input);
+  }
+
+  function boot() {
+    write(`KNOWN WORLD REFEREE — GITHUB/CLOUDFLARE BUILD v${APP_VERSION}`,'system');
+    write('The deterministic prototype runs in this page. Unrecognized natural-language actions can be sent to the bounded AI referee through your Cloudflare Worker.','system');
+    if (location.protocol === 'file:') {
+      write('AI NOTE: This page is open as a local file. Your Worker is configured for GitHub Pages, so AI requests will work after index.html is uploaded and opened from https://diabolicdonut.github.io/.','warning');
+    }
+    write('');
+    write('Your party has gathered at the eastern gate of Penhaligon. Rumors speak of trouble on the road north and of urgent messages bound for Stallanford.');
+    look();
+    updatePanels();
+    refreshTokenUi();
+  }
+
+  document.getElementById('commandForm').addEventListener('submit', event => {
+    event.preventDefault();
+    const value = command.value;
+    command.value = '';
+    void handle(value);
+  });
+
+  saveTokenButton.addEventListener('click', () => {
+    const token = gameToken.value.trim();
+    if (!token) {
+      write('Enter the GAME_TOKEN access code first.','warning');
+      gameToken.focus();
+      return;
+    }
+    localStorage.setItem(STORAGE.token,token);
+    refreshTokenUi();
+    write('Cloudflare GAME_TOKEN saved in this browser. You will not need to re-enter it when index.html is updated on the same GitHub Pages site.','system');
+    command.focus();
+  });
+
+  testAiButton.addEventListener('click', () => {
+    const typedToken = gameToken.value.trim();
+    if (typedToken && typedToken !== getStoredToken()) localStorage.setItem(STORAGE.token,typedToken);
+    refreshTokenUi();
+    void callReferee('connection test',{connectionTest:true});
+  });
+
+  forgetTokenButton.addEventListener('click', () => {
+    localStorage.removeItem(STORAGE.token);
+    gameToken.value = '';
+    refreshTokenUi();
+    write('The saved GAME_TOKEN was removed from this browser.','system');
+  });
+
+  notes.value = localStorage.getItem(STORAGE.notes) || '';
+  notes.addEventListener('input',()=>localStorage.setItem(STORAGE.notes,notes.value));
+
+  boot();
+})();
+</script>
+</body>
+</html>
