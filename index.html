@@ -67,11 +67,12 @@
 <div id="app">
   <header>
     <h1>KNOWN WORLD REFEREE</h1>
-    <div class="subtitle">BECM browser foundation · Northern Karameikos · Cloudflare AI referee connection</div>
+    <div class="subtitle">BECM browser foundation · Natural-language referee commands · Northern Karameikos</div>
     <div class="statusbar">
       <span class="badge" id="whereBadge">Location: —</span>
       <span class="badge" id="timeBadge">Time: —</span>
       <span class="badge" id="lightBadge">Light: —</span>
+      <span class="badge" id="travelBadge">Travel: —</span>
       <span class="badge status-off" id="aiBadge">AI referee: not configured</span>
     </div>
   </header>
@@ -95,8 +96,13 @@
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look</li><li>north / south / east / west</li><li>search</li><li>wait</li><li>light torch</li><li>party</li><li>status</li><li>inventory</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>party</li><li>status</li><li>inventory</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
+      </section>
+
+      <section>
+        <h2>WILDERNESS TRAVEL</h2>
+        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex; no automatic map is shown.</p>
       </section>
 
       <section>
@@ -124,7 +130,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.1.3';
+  const APP_VERSION = '0.1.5';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -138,6 +144,7 @@
   const whereBadge = document.getElementById('whereBadge');
   const timeBadge = document.getElementById('timeBadge');
   const lightBadge = document.getElementById('lightBadge');
+  const travelBadge = document.getElementById('travelBadge');
   const aiBadge = document.getElementById('aiBadge');
   const partyPanel = document.getElementById('partyPanel');
   const notes = document.getElementById('notes');
@@ -147,43 +154,104 @@
   const forgetTokenButton = document.getElementById('forgetTokenButton');
   const aiHelp = document.getElementById('aiHelp');
 
-  const world = {
-    penhaligon: {
-      name: 'Penhaligon, East Gate', outdoor:true,
-      desc: 'The eastern gate of Penhaligon stands open behind you. The Duke’s Road runs north between low stone walls and autumn fields. A painted signboard creaks beside the gatehouse. Beyond it, the country rises toward dark wooded hills.',
-      exits:{north:'kingsroad', west:'market'}
+  // Pointy-top axial hex coordinates. The player never needs to see the coordinates.
+  const HEX_DIRECTIONS = {
+    north:     {q: 0, r:-1, short:'n'},
+    northeast: {q: 1, r:-1, short:'ne'},
+    southeast: {q: 1, r: 0, short:'se'},
+    south:     {q: 0, r: 1, short:'s'},
+    southwest: {q:-1, r: 1, short:'sw'},
+    northwest: {q:-1, r: 0, short:'nw'}
+  };
+  const HEX_ORDER = ['north','northeast','southeast','south','southwest','northwest'];
+  const OPPOSITE = {
+    north:'south', northeast:'southwest', southeast:'northwest',
+    south:'north', southwest:'northeast', northwest:'southeast'
+  };
+  const HEX_RADIUS = 6;
+  const DAILY_TRAVEL_ALLOWANCE = 24; // clear-terrain-equivalent miles
+  const TRAVEL_DAY_MINUTES = 8 * 60;
+
+  const TERRAIN = {
+    road:     {name:'road', cost:4,  desc:'A maintained road or well-used trail crosses this hex.'},
+    clear:    {name:'clear country', cost:6,  desc:'Open fields and grassland allow a broad view of the surrounding country.'},
+    forest:   {name:'forest', cost:9,  desc:'Close woodland breaks sight lines and makes progress slower.'},
+    hills:    {name:'hills', cost:9,  desc:'Broken slopes and stony folds make the going uneven.'},
+    mountain: {name:'mountains', cost:12, desc:'Steep, rugged ground severely slows the party.'},
+    swamp:    {name:'swamp', cost:12, desc:'Wet ground, reeds, and hidden channels make travel difficult.'}
+  };
+
+  const fixedHexes = {
+    '0,0': {
+      name:'Penhaligon Environs', terrain:'clear',
+      desc:'Penhaligon stands behind stout walls to the west. The Duke’s Road leaves the eastern gate and turns north through autumn fields. Beyond the farms, wooded hills rise toward the interior of Karameikos.',
+      roadDirs:['north'], roadNames:{north:"Duke's Road"}, site:'market', siteLabel:'Penhaligon'
     },
+    '0,-1': {
+      name:"Duke's Road North of Penhaligon", terrain:'clear',
+      desc:'Pasture and scattered oak lie on both sides of the road. An older cart track branches northwest while a narrow footpath climbs northeast toward a great oak on a low ridge.',
+      roadDirs:['north','south','northwest'], roadNames:{north:"Duke's Road",south:"Duke's Road",northwest:'old cart track'}
+    },
+    '0,-2': {
+      name:'Roadside Ford', terrain:'clear',
+      desc:'A shallow stream crosses the Duke’s Road over broad flat stones. Wheel ruts continue north. Alder and willow thicken along the watercourse.',
+      roadDirs:['north','south'], roadNames:{north:"Duke's Road",south:"Duke's Road"}, riverDirs:['northwest','southeast'], riverName:'roadside stream', riverLabels:{northwest:'upstream',southeast:'downstream'}
+    },
+    '0,-3': {
+      name:'Northern Farms', terrain:'clear',
+      desc:'The road passes isolated farmsteads divided by low stone walls. The country is quieter here, and several fields have been left untended.',
+      roadDirs:['north','south'], roadNames:{north:"Duke's Road",south:"Duke's Road"}
+    },
+    '0,-4': {
+      name:'Road Through the Wooded Hills', terrain:'hills',
+      desc:'The Duke’s Road climbs between wooded ridges. From the higher ground, smoke from Stallanford can occasionally be seen to the north.',
+      roadDirs:['north','south'], roadNames:{north:"Duke's Road",south:"Duke's Road"}
+    },
+    '0,-5': {
+      name:'Stallanford Outskirts', terrain:'clear',
+      desc:'Cultivated fields and fenced pastures announce the approach to Stallanford. The village lies just ahead, gathered around the road and river crossing.',
+      roadDirs:['south'], roadNames:{south:"Duke's Road"}, site:'stallanford', siteLabel:'Stallanford'
+    },
+    '1,-2': {
+      name:'Oak Ridge Shrine', terrain:'forest',
+      desc:'An ancient oak crowns the ridge. Beneath it stands a small stone shrine sheltered by the roots and hung with faded strips of cloth.',
+      site:'shrine', siteLabel:'wayside shrine', riverDirs:['northwest','southeast'], riverName:'roadside stream', riverLabels:{northwest:'downstream',southeast:'upstream'}
+    },
+    '-1,-1': {
+      name:'Abandoned Cart Track', terrain:'forest',
+      desc:'The old cart track is half swallowed by weeds and young trees. Its wheel ruts continue northwest into darker woodland.',
+      roadDirs:['southeast','northwest'], roadNames:{southeast:'old cart track',northwest:'old cart track'}
+    },
+    '-2,-1': {
+      name:'Ruined Toll House Hex', terrain:'forest',
+      desc:'The cart track ends beside the roofless shell of a toll house. Nettles fill the ruin, and a broken stone stair descends beneath it.',
+      roadDirs:['southeast'], roadNames:{southeast:'old cart track'}, site:'tollhouse', siteLabel:'ruined toll house'
+    }
+  };
+
+  const sites = {
     market: {
-      name:'Penhaligon Market', outdoor:true,
-      desc:'Canvas awnings crowd a muddy square. Drovers bargain over mules, a cooper hammers iron hoops into place, and an inn called the Brazen Shield faces the market well. Travelers speak quietly of trouble farther north.',
-      exits:{east:'penhaligon'},
+      name:'Penhaligon Market', outdoor:true, returnsToHex:true, aliases:['penhaligon','penhaligon market','market','town'], services:['resupply','provisions','general goods','shopping','rumors','lodging'],
+      desc:'Canvas awnings crowd a muddy square. Drovers bargain over mules, a cooper hammers iron hoops into place, and the Brazen Shield faces the market well. Travelers speak quietly of trouble farther north.',
+      exits:{},
       searchText:'Among the notices you find a request for capable travelers willing to carry messages toward Stallanford. Another handbill warns of bandits near an abandoned toll house.'
     },
-    kingsroad: {
-      name:"Duke's Road, North of Penhaligon", outdoor:true,
-      desc:'The road climbs north through pasture and scattered oak. Penhaligon’s walls are still visible to the south. A weathered wayside shrine stands east of the road; an older cart track branches northwest.',
-      exits:{south:'penhaligon', east:'shrine', west:'oldroad', north:'ford'}
-    },
     shrine: {
-      name:'Wayside Shrine', outdoor:true,
-      desc:'A small stone shrine shelters beneath an ancient oak. Melted candle stubs cover the ledge before a carved image of a mounted warrior. Someone has left three copper coins and a sprig of dried rosemary.',
-      exits:{west:'kingsroad'},
-      searchText:'Behind the shrine you find boot prints leading toward the old cart track. They are recent and belong to several travelers.'
+      name:'Wayside Shrine', outdoor:true, returnsToHex:true, aliases:['shrine','wayside shrine','oak ridge shrine'], services:[],
+      desc:'The small stone shrine shelters beneath the ancient oak. Melted candle stubs cover the ledge before a carved image of a mounted warrior. Someone has left three copper coins and a sprig of dried rosemary.',
+      exits:{},
+      searchText:'Behind the shrine you find recent boot prints descending southwest toward the Duke’s Road, with several older tracks leading west.'
     },
-    ford: {
-      name:'Roadside Ford', outdoor:true,
-      desc:'A shallow stream crosses the road over flat stones. Wheel ruts continue north toward Stallanford, but evening mist is gathering in the low ground. Returning to Penhaligon before dark would still be possible.',
-      exits:{south:'kingsroad'}
-    },
-    oldroad: {
-      name:'Abandoned Cart Track', outdoor:true,
-      desc:'The old track is half swallowed by weeds. It winds west between close-set trees. After a quarter mile, you see the roofless shell of a toll house beside the road.',
-      exits:{east:'kingsroad', west:'tollhouse'}
+    stallanford: {
+      name:'Stallanford', outdoor:true, returnsToHex:true, aliases:['stallanford','village'], services:['resupply','provisions','lodging','rumors'],
+      desc:'Stallanford is a worried village of timber houses and stone foundations. Doors are barred earlier than usual, and armed villagers watch the northern approaches. The complete B11 village and adventure content has not yet been converted into this build.',
+      exits:{},
+      searchText:'Conversations in the village make one fact clear: something has disrupted the countryside nearby, and the local authorities are seeking capable help.'
     },
     tollhouse: {
-      name:'Ruined Toll House', outdoor:true,
-      desc:'Only two walls and part of the chimney remain standing. Nettles fill the old common room. A stone stair descends through a broken doorway into a cellar where the daylight quickly fails.',
-      exits:{east:'oldroad', down:'cellar'},
+      name:'Ruined Toll House', outdoor:true, returnsToHex:true, aliases:['toll house','ruined toll house','old toll house'], services:[],
+      desc:'Only two walls and part of the chimney remain standing. Nettles fill the old common room. A stone stair descends through a broken doorway into a cellar where daylight quickly fails.',
+      exits:{down:'cellar'},
       searchText:'Under a fallen shutter you find a waxed scrap bearing a crude mark: a circle crossed by three vertical lines.'
     },
     cellar: {
@@ -205,7 +273,7 @@
     },
     sealed: {
       name:'Sealed Records Room', outdoor:false,
-      desc:'The concealed doorway admits you to a cramped chamber. Rotting shelves line the walls. Most of the papers have become black pulp, but an iron coffer remains beneath the western shelf. This is the end of the current test area.',
+      desc:'The concealed doorway admits you to a cramped chamber. Rotting shelves line the walls. Most papers have become black pulp, but an iron coffer remains beneath the western shelf. This is the end of the current dungeon test area.',
       exits:{south:'cistern'},
       searchText:'The coffer is locked. Scratched into its lid is the same crossed-circle mark found above.'
     }
@@ -213,10 +281,15 @@
 
   const initialState = () => ({
     version:APP_VERSION,
-    location:'penhaligon',
+    mode:'wilderness',
+    hex:{q:0,r:0},
+    location:null,
     day:1,
     minutes:8*60,
     turn:0,
+    travelUsed:0,
+    previousHex:null,
+    knownPlaces:['market','stallanford'],
     torchLit:false,
     torchMinutes:0,
     torches:6,
@@ -254,6 +327,111 @@
     terminal.scrollTop = terminal.scrollHeight;
   }
 
+  function hexKey(q,r) { return `${q},${r}`; }
+
+  function hexDistance(q,r) {
+    const s = -q-r;
+    return Math.max(Math.abs(q),Math.abs(r),Math.abs(s));
+  }
+
+  function coordHash(q,r) {
+    let h = Math.imul(q + 73, 73856093) ^ Math.imul(r - 41, 19349663);
+    h ^= h >>> 16;
+    return h >>> 0;
+  }
+
+  function generatedHex(q,r) {
+    const hash = coordHash(q,r);
+    const options = ['clear','forest','hills','forest','clear','hills','clear','forest'];
+    const terrain = options[hash % options.length];
+    const descriptions = {
+      clear:[
+        'Open meadow and rough grazing land stretch between scattered copses.',
+        'Low grassland rolls gently toward distant wooded ridges.',
+        'Fallow fields and old boundary stones suggest farms abandoned years ago.'
+      ],
+      forest:[
+        'Oak, beech, and pine close around the party, with only animal paths beneath the canopy.',
+        'Dense woodland muffles sound and limits the view to a few dozen yards.',
+        'The ground rises and falls beneath old trees, bracken, and moss-covered stone.'
+      ],
+      hills:[
+        'Broken hills of scrub, stone, and thin woodland make a slow crossing.',
+        'Long ridges and narrow folds conceal the country beyond the next rise.',
+        'Stony slopes alternate with sheltered hollows thick with brush.'
+      ]
+    };
+    const list = descriptions[terrain];
+    return {
+      name:TERRAIN[terrain].name.replace(/\b\w/g,c=>c.toUpperCase()),
+      terrain,
+      desc:list[(hash >>> 5) % list.length],
+      roadDirs:[]
+    };
+  }
+
+  function getHex(q=state.hex.q,r=state.hex.r) {
+    if (hexDistance(q,r) > HEX_RADIUS) return null;
+    return fixedHexes[hexKey(q,r)] || generatedHex(q,r);
+  }
+
+  function allSiteLocations() {
+    const result = {};
+    for (const [key, hex] of Object.entries(fixedHexes)) {
+      if (!hex.site) continue;
+      const [q,r] = key.split(',').map(Number);
+      result[hex.site] = {q,r};
+    }
+    return result;
+  }
+
+  const SITE_LOCATIONS = allSiteLocations();
+
+  function ensureKnowledgeState() {
+    if (!Array.isArray(state.knownPlaces)) state.knownPlaces = ['market','stallanford'];
+  }
+
+  function learnPlace(siteId) {
+    if (!siteId || !sites[siteId]) return;
+    ensureKnowledgeState();
+    if (!state.knownPlaces.includes(siteId)) {
+      state.knownPlaces.push(siteId);
+      addEvent(`Party learned the location of ${sites[siteId].name}.`);
+    }
+  }
+
+  function knownPlaceIds() {
+    ensureKnowledgeState();
+    const ids = new Set(state.knownPlaces.filter(id => sites[id] && SITE_LOCATIONS[id]));
+    if (state.mode === 'wilderness' && currentHex()?.site) ids.add(currentHex().site);
+    if (state.mode === 'site' && state.location && SITE_LOCATIONS[state.location]) ids.add(state.location);
+    return [...ids];
+  }
+
+  function siteAliases(siteId) {
+    const site = sites[siteId];
+    if (!site) return [];
+    return [siteId, site.name, ...(site.aliases || [])].map(value => value.toLowerCase());
+  }
+
+  function resolveKnownPlace(text) {
+    const normalized = text.toLowerCase().replace(/[^a-z0-9' -]/g,' ').replace(/\s+/g,' ').trim();
+    const matches = [];
+    for (const siteId of knownPlaceIds()) {
+      for (const alias of siteAliases(siteId)) {
+        if (normalized.includes(alias)) {
+          matches.push(siteId);
+          break;
+        }
+      }
+    }
+    return [...new Set(matches)];
+  }
+
+  function currentSite() { return state.mode === 'site' ? sites[state.location] : null; }
+  function currentHex() { return getHex(state.hex.q,state.hex.r); }
+  function currentPlace() { return state.mode === 'wilderness' ? currentHex() : currentSite(); }
+
   function clockText() {
     const hour = Math.floor(state.minutes/60)%24;
     const minute = state.minutes%60;
@@ -262,16 +440,33 @@
     return `Day ${state.day}, ${displayHour}:${String(minute).padStart(2,'0')} ${suffix}`;
   }
 
+  function daylight() {
+    const hour = Math.floor(state.minutes/60)%24;
+    return hour >= 6 && hour < 18;
+  }
+
   function hasSecret(locationId) {
     return Boolean(state.discoveredSecrets && state.discoveredSecrets[locationId]);
   }
 
+  function placeName() {
+    if (state.mode === 'wilderness') return currentHex()?.name || 'Unknown country';
+    return currentSite()?.name || 'Unknown site';
+  }
+
   function updatePanels() {
-    whereBadge.textContent = `Location: ${world[state.location].name}`;
+    whereBadge.textContent = `Location: ${placeName()}`;
     timeBadge.textContent = `Time: ${clockText()}`;
-    lightBadge.textContent = world[state.location].outdoor
-      ? 'Light: daylight'
-      : (state.torchLit ? `Light: torch (${state.torchMinutes} min)` : 'Light: darkness');
+    if (state.mode === 'wilderness') {
+      lightBadge.textContent = daylight() ? 'Light: daylight' : 'Light: night';
+      travelBadge.textContent = `Travel: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE}`;
+    } else {
+      const site = currentSite();
+      lightBadge.textContent = site?.outdoor
+        ? (daylight() ? 'Light: daylight' : 'Light: night')
+        : (state.torchLit ? `Light: torch (${state.torchMinutes} min)` : 'Light: darkness');
+      travelBadge.textContent = `Exploration turns: ${state.turn}`;
+    }
     partyPanel.innerHTML = state.party.map(member =>
       `<p><strong>${esc(member.name)}</strong><br>${esc(member.role)} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}</p>`
     ).join('');
@@ -303,14 +498,15 @@
 
   function addEvent(text) {
     state.eventLog.push(`[${clockText()}] ${text}`);
-    if (state.eventLog.length > 80) state.eventLog.shift();
+    if (state.eventLog.length > 100) state.eventLog.shift();
   }
 
-  function advance(minutes, reason) {
+  function advanceClock(minutes, reason) {
     state.minutes += minutes;
     while (state.minutes >= 1440) {
       state.minutes -= 1440;
       state.day++;
+      state.travelUsed = 0;
     }
     if (state.torchLit) {
       state.torchMinutes -= minutes;
@@ -321,17 +517,24 @@
         addEvent('Torch expired.');
       }
     }
-    if (minutes >= 10) {
-      state.turn += Math.floor(minutes/10);
-      if (!world[state.location].outdoor && state.turn%2 === 0) wanderingCheck();
-    }
     if (reason) addEvent(reason);
     updatePanels();
   }
 
+  function advanceExploration(minutes, reason) {
+    const turns = Math.floor(minutes/10);
+    state.turn += turns;
+    advanceClock(minutes,reason);
+    if (state.mode === 'site' && !currentSite()?.outdoor) {
+      for (let i=0;i<turns;i++) {
+        if ((state.turn - turns + i + 1) % 2 === 0) wanderingCheck();
+      }
+    }
+  }
+
   function wanderingCheck() {
     const result = rng(6);
-    addEvent(`Hidden wandering check: 1d6 = ${result}.`);
+    addEvent(`Hidden dungeon wandering check: 1d6 = ${result}.`);
     if (result === 1) {
       const events = [
         'A faint scraping sound travels through the stone passage, then stops.',
@@ -343,14 +546,22 @@
   }
 
   function canSee() {
-    return world[state.location].outdoor || state.torchLit;
+    if (state.mode === 'wilderness') return true;
+    const site = currentSite();
+    return Boolean(site?.outdoor || state.torchLit);
   }
 
-  function visibleExits() {
-    const location = world[state.location];
-    const exits = Object.keys(location.exits);
-    if (location.secret && hasSecret(state.location)) exits.push(location.secret.direction);
+  function visibleSiteExits() {
+    const site = currentSite();
+    if (!site) return [];
+    const exits = Object.keys(site.exits || {});
+    if (site.secret && hasSecret(state.location)) exits.push(site.secret.direction);
+    if (site.returnsToHex) exits.push('leave');
     return exits;
+  }
+
+  function roadDirections(hex=currentHex()) {
+    return Array.isArray(hex?.roadDirs) ? hex.roadDirs : [];
   }
 
   function look() {
@@ -358,27 +569,298 @@
       write('It is completely dark. You can feel stone beneath your boots, but cannot safely examine the area.','warning');
       return;
     }
-    write(world[state.location].desc);
-    write(`Obvious ways: ${visibleExits().join(', ')}.`, 'system');
+
+    if (state.mode === 'wilderness') {
+      const hex = currentHex();
+      write(hex.desc);
+      write(`Terrain: ${TERRAIN[hex.terrain].name}. Each move crosses one six-mile hex.`, 'system');
+      const roads = roadDirections(hex);
+      if (roads.length) write(`Road or trail directions: ${roads.join(', ')}.`, 'system');
+      if (hex.site) {
+        learnPlace(hex.site);
+        write(`A place may be entered here: ${hex.siteLabel || sites[hex.site]?.name}.`, 'system');
+      }
+      write('Possible travel directions: north, northeast, southeast, south, southwest, northwest.', 'system');
+      return;
+    }
+
+    write(currentSite().desc);
+    const exits = visibleSiteExits();
+    if (exits.length) write(`Obvious ways: ${exits.join(', ')}.`, 'system');
   }
 
-  function move(direction) {
-    const location = world[state.location];
-    let destination = location.exits[direction];
-    if (!destination && location.secret && hasSecret(state.location) && location.secret.direction === direction) {
-      destination = location.secret.destination;
+  function directionBetween(fromQ,fromR,toQ,toR) {
+    const dq = toQ - fromQ;
+    const dr = toR - fromR;
+    for (const [direction,vector] of Object.entries(HEX_DIRECTIONS)) {
+      if (vector.q === dq && vector.r === dr) return direction;
+    }
+    return null;
+  }
+
+  function featureDirections(feature, hex=currentHex()) {
+    if (!hex) return [];
+    const normalized = String(feature || '').toLowerCase();
+    if (['road','trail','path','track','cart track','old cart track',"duke's road",'dukes road'].includes(normalized)) {
+      const dirs = roadDirections(hex);
+      if (normalized === 'road' || normalized === 'trail' || normalized === 'path' || normalized === 'track' || normalized === 'cart track') return dirs;
+      return dirs.filter(direction => {
+        const name = (hex.roadNames?.[direction] || '').toLowerCase().replace('’',"'");
+        return normalized === 'old cart track' ? name.includes('cart track') : name.includes("duke's road") || name.includes('dukes road');
+      });
+    }
+    if (['river','stream','watercourse'].includes(normalized)) return Array.isArray(hex.riverDirs) ? hex.riverDirs : [];
+    return [];
+  }
+
+  function featureDescription(feature, direction, hex=currentHex()) {
+    const normalized = String(feature || '').toLowerCase();
+    if (['river','stream','watercourse'].includes(normalized)) {
+      const label = hex?.riverLabels?.[direction];
+      return label ? `${direction} (${label})` : direction;
+    }
+    const roadName = hex?.roadNames?.[direction];
+    return roadName ? `${direction} on ${roadName}` : direction;
+  }
+
+  function roadApplies(direction, current, destination) {
+    const a = Array.isArray(current.roadDirs) && current.roadDirs.includes(direction);
+    const b = Array.isArray(destination.roadDirs) && destination.roadDirs.includes(OPPOSITE[direction]);
+    return a && b;
+  }
+
+  function wildernessMove(direction) {
+    const vector = HEX_DIRECTIONS[direction];
+    if (!vector) {
+      write('Wilderness travel uses north, northeast, southeast, south, southwest, or northwest.','warning');
+      return false;
+    }
+    const q = state.hex.q + vector.q;
+    const r = state.hex.r + vector.r;
+    const destination = getHex(q,r);
+    if (!destination) {
+      write('That direction leaves the portion of northern Karameikos currently implemented in this prototype.','warning');
+      return false;
+    }
+
+    const current = currentHex();
+    const byRoad = roadApplies(direction,current,destination);
+    const cost = byRoad ? TERRAIN.road.cost : TERRAIN[destination.terrain].cost;
+    if (state.travelUsed + cost > DAILY_TRAVEL_ALLOWANCE) {
+      write(`The party has insufficient daylight and travel allowance to cross that hex today. Make camp, then continue tomorrow.`, 'warning');
+      return false;
+    }
+
+    const minutes = Math.round((cost / DAILY_TRAVEL_ALLOWANCE) * TRAVEL_DAY_MINUTES);
+    const origin = {q:state.hex.q,r:state.hex.r};
+    state.hex = {q,r};
+    state.previousHex = origin;
+    state.travelUsed += cost;
+    advanceClock(minutes,`Party crossed one six-mile hex ${direction}${byRoad ? ' by road' : ''}.`);
+
+    const encounter = rng(6);
+    addEvent(`Hidden wilderness encounter check after hex movement: 1d6 = ${encounter}.`);
+    if (encounter === 1) {
+      const signs = [
+        'Fresh tracks cross the party’s route and disappear into cover.',
+        'A distant horn sounds once from somewhere beyond the next ridge.',
+        'A flight of crows rises suddenly from the country ahead.'
+      ];
+      write(signs[rng(signs.length)-1],'warning');
+    }
+
+    look();
+    return true;
+  }
+
+  function siteMove(direction) {
+    const site = currentSite();
+    let destination = site.exits?.[direction];
+    if (!destination && site.secret && hasSecret(state.location) && site.secret.direction === direction) {
+      destination = site.secret.destination;
     }
     if (!destination) {
       write(`You cannot go ${direction} from here.`,'warning');
-      return;
+      return false;
     }
-    if (!world[destination].outdoor && !state.torchLit) {
+    if (!sites[destination].outdoor && !state.torchLit) {
       write('The way ahead is dark. Light a torch before proceeding.','warning');
-      return;
+      return false;
     }
     state.location = destination;
-    advance(10,`Party moved ${direction} to ${world[destination].name}.`);
+    advanceExploration(10,`Party moved ${direction} to ${sites[destination].name}.`);
     look();
+    return true;
+  }
+
+  function move(direction) {
+    if (state.mode === 'wilderness') return wildernessMove(direction);
+    return siteMove(direction);
+  }
+
+  function enterSite() {
+    if (state.mode !== 'wilderness') {
+      write('The party is already within a settlement, structure, or dungeon area.','warning');
+      return false;
+    }
+    const hex = currentHex();
+    if (!hex.site || !sites[hex.site]) {
+      write('There is no obvious settlement or keyed site to enter in this hex.','warning');
+      return false;
+    }
+    state.mode = 'site';
+    state.location = hex.site;
+    learnPlace(hex.site);
+    advanceExploration(10,`Party entered ${sites[hex.site].name}.`);
+    look();
+    return true;
+  }
+
+  function leaveSite() {
+    if (state.mode !== 'site') {
+      write('The party is already in the wilderness.','warning');
+      return;
+    }
+    const site = currentSite();
+    if (!site.returnsToHex) {
+      write('You must first return to the surface or entrance of this site.','warning');
+      return;
+    }
+    const oldName = site.name;
+    state.mode = 'wilderness';
+    state.location = null;
+    advanceClock(10,`Party left ${oldName} and returned to the surrounding hex.`);
+    look();
+  }
+
+  function bestDirectionToward(targetQ,targetR) {
+    const currentDistance = hexDistance(state.hex.q-targetQ,state.hex.r-targetR);
+    const candidates = [];
+    for (const direction of HEX_ORDER) {
+      const vector = HEX_DIRECTIONS[direction];
+      const q = state.hex.q + vector.q;
+      const r = state.hex.r + vector.r;
+      const hex = getHex(q,r);
+      if (!hex) continue;
+      const distance = hexDistance(q-targetQ,r-targetR);
+      if (distance > currentDistance) continue;
+      const byRoad = roadApplies(direction,currentHex(),hex);
+      candidates.push({direction,distance,byRoad});
+    }
+    candidates.sort((a,b) => a.distance-b.distance || Number(b.byRoad)-Number(a.byRoad) || HEX_ORDER.indexOf(a.direction)-HEX_ORDER.indexOf(b.direction));
+    return candidates[0]?.direction || null;
+  }
+
+  function travelToSite(siteId, options={}) {
+    if (!sites[siteId] || !SITE_LOCATIONS[siteId]) {
+      write('That destination is not part of the implemented world map.','warning');
+      return false;
+    }
+    if (!knownPlaceIds().includes(siteId)) {
+      write(`The party does not currently know where ${sites[siteId].name} is.`, 'warning');
+      return false;
+    }
+
+    if (state.mode === 'site') {
+      if (state.location === siteId) {
+        if (options.service) write(`You are already at ${sites[siteId].name}, the relevant place for ${options.service}.`);
+        else write(`You are already at ${sites[siteId].name}.`);
+        return true;
+      }
+      if (!currentSite()?.returnsToHex) {
+        write('The party must first find its way back to the surface before an overland destination can be followed automatically.','warning');
+        return false;
+      }
+      leaveSite();
+    }
+
+    const target = SITE_LOCATIONS[siteId];
+    let steps = 0;
+    while (state.hex.q !== target.q || state.hex.r !== target.r) {
+      const direction = bestDirectionToward(target.q,target.r);
+      if (!direction) {
+        write(`No traversable route toward ${sites[siteId].name} can be resolved from here.`, 'warning');
+        return false;
+      }
+      if (!wildernessMove(direction)) {
+        write(`Travel toward ${sites[siteId].name} pauses here.`, 'system');
+        return false;
+      }
+      steps++;
+      if (steps > 24) {
+        write('Automatic travel stopped because the route exceeded the prototype safety limit.','warning');
+        return false;
+      }
+    }
+
+    if (currentHex()?.site === siteId) {
+      write(`The party reaches ${sites[siteId].name}.`, 'system');
+      if (options.enter !== false) enterSite();
+      if (options.service) write(`This is the most relevant known place to ${options.service}. The purchasing interface itself is not yet implemented in this prototype.`, 'system');
+      return true;
+    }
+    return false;
+  }
+
+  function followFeature(feature, requestedDirection=null) {
+    if (state.mode !== 'wilderness') {
+      write('Following roads, rivers, and trails is an overland travel action. Return to the wilderness first.','warning');
+      return false;
+    }
+    let dirs = featureDirections(feature);
+    if (!dirs.length) {
+      write(`There is no known ${feature} to follow from this hex.`, 'warning');
+      return false;
+    }
+
+    if (requestedDirection) {
+      const qualifier = String(requestedDirection).toLowerCase().trim();
+      const normalized = normalizeDirection(qualifier);
+      if (normalized && dirs.includes(normalized)) return wildernessMove(normalized);
+      if (['upstream','downstream'].includes(qualifier)) {
+        const matching = dirs.filter(direction => currentHex()?.riverLabels?.[direction] === qualifier);
+        if (matching.length === 1) return wildernessMove(matching[0]);
+      }
+    }
+
+    if (state.previousHex) {
+      const back = directionBetween(state.hex.q,state.hex.r,state.previousHex.q,state.previousHex.r);
+      const forward = dirs.filter(direction => direction !== back);
+      if (forward.length === 1) return wildernessMove(forward[0]);
+      if (forward.length) dirs = forward;
+    }
+
+    if (dirs.length === 1) return wildernessMove(dirs[0]);
+    write(`The ${feature} can be followed more than one way from here: ${dirs.map(direction => featureDescription(feature,direction)).join(' or ')}. Which way do you mean?`, 'warning');
+    return false;
+  }
+
+  function serviceCandidates(service) {
+    const wanted = String(service || '').toLowerCase();
+    return knownPlaceIds().filter(siteId => (sites[siteId].services || []).some(value => value.toLowerCase() === wanted));
+  }
+
+  function goForService(service) {
+    const candidates = serviceCandidates(service);
+    if (!candidates.length) {
+      write(`The party does not know a suitable place to ${service}.`, 'warning');
+      return false;
+    }
+
+    const ranked = candidates.map(id => {
+      const pos = SITE_LOCATIONS[id];
+      const distance = pos ? hexDistance(state.hex.q-pos.q,state.hex.r-pos.r) : 999;
+      const alreadyThere = state.mode === 'site' && state.location === id;
+      return {id,distance:alreadyThere ? -1 : distance};
+    }).sort((a,b)=>a.distance-b.distance);
+
+    if (ranked.length > 1 && ranked[0].distance === ranked[1].distance) {
+      const tied = ranked.filter(entry => entry.distance === ranked[0].distance);
+      write(`There is more than one equally relevant known place to ${service}: ${tied.map(entry=>sites[entry.id].name).join(' or ')}. Which one do you want?`, 'warning');
+      return false;
+    }
+
+    return travelToSite(ranked[0].id,{enter:true,service});
   }
 
   function search() {
@@ -386,23 +868,57 @@
       write('Searching by touch in complete darkness would reveal little and risks overlooking danger.','warning');
       return;
     }
-    advance(10,`Party searched ${world[state.location].name}.`);
-    const location = world[state.location];
-    if (location.secret && !hasSecret(state.location)) {
+
+    if (state.mode === 'wilderness') {
+      advanceClock(60,`Party searched the surrounding wilderness hex.`);
+      const hex = currentHex();
+      if (hex.site) {
+        write(`After examining the surrounding country, the party confirms the location of ${hex.siteLabel || sites[hex.site].name}.`);
+      } else {
+        write('The party spends an hour examining the immediate country but finds no keyed site or unusual feature in this prototype.');
+      }
+      return;
+    }
+
+    advanceExploration(10,`Party searched ${currentSite().name}.`);
+    const site = currentSite();
+    if (site.secret && !hasSecret(state.location)) {
       const roll = rng(6);
       addEvent(`Hidden secret-door search: 1d6 = ${roll}.`);
       if (roll === 1 || state.searched[state.location]) {
         state.discoveredSecrets[state.location] = true;
-        write(location.searchText || 'You discover something concealed.');
+        write(site.searchText || 'A concealed feature is discovered.');
       } else {
         state.searched[state.location] = true;
-        write('After a careful search, you find nothing conclusive.');
+        write('The party finds nothing unusual during this search.');
       }
-    } else if (location.searchText) {
-      write(location.searchText);
+    } else if (site.searchText) {
+      write(site.searchText);
     } else {
-      write('You search the area carefully but find nothing beyond what is already apparent.');
+      write('The party finds nothing unusual.');
     }
+  }
+
+  function camp() {
+    if (state.mode !== 'wilderness') {
+      write('Make camp after returning to the wilderness.','warning');
+      return;
+    }
+    const partySize = state.party.length;
+    const rationCost = Math.min(state.rations,partySize);
+    state.rations -= rationCost;
+    if (rationCost < partySize) write('The party does not have enough rations for everyone. Hunger rules are not yet fully implemented.','warning');
+    state.day++;
+    state.minutes = 8*60;
+    state.travelUsed = 0;
+    state.torchLit = false;
+    state.torchMinutes = 0;
+    addEvent(`Party camped overnight and consumed ${rationCost} person-days of rations.`);
+    const nightCheck = rng(6);
+    addEvent(`Hidden overnight wilderness encounter check: 1d6 = ${nightCheck}.`);
+    if (nightCheck === 1) write('During the night, something moves beyond the firelight, but no direct encounter is resolved in this prototype.','warning');
+    write('The party breaks camp at approximately eight in the morning.');
+    updatePanels();
   }
 
   function lightTorch() {
@@ -417,113 +933,241 @@
     state.torches--;
     state.torchLit = true;
     state.torchMinutes = 60;
-    addEvent('A torch was lit.');
-    write('Flame catches along the pitch-soaked head of a torch. It will burn for approximately one hour.');
+    addEvent('Party lit a torch.');
+    write('A torch flares to life, throwing uncertain light across the stonework.');
     updatePanels();
   }
 
   function party() {
-    write(state.party.map(member =>
-      `${member.name} — ${member.role}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}`
-    ).join('\n'));
+    write(state.party.map(member => `${member.name} — ${member.role}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}`).join('\n'));
   }
 
   function inventory() {
-    write(`Party stores:\n${state.torches} torches\n${state.rations} person-days of rations\n${state.gold} gp in pooled coin`);
+    write(`Pooled supplies: ${state.torches} torches; ${state.rations} person-days of rations; ${state.gold} gp.`);
   }
 
   function status() {
-    write(`${world[state.location].name}\n${clockText()}\nExploration turns elapsed: ${state.turn}\nLight: ${world[state.location].outdoor?'daylight':state.torchLit?`torch, ${state.torchMinutes} minutes remaining`:'none'}\nAI backend: ${WORKER_URL}`);
+    if (state.mode === 'wilderness') {
+      const hex = currentHex();
+      write(`Mode: wilderness hex crawl\nLocation: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nHex scale: 6 miles\nTime: ${clockText()}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nParty size: ${state.party.length}\nAI backend: ${WORKER_URL}`);
+    } else {
+      write(`Mode: site/dungeon exploration\nLocation: ${currentSite().name}\nTime: ${clockText()}\nExploration turns elapsed: ${state.turn}\nTorch: ${state.torchLit ? `${state.torchMinutes} minutes remaining` : 'not lit'}\nParty size: ${state.party.length}\nAI backend: ${WORKER_URL}`);
+    }
   }
 
   function events() {
-    write(state.eventLog.length ? state.eventLog.slice(-20).join('\n') : 'No events have been logged yet.','system');
+    const recent = state.eventLog.slice(-18);
+    write(recent.length ? recent.join('\n') : 'No rules events have been recorded yet.','system');
   }
 
   function roll(expression) {
-    const match = /^(\d{1,2})d(\d{1,4})(?:\s*([+-])\s*(\d+))?$/.exec(expression.trim());
+    const match = /^(\d{1,2})d(\d{1,4})([+-]\d+)?$/i.exec(expression.trim());
     if (!match) {
-      write('Use a dice expression such as: roll 2d6 or roll 1d20+2','warning');
+      write('Use dice notation such as roll 1d6, roll 2d6, or roll 1d20+2.','warning');
       return;
     }
-    const count = +match[1];
-    const sides = +match[2];
-    const modifier = match[3] ? (match[3] === '+' ? +match[4] : -match[4]) : 0;
-    if (count < 1 || count > 50 || sides < 2 || sides > 1000) {
-      write('That dice expression is outside the allowed range.','warning');
+    const count = Number(match[1]);
+    const sides = Number(match[2]);
+    const modifier = Number(match[3] || 0);
+    if (count < 1 || count > 20 || sides < 2 || sides > 1000) {
+      write('That dice expression is outside the prototype limits.','warning');
       return;
     }
-    const values = Array.from({length:count},()=>rng(sides));
-    const total = values.reduce((sum,value)=>sum+value,0)+modifier;
-    write(`${expression}: [${values.join(', ')}]${modifier?` ${modifier>=0?'+':'-'} ${Math.abs(modifier)}`:''} = ${total}`);
-    addEvent(`Visible roll ${expression} = ${total}.`);
+    const results = Array.from({length:count},()=>rng(sides));
+    const total = results.reduce((a,b)=>a+b,0)+modifier;
+    const modText = modifier ? (modifier>0?` + ${modifier}`:` - ${Math.abs(modifier)}`) : '';
+    write(`${count}d${sides}${match[3] || ''}: [${results.join(', ')}]${modText} = ${total}`);
+    addEvent(`Visible roll ${expression.trim()} = ${total}.`);
   }
 
   function save() {
+    state.version = APP_VERSION;
     localStorage.setItem(STORAGE.save,JSON.stringify(state));
-    localStorage.setItem(STORAGE.notes,notes.value);
-    write('Campaign saved in this browser.');
+    write('Campaign state saved in this browser.','system');
   }
 
-  function normalizeLoadedState(candidate) {
-    return {
-      ...initialState(),
-      ...candidate,
-      searched: candidate.searched || {},
-      discoveredSecrets: candidate.discoveredSecrets || {},
-      eventLog: Array.isArray(candidate.eventLog) ? candidate.eventLog : [],
-      party: Array.isArray(candidate.party) ? candidate.party : initialState().party,
-      version: APP_VERSION
+  function migrateSave(loaded) {
+    if (loaded.mode && loaded.hex) return {...initialState(),...loaded,version:APP_VERSION};
+    const oldLocations = {
+      penhaligon:{mode:'wilderness',hex:{q:0,r:0},location:null},
+      market:{mode:'site',hex:{q:0,r:0},location:'market'},
+      kingsroad:{mode:'wilderness',hex:{q:0,r:-1},location:null},
+      shrine:{mode:'site',hex:{q:1,r:-2},location:'shrine'},
+      ford:{mode:'wilderness',hex:{q:0,r:-2},location:null},
+      oldroad:{mode:'wilderness',hex:{q:-1,r:-1},location:null},
+      tollhouse:{mode:'site',hex:{q:-2,r:-1},location:'tollhouse'},
+      cellar:{mode:'site',hex:{q:-2,r:-1},location:'cellar'},
+      passage:{mode:'site',hex:{q:-2,r:-1},location:'passage'},
+      cistern:{mode:'site',hex:{q:-2,r:-1},location:'cistern'},
+      sealed:{mode:'site',hex:{q:-2,r:-1},location:'sealed'}
     };
+    const mapped = oldLocations[loaded.location] || oldLocations.penhaligon;
+    return {...initialState(),...loaded,...mapped,travelUsed:0,version:APP_VERSION};
   }
 
   function load() {
     const raw = localStorage.getItem(STORAGE.save);
     if (!raw) {
-      write('No saved campaign was found in this browser.','warning');
+      write('No saved campaign exists in this browser.','warning');
       return;
     }
     try {
-      state = normalizeLoadedState(JSON.parse(raw));
-      write('Campaign loaded.');
+      state = migrateSave(JSON.parse(raw));
+      write('Campaign state loaded.','system');
       updatePanels();
       look();
-    } catch (error) {
-      console.error(error);
-      write('The saved campaign could not be read.','warning');
+    } catch {
+      write('The saved campaign could not be read.','error');
     }
   }
 
   function newGame() {
-    if (confirm('Erase the current unsaved campaign and begin again?')) {
-      state = initialState();
-      terminal.innerHTML = '';
-      boot();
-    }
+    if (!confirm('Start a new campaign and discard unsaved progress?')) return;
+    state = initialState();
+    terminal.innerHTML = '';
+    boot();
   }
 
   function help() {
-    write(`COMMANDS\nlook — repeat the current description\nnorth, south, east, west, up, down — move\ngo north — natural movement phrasing also works\nsearch — spend one 10-minute turn searching\nwait — spend one 10-minute turn\nlight torch — light a one-hour torch\nextinguish torch — put out the current torch\nparty — show adventurers\ninventory — show pooled supplies\nstatus — show time, turns, light, and backend\nevents — show the recent rules log\nroll 2d6 — make a visible dice roll\nsave / load — use this browser's local storage\nreferee [question] — ask the connected AI referee\nAny unrecognized natural-language command is also sent to the AI referee.\nnew game — restart the prototype\nclear — clear the transcript`);
+    write(`COMMANDS\nlook — repeat the current description\n\nNATURAL-LANGUAGE INTENT\nYou can speak to the game as you would to a referee. Examples:\nhead toward Stallanford\nmake for the shrine\nfollow the Duke's Road\nfollow the river\nlet's go resupply\nwe need provisions\nThe game first tries deterministic parsing, then asks the AI interpreter when necessary. The rules engine—not the AI—executes any resulting action. If an instruction is ambiguous, the game asks what you mean.\n\nWILDERNESS HEX TRAVEL\nn, ne, se, s, sw, nw — cross one adjacent six-mile hex\nnorth, northeast, southeast, south, southwest, northwest — full direction names also work\nenter — enter a settlement or keyed site in the current hex\ncamp — spend the night, consume rations, and reset the next day's travel allowance\n\nSITE AND DUNGEON MOVEMENT\nnorth, south, east, west, up, down — move through keyed exits\nleave — return from a surface site to its wilderness hex\n\nGENERAL\nsearch — search the present hex or keyed area\nwait — spend one 10-minute exploration turn\nlight torch — light a one-hour torch underground\nparty — show adventurers\ninventory — show pooled supplies\nstatus — show time and travel state\nevents — show the recent rules log\nroll 2d6 — make a visible dice roll\nsave / load — use this browser's local storage\nreferee [question] — ask the connected AI referee directly\nnew game — restart the prototype\nclear — clear the transcript`);
+  }
+
+  function locationContext() {
+    if (state.mode === 'wilderness') {
+      const hex = currentHex();
+      const roads = roadDirections(hex);
+      const rivers = Array.isArray(hex.riverDirs) ? hex.riverDirs : [];
+      const known = knownPlaceIds().map(id => `${id}:${sites[id].name}`).join(', ') || 'none';
+      return `Mode: wilderness hex crawl\nCurrent hex: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nDescription: ${hex.desc}\nTravel directions: north, northeast, southeast, south, southwest, northwest\nRoad/trail directions: ${roads.length ? roads.join(', ') : 'none'}\nRiver/stream directions: ${rivers.length ? rivers.join(', ') : 'none'}\nEnterable site: ${hex.site ? (hex.siteLabel || sites[hex.site]?.name) : 'none'}\nKnown destination IDs and names: ${known}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles`;
+    }
+    const site = currentSite();
+    return `Mode: keyed site or dungeon\nLocation: ${site.name}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}`;
+  }
+
+  function parseLocalIntent(input) {
+    const normalized = input.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+
+    const servicePatterns = [
+      {service:'resupply', re:/\b(resupply|re-supply|stock up|restock|buy supplies|purchase supplies|get supplies|go shopping|shop for supplies)\b/},
+      {service:'provisions', re:/\b(buy|get|need|find|purchase|restock)(?: some| more)? (?:food|rations|provisions)\b/}
+    ];
+    for (const entry of servicePatterns) if (entry.re.test(normalized)) return {kind:'SERVICE',service:entry.service,confidence:1};
+
+    const featureMatch = /\bfollow(?: along)?(?: the)? (duke'?s road|old cart track|cart track|road|trail|path|river|stream|watercourse)(?: (north(?:east|west)?|south(?:east|west)?|n|ne|se|s|sw|nw|upstream|downstream))?\b/.exec(normalized);
+    if (featureMatch) return {kind:'FOLLOW_FEATURE',feature:featureMatch[1],direction:featureMatch[2] || null,confidence:1};
+
+    if (/\b(head|go|travel|walk|make(?: our)? way|set out|proceed|return|take us)\b/.test(normalized)) {
+      const matches = resolveKnownPlace(normalized);
+      if (matches.length === 1) return {kind:'TRAVEL_TO',target:matches[0],confidence:1};
+      if (matches.length > 1) return {kind:'CLARIFY',clarification:`I can read that as more than one destination: ${matches.map(id=>sites[id].name).join(' or ')}. Which do you mean?`,confidence:1};
+    }
+
+    if (normalized === 'upstream' || normalized === 'downstream') return {kind:'FOLLOW_FEATURE',feature:'river',direction:normalized,confidence:1};
+    if (["duke's road",'dukes road','old cart track'].includes(normalized)) return {kind:'FOLLOW_FEATURE',feature:normalized,confidence:1};
+
+    const exactPlaces = knownPlaceIds().filter(siteId => siteAliases(siteId).includes(normalized));
+    if (exactPlaces.length === 1) return {kind:'TRAVEL_TO',target:exactPlaces[0],confidence:1};
+
+    return null;
+  }
+
+  function intentInterpreterPrompt(playerInput) {
+    const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
+    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply or provisions when the player broadly wants to shop for adventuring necessities.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\n\nPLAYER INPUT:\n${playerInput}`;
+  }
+
+  function extractJsonObject(text) {
+    const cleaned = String(text || '').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+    const first = cleaned.indexOf('{');
+    const last = cleaned.lastIndexOf('}');
+    if (first < 0 || last < first) return null;
+    try { return JSON.parse(cleaned.slice(first,last+1)); } catch { return null; }
+  }
+
+  async function interpretWithAi(playerInput) {
+    const token = getStoredToken();
+    if (!token || aiBusy) return null;
+    aiBusy = true;
+    enterButton.disabled = true;
+    testAiButton.disabled = true;
+    setAiStatus('off','interpreting…');
+    try {
+      const response = await fetch(WORKER_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Game-Token':token},
+        body:JSON.stringify({input:intentInterpreterPrompt(playerInput)})
+      });
+      let data = {};
+      try { data = await response.json(); } catch { data = {}; }
+      if (!response.ok) return null;
+      const intent = extractJsonObject(data.text);
+      if (!intent || typeof intent.kind !== 'string') return null;
+      setAiStatus('good','connected');
+      return intent;
+    } catch (error) {
+      console.error('Intent parser failed',error);
+      return null;
+    } finally {
+      aiBusy = false;
+      enterButton.disabled = false;
+      testAiButton.disabled = false;
+    }
+  }
+
+  async function executeIntent(intent, originalInput) {
+    if (!intent) return false;
+    const kind = String(intent.kind || '').toUpperCase();
+    if (Number(intent.confidence ?? 1) < 0.65 && kind !== 'CLARIFY') {
+      write('I am not sure what you want the party to do. Can you phrase that another way?','warning');
+      return true;
+    }
+    switch (kind) {
+      case 'MOVE': {
+        const direction = normalizeDirection(String(intent.direction || ''));
+        if (!direction) { write('Which direction do you want to go?','warning'); return true; }
+        move(direction); return true;
+      }
+      case 'TRAVEL_TO': {
+        const target = String(intent.target || '');
+        if (!knownPlaceIds().includes(target)) { write('I do not know which known destination you mean.','warning'); return true; }
+        travelToSite(target,{enter:true}); return true;
+      }
+      case 'FOLLOW_FEATURE': followFeature(intent.feature || 'road',intent.direction || null); return true;
+      case 'SERVICE': goForService(intent.service || 'resupply'); return true;
+      case 'ENTER': enterSite(); return true;
+      case 'LEAVE': leaveSite(); return true;
+      case 'SEARCH': search(); return true;
+      case 'CAMP': camp(); return true;
+      case 'WAIT':
+        if (state.mode === 'wilderness') advanceClock(10,'Party waited ten minutes in the wilderness.');
+        else advanceExploration(10,'Party waited one exploration turn.');
+        write('Ten minutes pass.'); return true;
+      case 'LIGHT_TORCH': lightTorch(); return true;
+      case 'STATUS': status(); return true;
+      case 'INVENTORY': inventory(); return true;
+      case 'PARTY': party(); return true;
+      case 'CLARIFY': write(intent.clarification || 'What exactly do you want the party to do?','warning'); return true;
+      case 'REFEREE': return false;
+      case 'UNSUPPORTED': write(intent.clarification || 'That action is not yet implemented in this prototype.','warning'); return true;
+      default: return false;
+    }
   }
 
   function buildRefereePrompt(playerInput, connectionTest=false) {
-    if (connectionTest) {
-      return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
-    }
+    if (connectionTest) return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
 
-    const location = world[state.location];
     const partySummary = state.party.map(member =>
       `${member.name}, ${member.role}, HP ${member.hp}/${member.maxHp}, AC ${member.ac}`
     ).join('; ');
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
 
-    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- This request is conversational guidance and bounded narration only.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what information or future procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\nLocation: ${location.name}\nDescription: ${canSee() ? location.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleExits().join(', ') : 'None visible in darkness.'}\nTime: ${clockText()}\nLight: ${location.outdoor ? 'daylight' : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, ${state.gold} gp pooled\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, ${state.gold} gp pooled\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function friendlyAiError(error, status) {
-    if (status === 401) return 'Cloudflare rejected the GAME_TOKEN. Re-enter the access code you stored as GAME_TOKEN in the Worker settings, then press SAVE CODE.';
-    if (status === 403) return 'Cloudflare rejected this website origin. In the Worker code, ALLOWED_ORIGIN must be exactly https://diabolicdonut.github.io and the game must be opened from GitHub Pages rather than as a local file.';
-    if (status === 502) return 'Cloudflare reached the Worker, but the OpenAI request failed. Check that OPENAI_API_KEY exists as a Cloudflare secret and that the API account has available billing or credits.';
+    if (status === 401) return 'Cloudflare rejected the GAME_TOKEN. Re-enter the access code stored as GAME_TOKEN in the Worker settings, then press SAVE CODE.';
+    if (status === 403) return 'Cloudflare rejected this website origin. In the Worker code, ALLOWED_ORIGIN must be exactly https://diabolicdonut.github.io and the game must be opened from GitHub Pages.';
+    if (status === 502) return 'Cloudflare reached the Worker, but the OpenAI request failed. Check the OPENAI_API_KEY secret and API billing.';
     if (status === 413) return 'The referee request was too large for the Worker.';
     if (error instanceof TypeError) return 'The browser could not reach the Cloudflare Worker. Check the Worker address, deployment, and CORS settings.';
     return error?.message || 'The AI referee request failed.';
@@ -551,36 +1195,27 @@
     try {
       const response = await fetch(WORKER_URL, {
         method:'POST',
-        headers:{
-          'Content-Type':'application/json',
-          'X-Game-Token':token
-        },
-        body:JSON.stringify({input:buildRefereePrompt(playerInput, Boolean(options.connectionTest))})
+        headers:{'Content-Type':'application/json','X-Game-Token':token},
+        body:JSON.stringify({input:buildRefereePrompt(playerInput,Boolean(options.connectionTest))})
       });
-
       let data = {};
       try { data = await response.json(); } catch { data = {}; }
-
       if (!response.ok) {
         const error = new Error(data.error || `Worker returned HTTP ${response.status}.`);
         error.status = response.status;
         throw error;
       }
-
       const text = typeof data.text === 'string' ? data.text.trim() : '';
       if (!text) throw new Error('The Worker returned no referee text.');
-
       setAiStatus('good','connected');
-      if (options.connectionTest) {
-        write(`AI connection successful: ${text}`,'ai');
-      } else {
+      if (options.connectionTest) write(`AI connection successful: ${text}`,'ai');
+      else {
         write(`REFEREE: ${text}`,'ai');
         addEvent(`AI referee answered a bounded query: ${playerInput.slice(0,120)}`);
       }
       return text;
     } catch (error) {
-      const status = error.status || 0;
-      const message = friendlyAiError(error,status);
+      const message = friendlyAiError(error,error.status || 0);
       setAiStatus('bad','connection error');
       write(message,'error');
       console.error(error);
@@ -593,9 +1228,22 @@
     }
   }
 
+  function normalizeDirection(word) {
+    const aliases = {
+      n:'north', north:'north',
+      ne:'northeast', 'north east':'northeast', northeast:'northeast',
+      se:'southeast', 'south east':'southeast', southeast:'southeast',
+      s:'south', south:'south',
+      sw:'southwest', 'south west':'southwest', southwest:'southwest',
+      nw:'northwest', 'north west':'northwest', northwest:'northwest',
+      e:'east', east:'east', w:'west', west:'west', u:'up', up:'up', d:'down', down:'down'
+    };
+    return aliases[word.trim().toLowerCase()] || null;
+  }
+
   function parseNaturalDirection(input) {
-    const match = /^(?:go|walk|head|move|travel|proceed|continue)\s+(?:to\s+the\s+)?(north|south|east|west|up|down)$/i.exec(input.trim());
-    return match ? match[1].toLowerCase() : null;
+    const match = /^(?:go|walk|head|move|travel|proceed|continue|follow(?: the)? road)\s+(?:to\s+the\s+)?(north(?:\s*east|\s*west)?|south(?:\s*east|\s*west)?|east|west|up|down|n|ne|se|s|sw|nw|e|w|u|d)$/i.exec(input.trim());
+    return match ? normalizeDirection(match[1].replace(/\s+/g,' ')) : null;
   }
 
   async function handle(raw) {
@@ -604,16 +1252,20 @@
     write(`> ${input}`,'prompt');
 
     const normalized = input.toLowerCase().replace(/\s+/g,' ');
-    const abbreviations = {n:'north',s:'south',e:'east',w:'west',u:'up',d:'down'};
+    const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
-    if (abbreviations[normalized]) return move(abbreviations[normalized]);
-    if (['north','south','east','west','up','down'].includes(normalized)) return move(normalized);
+    // Layer 1: explicit engine commands remain deterministic and require no AI call.
+    if (directDirection) return move(directDirection);
     if (naturalDirection) return move(naturalDirection);
     if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
+    if (normalized === 'enter' || normalized === 'enter site' || normalized === 'enter town' || normalized === 'enter village' || normalized === 'enter building') return enterSite();
+    if (normalized === 'leave' || normalized === 'exit' || normalized === 'return to wilderness') return leaveSite();
+    if (normalized === 'camp' || normalized === 'make camp' || normalized === 'camp overnight') return camp();
     if (normalized === 'search' || normalized.startsWith('search ')) return search();
     if (normalized === 'wait' || normalized === 'rest 10 minutes') {
-      advance(10,'Party waited one exploration turn.');
+      if (state.mode === 'wilderness') advanceClock(10,'Party waited ten minutes in the wilderness.');
+      else advanceExploration(10,'Party waited one exploration turn.');
       write('Ten minutes pass.');
       return;
     }
@@ -624,9 +1276,7 @@
         addEvent('Torch extinguished.');
         write('The torch is extinguished.');
         updatePanels();
-      } else {
-        write('No torch is burning.');
-      }
+      } else write('No torch is burning.');
       return;
     }
     if (normalized === 'party') return party();
@@ -637,26 +1287,33 @@
     if (normalized === 'load') return load();
     if (normalized === 'new game' || normalized === 'restart') return newGame();
     if (normalized === 'help' || normalized === '?') return help();
-    if (normalized === 'clear') {
-      terminal.innerHTML = '';
-      return;
-    }
+    if (normalized === 'clear') { terminal.innerHTML = ''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
     if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
     if (normalized.startsWith('referee ')) return callReferee(input.slice(8));
     if (normalized.startsWith('ask referee ')) return callReferee(input.slice(12));
 
+    // Layer 2: fast local semantic parsing for common table-language instructions.
+    const localIntent = parseLocalIntent(input);
+    if (localIntent && await executeIntent(localIntent,input)) return;
+
+    // Layer 3: bounded AI intent parsing. The model may choose an engine intent,
+    // ask for clarification, or hand the action to the referee. It never edits state.
+    const aiIntent = await interpretWithAi(input);
+    if (aiIntent && await executeIntent(aiIntent,input)) return;
+
+    // Layer 4: genuine freeform referee/adjudication request.
     return callReferee(input);
   }
 
   function boot() {
-    write(`KNOWN WORLD REFEREE — GITHUB/CLOUDFLARE BUILD v${APP_VERSION}`,'system');
-    write('The deterministic prototype runs in this page. Unrecognized natural-language actions can be sent to the bounded AI referee through your Cloudflare Worker.','system');
+    write(`KNOWN WORLD REFEREE — NATURAL-LANGUAGE HEX-CRAWL BUILD v${APP_VERSION}`,'system');
+    write('Wilderness travel uses six-direction six-mile hexes, but you no longer have to speak in compass commands. Try ordinary instructions such as “head toward Stallanford,” “follow the road,” or “let’s go resupply.” The engine translates intent into legal actions and asks when the meaning is ambiguous.','system');
     if (location.protocol === 'file:') {
-      write('AI NOTE: This page is open as a local file. Your Worker is configured for GitHub Pages, so AI requests will work after index.html is uploaded and opened from https://diabolicdonut.github.io/.','warning');
+      write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     }
     write('');
-    write('Your party has gathered at the eastern gate of Penhaligon. Rumors speak of trouble on the road north and of urgent messages bound for Stallanford.');
+    write('Your party stands outside the eastern gate of Penhaligon. The Duke’s Road runs north toward Stallanford, while the surrounding country is open to exploration in six directions.');
     look();
     updatePanels();
     refreshTokenUi();
@@ -678,7 +1335,7 @@
     }
     localStorage.setItem(STORAGE.token,token);
     refreshTokenUi();
-    write('Cloudflare GAME_TOKEN saved in this browser. You will not need to re-enter it when index.html is updated on the same GitHub Pages site.','system');
+    write('Cloudflare GAME_TOKEN saved in this browser. It will remain when index.html is updated on the same GitHub Pages site.','system');
     command.focus();
   });
 
