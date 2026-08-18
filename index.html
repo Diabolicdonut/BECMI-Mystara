@@ -57,6 +57,30 @@
   #gameToken { width:100%; }
   #notes { width:100%; min-height:170px; padding:8px; }
   .connection-copy { overflow-wrap:anywhere; }
+  .rule-state { font-size:11px; color:var(--dim); line-height:1.45; margin-top:7px; }
+  .rule-state strong { color:var(--ink); }
+  .modal-backdrop { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.82); display:none; align-items:flex-start; justify-content:center; padding:3vh 14px; overflow:auto; }
+  .modal-backdrop.open { display:flex; }
+  .modal { width:min(1020px,100%); border:1px solid #68795e; background:#0c100b; box-shadow:0 18px 70px #000; }
+  .modal header { position:sticky; top:0; z-index:2; padding:14px 16px; }
+  .modal h2 { margin:0; color:var(--accent); font-size:20px; }
+  .modal-body { padding:16px; display:grid; grid-template-columns:minmax(0,1fr) 330px; gap:18px; }
+  .creator-card { border:1px solid var(--line); background:#090d08; padding:14px; }
+  .creator-card h3 { color:var(--accent); margin:0 0 10px; font-size:14px; }
+  .creator-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+  .creator-field { display:grid; gap:4px; }
+  .creator-field label { color:var(--dim); font-size:11px; }
+  .creator-field select, .creator-field input, .creator-field textarea { width:100%; background:#050704; color:var(--ink); border:1px solid #53634a; padding:8px; font:inherit; }
+  .abilities { display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin:10px 0; }
+  .ability { border:1px solid var(--line); padding:8px 4px; text-align:center; background:#0e140c; }
+  .ability b { display:block; color:var(--accent); font-size:12px; }
+  .ability span { display:block; margin-top:4px; font-size:18px; }
+  .party-draft { max-height:60vh; overflow:auto; }
+  .party-draft-item { border-bottom:1px solid var(--line); padding:8px 0; font-size:12px; color:var(--dim); }
+  .party-draft-item strong { color:var(--ink); }
+  .creator-message { min-height:2.8em; color:var(--warn); font-size:11px; line-height:1.35; margin-top:8px; }
+  .shop-line { font-size:11px; color:var(--dim); margin:4px 0; }
+  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } }
   @media (max-width:800px) {
     main { grid-template-columns:1fr; }
     aside { border-left:0; border-top:1px solid var(--line); }
@@ -67,7 +91,7 @@
 <div id="app">
   <header>
     <h1>KNOWN WORLD REFEREE</h1>
-    <div class="subtitle">BECM browser foundation · Natural-language referee commands · Northern Karameikos</div>
+    <div class="subtitle">BECM campaign prototype · Character creation · Penhaligon · Natural-language referee</div>
     <div class="statusbar">
       <span class="badge" id="whereBadge">Location: —</span>
       <span class="badge" id="timeBadge">Time: —</span>
@@ -96,13 +120,37 @@
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>party</li><li>status</li><li>inventory</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
         <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex; no automatic map is shown.</p>
+      </section>
+
+      <section>
+        <h2>CAMPAIGN</h2>
+        <div class="button-row">
+          <button type="button" id="createPartyButton">CREATE / MANAGE PARTY</button>
+        </div>
+        <p class="tiny">Characters are rolled 3d6 in order. Starting money is 3d6×10 gp per adventurer and is pooled into the expedition treasury for convenient party bookkeeping.</p>
+      </section>
+
+      <section>
+        <h2>RULES OPTIONS</h2>
+        <div id="weaponRuleState" class="rule-state"></div>
+        <div class="button-row">
+          <button type="button" id="rawWeaponsButton">RAW DAMAGE</button>
+          <button type="button" id="matrixWeaponsButton">CONTEXTUAL MATRIX</button>
+          <button type="button" id="auditWeaponsButton">AUDIT</button>
+        </div>
+        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks and siege weapons remain Rules Cyclopedia damage. Combat is not active yet; this build lets you inspect and configure the subsystem before combat arrives.</p>
+      </section>
+
+      <section>
+        <h2>HERE</h2>
+        <div id="contextPanel"></div>
       </section>
 
       <section>
@@ -126,11 +174,62 @@
     <div class="tiny">Rules and campaign state remain local and deterministic. The AI supplies bounded referee conversation and narration; it cannot directly change hit points, inventory, location, dice, or saved state.</div>
   </footer>
 </div>
+
+<div id="partyCreator" class="modal-backdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
+    <header>
+      <h2 id="creatorTitle">EXPEDITION ROSTER — RULES CYCLOPEDIA CHARACTER CREATION</h2>
+      <div class="subtitle">Roll 3d6 in order · Choose an eligible class · Optional 2-for-1 prime-requisite adjustment · Roll HP and starting money</div>
+    </header>
+    <div class="modal-body">
+      <div class="creator-card">
+        <h3>NEW ADVENTURER</h3>
+        <div class="button-row"><button type="button" id="rollAbilitiesButton">ROLL 3D6 IN ORDER</button><button type="button" id="resetDraftButton">RESET DRAFT</button></div>
+        <div class="abilities">
+          <div class="ability"><b>STR</b><span id="draftStr">—</span></div>
+          <div class="ability"><b>INT</b><span id="draftInt">—</span></div>
+          <div class="ability"><b>WIS</b><span id="draftWis">—</span></div>
+          <div class="ability"><b>DEX</b><span id="draftDex">—</span></div>
+          <div class="ability"><b>CON</b><span id="draftCon">—</span></div>
+          <div class="ability"><b>CHA</b><span id="draftCha">—</span></div>
+        </div>
+        <div class="creator-grid">
+          <div class="creator-field"><label for="creatorName">NAME</label><input id="creatorName" maxlength="40" placeholder="Character name"></div>
+          <div class="creator-field"><label for="creatorClass">CLASS</label><select id="creatorClass"><option value="">Roll abilities first</option></select></div>
+          <div class="creator-field"><label for="creatorAlignment">ALIGNMENT</label><select id="creatorAlignment"><option>Lawful</option><option selected>Neutral</option><option>Chaotic</option></select></div>
+        </div>
+        <div id="abilityTradeArea" style="display:none;margin-top:12px">
+          <h3>OPTIONAL ABILITY ADJUSTMENT</h3>
+          <p class="tiny">Trade 2 points from Strength, Intelligence, or Wisdom to raise a prime requisite by 1. Dexterity, Constitution, and Charisma cannot be lowered; no score may be lowered below 9.</p>
+          <div class="creator-grid">
+            <div class="creator-field"><label for="donorAbility">LOWER</label><select id="donorAbility"></select></div>
+            <div class="creator-field"><label for="primeAbility">RAISE PRIME REQUISITE</label><select id="primeAbility"></select></div>
+            <div class="creator-field"><label>&nbsp;</label><button type="button" id="tradeAbilityButton">TRADE 2 → 1</button></div>
+          </div>
+        </div>
+        <div id="spellChoiceArea" class="creator-field" style="display:none;margin-top:12px">
+          <label for="creatorSpell">BEGINNING SPELLBOOK — SECOND SPELL</label>
+          <select id="creatorSpell"><option>Charm Person</option><option>Magic Missile</option><option>Sleep</option><option>Shield</option></select>
+          <span class="tiny">Read Magic is included automatically; the character can memorize one 1st-level spell per day at 1st level.</span>
+        </div>
+        <div class="creator-field" style="margin-top:12px"><label for="creatorBackground">SHORT NOTE / BACKGROUND (OPTIONAL)</label><textarea id="creatorBackground" rows="3" placeholder="A sentence or two is enough."></textarea></div>
+        <div class="button-row"><button type="button" id="addCharacterButton">ADD ADVENTURER</button></div>
+        <div id="creatorMessage" class="creator-message"></div>
+      </div>
+      <div class="creator-card">
+        <h3>PARTY BEING FORMED</h3>
+        <div id="creatorPartyList" class="party-draft"></div>
+        <div class="button-row"><button type="button" id="finishPartyButton">BEGIN CAMPAIGN WITH THIS PARTY</button><button type="button" id="closeCreatorButton">CLOSE</button></div>
+        <p class="tiny">There is no party-size cap. Every adventurer added here receives a full XP share when the expedition later earns experience.</p>
+      </div>
+    </div>
+  </div>
+</div>
 <script>
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.1.5';
+  const APP_VERSION = '0.2.0';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -153,6 +252,30 @@
   const testAiButton = document.getElementById('testAiButton');
   const forgetTokenButton = document.getElementById('forgetTokenButton');
   const aiHelp = document.getElementById('aiHelp');
+  const createPartyButton = document.getElementById('createPartyButton');
+  const weaponRuleState = document.getElementById('weaponRuleState');
+  const rawWeaponsButton = document.getElementById('rawWeaponsButton');
+  const matrixWeaponsButton = document.getElementById('matrixWeaponsButton');
+  const auditWeaponsButton = document.getElementById('auditWeaponsButton');
+  const contextPanel = document.getElementById('contextPanel');
+  const partyCreator = document.getElementById('partyCreator');
+  const rollAbilitiesButton = document.getElementById('rollAbilitiesButton');
+  const resetDraftButton = document.getElementById('resetDraftButton');
+  const creatorName = document.getElementById('creatorName');
+  const creatorClass = document.getElementById('creatorClass');
+  const creatorAlignment = document.getElementById('creatorAlignment');
+  const creatorBackground = document.getElementById('creatorBackground');
+  const abilityTradeArea = document.getElementById('abilityTradeArea');
+  const donorAbility = document.getElementById('donorAbility');
+  const primeAbility = document.getElementById('primeAbility');
+  const tradeAbilityButton = document.getElementById('tradeAbilityButton');
+  const spellChoiceArea = document.getElementById('spellChoiceArea');
+  const creatorSpell = document.getElementById('creatorSpell');
+  const addCharacterButton = document.getElementById('addCharacterButton');
+  const finishPartyButton = document.getElementById('finishPartyButton');
+  const closeCreatorButton = document.getElementById('closeCreatorButton');
+  const creatorPartyList = document.getElementById('creatorPartyList');
+  const creatorMessage = document.getElementById('creatorMessage');
 
   // Pointy-top axial hex coordinates. The player never needs to see the coordinates.
   const HEX_DIRECTIONS = {
@@ -180,6 +303,127 @@
     mountain: {name:'mountains', cost:12, desc:'Steep, rugged ground severely slows the party.'},
     swamp:    {name:'swamp', cost:12, desc:'Wet ground, reeds, and hidden channels make travel difficult.'}
   };
+  const RC_WEAPON_MATRIX = {"Axe, Battle (RC)":{"rawDamage":"1d8","size":"Medium-Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Rules Cyclopedia battle axe: a 3–5 ft two-handed chopping weapon; strong committed cuts without a strong Soft/Hard bias.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d8","normal":"2d4","far":"1d10"}}}},"Axe, Hand (RC)":{"rawDamage":"1d6","size":"Medium-Small","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Compact one-handed chopping axe; useful in melee and throwable.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d3","far":"1d6"},"hard":{"close":"1d8","normal":"2d3","far":"1d6"}},"medium":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"large":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}}}},"Bow, Short (RC)":{"rawDamage":"1d6","size":"Medium","power":"Light","consistency":0.17,"rangeProfile":"Short-Slight","description":"Compact bow favoring mobility and exposed targets; modest performance against rigid protection.","matrix":{"small":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"medium":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"large":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Bow, Long (RC)":{"rawDamage":"1d6","size":"Large","power":"Light","consistency":0.33,"rangeProfile":"Long-Slight","description":"Longer bow with greater reach and repeatability; arrows remain Soft-target biased.","matrix":{"small":{"soft":{"close":"1d4+1","normal":"2d3","far":"1d6+1"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"1d6+1","normal":"2d3+1","far":"1d8+1"},"hard":{"close":"1d4","normal":"2d2","far":"1d4+1"}},"large":{"soft":{"close":"1d8+1","normal":"2d4+1","far":"1d8+2"},"hard":{"close":"1d4+1","normal":"2d3","far":"1d6+1"}}}},"Crossbow, Light (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal-Heavy","consistency":0.5,"rangeProfile":"Long-Slight","description":"Mechanically launched bolt with good repeatability and meaningful performance against hard protection.","matrix":{"small":{"soft":{"close":"2d2","normal":"1d4+1","far":"2d3"},"hard":{"close":"2d3","normal":"1d6+1","far":"2d3+1"}},"medium":{"soft":{"close":"1d4+1","normal":"2d3","far":"1d6+1"},"hard":{"close":"1d6+1","normal":"2d3+1","far":"1d6+2"}},"large":{"soft":{"close":"2d3","normal":"1d6+1","far":"2d3+1"},"hard":{"close":"2d3+1","normal":"1d6+2","far":"2d4+1"}}}},"Crossbow, Heavy (RC)":{"rawDamage":"2d4","size":"Large","power":"Heavy","consistency":0.67,"rangeProfile":"Long-Favored","description":"Heavy mechanically spanned crossbow; excellent rigid-target performance, offset in play by slow reloading.","matrix":{"small":{"soft":{"close":"1d2+1","normal":"1d4+1","far":"3d2"},"hard":{"close":"3d2","normal":"3d2+1","far":"1d6+3"}},"medium":{"soft":{"close":"1d4+1","normal":"3d2","far":"3d2+1"},"hard":{"close":"3d2+1","normal":"1d6+3","far":"5d2"}},"large":{"soft":{"close":"3d2","normal":"3d2+1","far":"1d6+3"},"hard":{"close":"1d6+3","normal":"5d2","far":"5d2+1"}}}},"Blackjack (RC)":{"rawDamage":"1d2","size":"Extra Small","power":"Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Very low injury output; its real purpose is the Cyclopedia knockout/stun effect against an accessible head or neck.","matrix":{"small":{"soft":{"close":"1d10","normal":"2d3","far":"1d4"},"hard":{"close":"1d6","normal":"1d3","far":"None"}},"medium":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"1d3","normal":"None","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Club (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Simple blunt implement with modest impact and no strong protection bias.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"medium":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}},"large":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Hammer, Throwing (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal-Heavy","consistency":0.17,"rangeProfile":"Short-Slight","description":"Compact broad-headed impact weapon balanced for throwing; concentrated force helps against rigid targets.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d8","normal":"2d3","far":"1d6"}},"medium":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"large":{"soft":{"close":"1d4","normal":"1d3","far":"1d2"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}}}},"Hammer, War (RC)":{"rawDamage":"1d6","size":"Medium","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Medium-shafted war hammer concentrating impact against armor and other hard protection.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"large":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}}}},"Mace (RC)":{"rawDamage":"1d6","size":"Medium","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Heavy striking head on a short or medium shaft; moderate bias toward hard-target effectiveness.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"large":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}}}},"Staff (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Long two-handed blunt weapon; reach and handling are more important than raw injury output.","matrix":{"small":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"medium":{"soft":{"close":"2d2","normal":"1d6","far":"2d3"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"large":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}}}},"Torch (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Light improvised club whose flame can matter fictionally beyond its direct weapon damage.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"medium":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d4","normal":"1d3","far":"1d2"}},"large":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"1d3","normal":"1d2","far":"1 dmg"}}}},"Dagger (RC)":{"rawDamage":"1d4","size":"Small","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Compact cutting and thrusting blade; excels when fighting distance collapses inward.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Dagger, Silver (RC)":{"rawDamage":"1d4","size":"Small","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Physically identical to the normal dagger; silver is treated as a material property relevant to susceptible creatures.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Halberd (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Long combination polearm with axe, spike, and hook; strong general battlefield damage with some anti-armor bias.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d4","normal":"1d8+1d2","far":"2d6"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"1d8+1d2","normal":"2d6","far":"1d12+1d2"}}}},"Javelin (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Light","consistency":0.17,"rangeProfile":"Size-Based","description":"Light 4–6 ft spear usable one-handed in melee or thrown; reach is useful without the mass of a full spear.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"1d3","normal":"1d4","far":"2d2"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d8+1"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}}}},"Lance (RC)":{"rawDamage":"1d10","size":"Extra Large","power":"Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Extreme-reach mounted thrusting weapon; a true charge should be resolved as favorable delivery rather than permanent base damage.","matrix":{"small":{"soft":{"close":"None","normal":"1d3","far":"1d6"},"hard":{"close":"1d4","normal":"2d3","far":"1d10"}},"medium":{"soft":{"close":"1d3","normal":"1d6","far":"2d4"},"hard":{"close":"2d3","normal":"1d10","far":"2d6"}},"large":{"soft":{"close":"1d6","normal":"2d4","far":"1d12"},"hard":{"close":"1d10","normal":"2d6","far":"1d12+1d3"}}}},"Pike (RC)":{"rawDamage":"1d10","size":"Extra Large","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Extra-long 12–18 ft thrusting spear; exceptional outward effectiveness with a strong exposed-target bias.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d4","far":"1d12"},"hard":{"close":"1d2","normal":"2d2","far":"1d8"}},"medium":{"soft":{"close":"2d4","normal":"1d12","far":"1d12+1d2"},"hard":{"close":"2d2","normal":"1d8","far":"1d8+1d2"}},"large":{"soft":{"close":"1d12","normal":"1d12+1d2","far":"1d12+1d3+1"},"hard":{"close":"1d8","normal":"1d8+1d2","far":"1d12+1"}}}},"Polearm (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Generic long pole weapon occupying the midpoint between specialized pikes, halberds, and heavy chopping variants.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d4","normal":"1d8+1d2","far":"2d6"}}}},"Poleaxe (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Rules Cyclopedia poleaxe: an extra-long battle axe on a 5–15 ft pole, distinct from the shorter knightly pollaxe.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Spear (RC)":{"rawDamage":"1d6","size":"Large","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"6–8 ft thrusting spear; reach and Soft-target efficiency are its main strengths rather than raw base damage.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"None","normal":"1d2","far":"1d4"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d2","normal":"1d4","far":"1d6"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}}}},"Trident (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Light three-pronged spear designed for underwater use; versatile against exposed flesh but less convincing against rigid armor.","matrix":{"small":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"2d2","normal":"1d6","far":"2d3"},"hard":{"close":"1d3","normal":"1d4","far":"2d2"}},"large":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}}}},"Shield, Horned (RC)":{"rawDamage":"1d2","size":"Small","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Small strapped shield with a central spike; primarily a close secondary attack rather than a full-length weapon.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d2","far":"1d2"},"hard":{"close":"1d6","normal":"1d3","far":"None"}},"medium":{"soft":{"close":"1d6","normal":"1d3","far":"None"},"hard":{"close":"1d4","normal":"1 dmg","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Shield, Knife (RC)":{"rawDamage":"1d4+1","size":"Small","power":"Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Small buckler carrying short blades; close-range secondary attack with limited reach.","matrix":{"small":{"soft":{"close":"1d8+1d2","normal":"1d8","far":"2d2"},"hard":{"close":"2d3","normal":"1d4","far":"1 dmg"}},"medium":{"soft":{"close":"2d4","normal":"1d6","far":"1d3"},"hard":{"close":"2d2","normal":"1d2","far":"None"}},"large":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"1d3","normal":"None","far":"None"}}}},"Shield, Sword (RC)":{"rawDamage":"1d4+2","size":"Medium","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Favored","description":"Medium shield mounting sword or spear blades; substantial secondary-weapon output but still body-centered in reach.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}},"medium":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}},"large":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}}}},"Shield, Tusked (RC)":{"rawDamage":"1d4+1","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Favored","description":"Large two-handed bladed shield; physically large but its attacking edges remain close to the wielder rather than functioning as a long weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"large":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}}}},"Sword, Short (RC)":{"rawDamage":"1d6","size":"Medium-Small","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Compact sword that handles well in compressed fighting while giving up some reach.","matrix":{"small":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"medium":{"soft":{"close":"1d8","normal":"2d3","far":"1d6"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}},"large":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Sword, Normal (RC)":{"rawDamage":"1d8","size":"Medium","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Classic one-handed cutting and thrusting sword; broad general-purpose handling with a modest Soft-target bias.","matrix":{"small":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}},"medium":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}},"large":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}}}},"Sword, Bastard (One-Handed) (RC)":{"rawDamage":"1d6+1","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Hand-and-a-half sword used one-handed; gains length but cannot fully exploit the weapon's mass and leverage.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}}}},"Sword, Bastard (Two-Handed) (RC)":{"rawDamage":"1d8+1","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Hand-and-a-half sword committed to a two-handed grip for improved leverage while retaining flexible sword handling.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"medium":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"large":{"soft":{"close":"2d4","normal":"1d10","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}}}},"Sword, Two-Handed (RC)":{"rawDamage":"1d10","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Great sword approximately 4½–6½ ft long; high Soft-target damage across a broad personal-combat envelope.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"2d4","normal":"1d10","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}},"large":{"soft":{"close":"1d10","normal":"1d8+1d2","far":"1d12"},"hard":{"close":"1d8","normal":"2d4","far":"1d10"}}}},"Blowgun, up to 2' (RC)":{"rawDamage":"Nil","size":"Extra Small","power":"Ultra Light","consistency":0.67,"rangeProfile":"Short-Slight","description":"The dart inflicts no meaningful direct injury in the Cyclopedia; poison is the actual payload.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Blowgun, 2'+ (RC)":{"rawDamage":"Nil","size":"Small","power":"Ultra Light","consistency":0.67,"rangeProfile":"Long-Slight","description":"Longer blowgun improves delivery range but the dart itself still has no meaningful direct-damage profile; poison is the payload.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Bola (RC)":{"rawDamage":"1d2","size":"Small","power":"Light","consistency":0.17,"rangeProfile":"Short-Favored","description":"Weighted entangling projectile with very low direct injury; its primary value is the Cyclopedia entangle/slow/delay effect.","matrix":{"small":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"medium":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1d2","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Cestus (RC)":{"rawDamage":"1d3","size":"Extra Small","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Armed glove or hand-wrap that makes a punch cutting and more dangerous while remaining essentially fist-range.","matrix":{"small":{"soft":{"close":"1d10","normal":"2d3","far":"1d4"},"hard":{"close":"1d8","normal":"2d2","far":"1d2"}},"medium":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"2d2","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Holy Water (RC)":{"rawDamage":"1d8","size":"Small","power":"Normal","consistency":0.17,"rangeProfile":"Short-Slight","description":"Breakable thrown container whose listed damage applies only to appropriate undead; ordinary armor is not treated as the key resistance mechanism.","matrix":{"small":{"soft":{"close":"1d8+1d2","normal":"1d8+1","far":"2d4"},"hard":{"close":"1d8+1d2","normal":"1d8+1","far":"2d4"}},"medium":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d4","normal":"1d8","far":"2d3"}},"large":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}}}},"Net (RC)":{"rawDamage":"Nil","size":"Medium","power":"Ultra Light","consistency":0,"rangeProfile":"Short-Slight","description":"Standard human-sized net profile. It inflicts no direct damage; size-sensitive entanglement remains a separate effect.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Oil, Burning (RC)":{"rawDamage":"1d8","size":"Small","power":"Normal","consistency":0.33,"rangeProfile":"Short-Slight","description":"Thrown breakable container delivering fire; continuing burn duration should remain a condition/effect rather than be hidden in Base damage.","matrix":{"small":{"soft":{"close":"2d4+1","normal":"1d8+1","far":"2d3+1"},"hard":{"close":"2d4+1","normal":"1d8+1","far":"2d3+1"}},"medium":{"soft":{"close":"2d3+1","normal":"1d6+1","far":"2d3"},"hard":{"close":"2d3+1","normal":"1d6+1","far":"2d3"}},"large":{"soft":{"close":"2d3","normal":"1d4+1","far":"2d2"},"hard":{"close":"2d3","normal":"1d4+1","far":"2d2"}}}},"Rock, Thrown (RC)":{"rawDamage":"1d3","size":"Small","power":"Normal","consistency":0,"rangeProfile":"Short-Favored","description":"Fist-sized improvised impact projectile; low output but broadly applicable.","matrix":{"small":{"soft":{"close":"2d3","normal":"2d2","far":"1d3"},"hard":{"close":"2d3","normal":"2d2","far":"1d3"}},"medium":{"soft":{"close":"2d2","normal":"1d3","far":"1 dmg"},"hard":{"close":"2d2","normal":"1d3","far":"1 dmg"}},"large":{"soft":{"close":"1d3","normal":"1 dmg","far":"None"},"hard":{"close":"1d3","normal":"1 dmg","far":"None"}}}},"Sling (RC)":{"rawDamage":"1d4","size":"Small","power":"Normal","consistency":0.17,"rangeProfile":"Long-Slight","description":"Compact projectile weapon that delivers a stone or lead pellet with substantially better range than hand throwing.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"large":{"soft":{"close":"1d2","normal":"1d3","far":"1d4"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}}}},"Whip (RC)":{"rawDamage":"1d2","size":"Large","power":"Light","consistency":0,"rangeProfile":"Long-Favored","description":"Long flexible tactical weapon with very low injury output; reach and entangling utility are its main reasons to exist.","matrix":{"small":{"soft":{"close":"None","normal":"1d2","far":"1d4"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"1d2","normal":"1d4","far":"1d6"},"hard":{"close":"None","normal":"None","far":"1d2"}},"large":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"None","normal":"1d2","far":"1d4"}}}},"Bardiche (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Heavy axe-bladed polearm with a forward spike; high raw chopping performance.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Bill (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Relatively light polearm with a long narrow single-edged blade; emphasizes cutting and handling over mass.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Gisarme (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Bill-like polearm with an added rear spike; balanced cutting, hooking, and thrusting potential.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Glaive (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad knifelike blade on a long pole; strong cutting profile with an exposed-target preference.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Lochaber Axe (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Long heavy single-bladed axe with a forward hook; powerful chopping and control weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Partizan (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad spearhead with two forward-pointing hooks at the base; primarily thrusting with useful cutting/control surfaces.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Ranseur (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Central thrusting spike flanked by short curved blades; favors concentrated thrust and weapon control over broad cuts.","matrix":{"small":{"soft":{"close":"1d2","normal":"1d4","far":"1d6"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Spetum (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Long central spike with two sharp curved blades forming a trident-like head; versatile thrusting and cutting polearm.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Spontoon (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad elaborate spear-like blade, sometimes wavy or flared; relatively light fighting polearm.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Voulge (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Large heavy cleaver-like blade on a pole; emphatically a high-output chopping weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}}};
+
+
+  const ABILITIES = ['str','int','wis','dex','con','cha'];
+  const ABILITY_NAMES = {str:'Strength',int:'Intelligence',wis:'Wisdom',dex:'Dexterity',con:'Constitution',cha:'Charisma'};
+  const CLASS_RULES = {
+    'Fighter': {hd:8, primes:['str'], armor:'any', weaponRule:'any'},
+    'Cleric': {hd:6, primes:['wis'], armor:'any', weaponRule:'cleric'},
+    'Magic-User': {hd:4, primes:['int'], armor:'none', weaponRule:'magic-user', spellbook:true},
+    'Thief': {hd:4, primes:['dex'], armor:'leather', weaponRule:'thief'},
+    'Dwarf': {hd:8, primes:['str'], armor:'any', weaponRule:'dwarf', requires:a=>a.con>=9, demihuman:true},
+    'Elf': {hd:6, primes:['str','int'], armor:'any', weaponRule:'any', requires:a=>a.int>=9, demihuman:true, spellbook:true},
+    'Halfling': {hd:6, primes:['str','dex'], armor:'any', weaponRule:'halfling', requires:a=>a.dex>=9&&a.con>=9, demihuman:true}
+  };
+
+  function moneyCp(gp=0,sp=0,cp=0){ return Math.round(gp*100+sp*10+cp); }
+
+  const SHOP_ITEMS = {
+    backpack:{name:'Backpack',priceCp:moneyCp(5),enc:20,kind:'gear',aliases:['pack']},
+    grappling_hook:{name:'Grappling Hook',priceCp:moneyCp(25),enc:80,kind:'gear',aliases:['grappling hook','hook']},
+    hammer_tool:{name:'Hammer',priceCp:moneyCp(2),enc:10,kind:'gear',aliases:['hammer']},
+    iron_spikes:{name:'Iron Spikes (12)',priceCp:moneyCp(1),enc:60,kind:'gear',aliases:['iron spikes','spikes']},
+    lantern:{name:'Lantern',priceCp:moneyCp(10),enc:30,kind:'gear',aliases:['lantern']},
+    mirror:{name:'Steel Mirror',priceCp:moneyCp(5),enc:5,kind:'gear',aliases:['mirror','steel mirror']},
+    oil:{name:'Oil Flask',priceCp:moneyCp(2),enc:10,kind:'gear',aliases:['oil','oil flask']},
+    pole10:{name:"Wooden Pole, 10'",priceCp:moneyCp(1),enc:100,kind:'gear',aliases:['10 foot pole','10-foot pole','pole']},
+    iron_rations:{name:'Iron Rations — one person/week',priceCp:moneyCp(15),enc:70,kind:'rations',rationDays:7,aliases:['iron rations','preserved rations']},
+    standard_rations:{name:'Standard Rations — one person/week',priceCp:moneyCp(5),enc:200,kind:'rations',rationDays:7,aliases:['standard rations','rations','food','provisions']},
+    rope:{name:"Rope, 50'",priceCp:moneyCp(1),enc:50,kind:'gear',aliases:['rope','50 feet of rope','50 foot rope']},
+    sack_small:{name:'Sack, Small',priceCp:moneyCp(1),enc:1,kind:'gear',aliases:['small sack']},
+    sack_large:{name:'Sack, Large',priceCp:moneyCp(2),enc:5,kind:'gear',aliases:['large sack']},
+    stakes:{name:'Stakes (3) and Mallet',priceCp:moneyCp(3),enc:10,kind:'gear',aliases:['stakes','stakes and mallet']},
+    thieves_tools:{name:"Thieves' Tools",priceCp:moneyCp(25),enc:10,kind:'gear',aliases:['thieves tools',"thieves' tools",'lockpicks']},
+    tinderbox:{name:'Tinder Box',priceCp:moneyCp(3),enc:5,kind:'gear',aliases:['tinderbox','tinder box','flint and steel']},
+    torch:{name:'Torch',priceCp:moneyCp(0,2),enc:20,kind:'torch',torchCount:1,aliases:['torch']},
+    torches6:{name:'Torches (6)',priceCp:moneyCp(1),enc:120,kind:'torch',torchCount:6,aliases:['six torches','6 torches','torch pack']},
+    waterskin:{name:'Waterskin / Wineskin',priceCp:moneyCp(1),enc:5,kind:'gear',aliases:['waterskin','water skin','wineskin']},
+    arrows20:{name:'Arrows (20)',priceCp:moneyCp(5),enc:10,kind:'ammo',aliases:['arrows','20 arrows']},
+    quarrels30:{name:'Quarrels (30)',priceCp:moneyCp(10),enc:10,kind:'ammo',aliases:['quarrels','bolts','crossbow bolts']},
+    sling_stones30:{name:'Sling Stones (30)',priceCp:moneyCp(1),enc:6,kind:'ammo',aliases:['sling stones','stones']},
+
+    axe_battle:{name:'Battle Axe',priceCp:moneyCp(7),enc:60,kind:'weapon',matrixId:'Axe, Battle (RC)',size:'large',edged:true,twoHanded:true,aliases:['battle axe']},
+    axe_hand:{name:'Hand Axe',priceCp:moneyCp(4),enc:30,kind:'weapon',matrixId:'Axe, Hand (RC)',size:'small',edged:true,oneHanded:true,aliases:['hand axe','axe']},
+    bow_short:{name:'Short Bow',priceCp:moneyCp(25),enc:20,kind:'weapon',matrixId:'Bow, Short (RC)',size:'medium',missile:true,twoHanded:true,aliases:['short bow']},
+    bow_long:{name:'Long Bow',priceCp:moneyCp(40),enc:30,kind:'weapon',matrixId:'Bow, Long (RC)',size:'large',missile:true,twoHanded:true,aliases:['long bow']},
+    crossbow_light:{name:'Light Crossbow',priceCp:moneyCp(30),enc:50,kind:'weapon',matrixId:'Crossbow, Light (RC)',size:'medium',missile:true,twoHanded:true,aliases:['light crossbow']},
+    crossbow_heavy:{name:'Heavy Crossbow',priceCp:moneyCp(50),enc:80,kind:'weapon',matrixId:'Crossbow, Heavy (RC)',size:'large',missile:true,twoHanded:true,aliases:['heavy crossbow']},
+    blackjack:{name:'Blackjack',priceCp:moneyCp(5),enc:5,kind:'weapon',clericAllowed:true,matrixId:'Blackjack (RC)',size:'small',oneHanded:true,aliases:['blackjack']},
+    club:{name:'Club',priceCp:moneyCp(3),enc:50,kind:'weapon',clericAllowed:true,matrixId:'Club (RC)',size:'medium',oneHanded:true,blunt:true,aliases:['club']},
+    hammer_throwing:{name:'Throwing Hammer',priceCp:moneyCp(4),enc:25,kind:'weapon',clericAllowed:true,matrixId:'Hammer, Throwing (RC)',size:'medium',oneHanded:true,blunt:true,aliases:['throwing hammer']},
+    hammer_war:{name:'War Hammer',priceCp:moneyCp(5),enc:50,kind:'weapon',clericAllowed:true,matrixId:'Hammer, War (RC)',size:'medium',oneHanded:true,blunt:true,aliases:['war hammer','warhammer']},
+    mace:{name:'Mace',priceCp:moneyCp(5),enc:30,kind:'weapon',clericAllowed:true,matrixId:'Mace (RC)',size:'medium',oneHanded:true,blunt:true,aliases:['mace']},
+    staff:{name:'Staff',priceCp:moneyCp(5),enc:40,kind:'weapon',clericAllowed:true,matrixId:'Staff (RC)',size:'medium',twoHanded:true,blunt:true,aliases:['staff','quarterstaff']},
+    dagger:{name:'Dagger',priceCp:moneyCp(3),enc:10,kind:'weapon',matrixId:'Dagger (RC)',size:'small',oneHanded:true,edged:true,aliases:['dagger']},
+    dagger_silver:{name:'Silver Dagger',priceCp:moneyCp(30),enc:10,kind:'weapon',matrixId:'Dagger, Silver (RC)',size:'small',oneHanded:true,edged:true,silver:true,aliases:['silver dagger']},
+    halberd:{name:'Halberd',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Halberd (RC)',size:'large',twoHanded:true,edged:true,polearm:true,aliases:['halberd']},
+    javelin:{name:'Javelin',priceCp:moneyCp(1),enc:20,kind:'weapon',matrixId:'Javelin (RC)',size:'medium',oneHanded:true,pointed:true,aliases:['javelin']},
+    lance:{name:'Lance',priceCp:moneyCp(10),enc:180,kind:'weapon',matrixId:'Lance (RC)',size:'large',pointed:true,aliases:['lance']},
+    pike:{name:'Pike',priceCp:moneyCp(3),enc:80,kind:'weapon',matrixId:'Pike (RC)',size:'large',twoHanded:true,pointed:true,polearm:true,aliases:['pike']},
+    polearm:{name:'Polearm',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Polearm (RC)',size:'large',twoHanded:true,edged:true,polearm:true,aliases:['polearm']},
+    poleaxe:{name:'Poleaxe',priceCp:moneyCp(5),enc:120,kind:'weapon',matrixId:'Poleaxe (RC)',size:'large',twoHanded:true,edged:true,polearm:true,aliases:['poleaxe','pole axe']},
+    spear:{name:'Spear',priceCp:moneyCp(3),enc:30,kind:'weapon',matrixId:'Spear (RC)',size:'medium',oneHanded:true,pointed:true,aliases:['spear']},
+    trident:{name:'Trident',priceCp:moneyCp(5),enc:25,kind:'weapon',matrixId:'Trident (RC)',size:'medium',oneHanded:true,pointed:true,aliases:['trident']},
+    sword_short:{name:'Short Sword',priceCp:moneyCp(7),enc:30,kind:'weapon',matrixId:'Sword, Short (RC)',size:'small',oneHanded:true,edged:true,aliases:['short sword']},
+    sword_normal:{name:'Normal Sword',priceCp:moneyCp(10),enc:60,kind:'weapon',matrixId:'Sword, Normal (RC)',size:'medium',oneHanded:true,edged:true,aliases:['normal sword','sword','arming sword']},
+    sword_bastard:{name:'Bastard Sword',priceCp:moneyCp(15),enc:80,kind:'weapon',matrixId:'Sword, Bastard (One-Handed) (RC)',matrixIdTwoHanded:'Sword, Bastard (Two-Handed) (RC)',size:'large',oneHanded:true,edged:true,aliases:['bastard sword']},
+    sword_twohanded:{name:'Two-Handed Sword',priceCp:moneyCp(15),enc:100,kind:'weapon',matrixId:'Sword, Two-Handed (RC)',size:'large',twoHanded:true,edged:true,aliases:['two handed sword','two-handed sword','greatsword','great sword']},
+    sling:{name:'Sling',priceCp:moneyCp(2),enc:20,kind:'weapon',clericAllowed:true,matrixId:'Sling (RC)',size:'small',missile:true,oneHanded:true,aliases:['sling']},
+
+    shield_horned:{name:'Horned Shield',priceCp:moneyCp(15),enc:20,kind:'weapon',matrixId:'Shield, Horned (RC)',size:'small',oneHanded:true,aliases:['horned shield','shield horned']},
+    shield_knife:{name:'Knife Shield',priceCp:moneyCp(65),enc:70,kind:'weapon',matrixId:'Shield, Knife (RC)',size:'small',oneHanded:true,aliases:['knife shield','shield knife']},
+    shield_sword:{name:'Sword Shield',priceCp:moneyCp(200),enc:185,kind:'weapon',matrixId:'Shield, Sword (RC)',size:'medium',oneHanded:true,aliases:['sword shield','shield sword']},
+    shield_tusked:{name:'Tusked Shield',priceCp:moneyCp(200),enc:275,kind:'weapon',matrixId:'Shield, Tusked (RC)',size:'large',twoHanded:true,aliases:['tusked shield','shield tusked']},
+    blowgun_short:{name:"Blowgun, up to 2'",priceCp:moneyCp(3),enc:6,kind:'weapon',matrixId:"Blowgun, up to 2' (RC)",size:'small',missile:true,aliases:['short blowgun','blowgun up to 2 feet','blowgun']},
+    blowgun_long:{name:"Blowgun, 2'+",priceCp:moneyCp(6),enc:15,kind:'weapon',matrixId:"Blowgun, 2'+ (RC)",size:'medium',missile:true,twoHanded:true,aliases:['long blowgun','blowgun over 2 feet']},
+    bola:{name:'Bola',priceCp:moneyCp(5),enc:5,kind:'weapon',matrixId:'Bola (RC)',size:'medium',oneHanded:true,aliases:['bola']},
+    cestus:{name:'Cestus',priceCp:moneyCp(5),enc:10,kind:'weapon',matrixId:'Cestus (RC)',size:'small',oneHanded:true,aliases:['cestus']},
+    holy_water:{name:'Holy Water',priceCp:moneyCp(25),enc:1,kind:'weapon',matrixId:'Holy Water (RC)',size:'small',oneHanded:true,clericAllowed:true,aliases:['holy water']},
+    net_medium:{name:"Net, Medium (6'×6')",priceCp:moneyCp(3,6),enc:36,kind:'weapon',matrixId:'Net (RC)',size:'medium',oneHanded:true,aliases:['net','medium net']},
+    burning_oil:{name:'Burning Oil Flask',priceCp:moneyCp(2),enc:10,kind:'weapon',matrixId:'Oil, Burning (RC)',size:'small',oneHanded:true,clericAllowed:true,aliases:['burning oil','oil weapon']},
+    thrown_rock:{name:'Thrown Rock',priceCp:moneyCp(0,0,10),enc:10,kind:'weapon',matrixId:'Rock, Thrown (RC)',size:'small',oneHanded:true,clericAllowed:true,aliases:['thrown rock','rock']},
+    whip:{name:"Whip (10')",priceCp:moneyCp(10),enc:100,kind:'weapon',matrixId:'Whip (RC)',size:'medium',oneHanded:true,aliases:['whip']},
+    bardiche:{name:'Bardiche',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Bardiche (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['bardiche']},
+    bill:{name:'Bill',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Bill (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['bill']},
+    gisarme:{name:'Gisarme',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Gisarme (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['gisarme']},
+    glaive:{name:'Glaive',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Glaive (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['glaive']},
+    lochaber_axe:{name:'Lochaber Axe',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Lochaber Axe (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['lochaber axe']},
+    partizan:{name:'Partizan',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Partizan (RC)',size:'large',twoHanded:true,polearm:true,pointed:true,aliases:['partizan','partisan']},
+    ranseur:{name:'Ranseur',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Ranseur (RC)',size:'large',twoHanded:true,polearm:true,pointed:true,aliases:['ranseur']},
+    spetum:{name:'Spetum',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Spetum (RC)',size:'large',twoHanded:true,polearm:true,pointed:true,aliases:['spetum']},
+    spontoon:{name:'Spontoon',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Spontoon (RC)',size:'large',twoHanded:true,polearm:true,pointed:true,aliases:['spontoon']},
+    voulge:{name:'Voulge',priceCp:moneyCp(7),enc:150,kind:'weapon',matrixId:'Voulge (RC)',size:'large',twoHanded:true,polearm:true,edged:true,aliases:['voulge']},
+
+    shield:{name:'Shield',priceCp:moneyCp(10),enc:100,kind:'shield',aliases:['shield']},
+    leather:{name:'Leather Armor',priceCp:moneyCp(20),enc:200,kind:'armor',baseAc:7,matrixProtection:'soft',aliases:['leather','leather armor']},
+    scale:{name:'Scale Mail',priceCp:moneyCp(30),enc:300,kind:'armor',baseAc:6,matrixProtection:'hard',aliases:['scale','scale mail']},
+    chain:{name:'Chain Mail',priceCp:moneyCp(40),enc:400,kind:'armor',baseAc:5,matrixProtection:'hard',aliases:['chain','chain mail']},
+    banded:{name:'Banded Mail',priceCp:moneyCp(50),enc:450,kind:'armor',baseAc:4,matrixProtection:'hard',aliases:['banded','banded mail']},
+    plate:{name:'Plate Mail',priceCp:moneyCp(60),enc:500,kind:'armor',baseAc:3,matrixProtection:'hard',aliases:['plate','plate mail']},
+    suit:{name:'Suit Armor',priceCp:moneyCp(250),enc:750,kind:'armor',baseAc:0,matrixProtection:'hard',aliases:['suit armor','full plate']},
+
+    mule:{name:'Mule',priceCp:moneyCp(30),enc:0,kind:'mount',aliases:['mule']},
+    pony:{name:'Pony',priceCp:moneyCp(35),enc:0,kind:'mount',aliases:['pony']},
+    draft_horse:{name:'Draft Horse',priceCp:moneyCp(40),enc:0,kind:'mount',aliases:['draft horse']},
+    riding_horse:{name:'Riding Horse',priceCp:moneyCp(75),enc:0,kind:'mount',aliases:['riding horse','horse']},
+    war_horse:{name:'War Horse',priceCp:moneyCp(250),enc:0,kind:'mount',aliases:['war horse']}
+  };
+
+  const SHOP_STOCK = {
+    general_store:['backpack','grappling_hook','hammer_tool','iron_spikes','lantern','mirror','oil','pole10','iron_rations','standard_rations','rope','sack_small','sack_large','stakes','thieves_tools','tinderbox','torch','torches6','waterskin'],
+    weaponsmith:['axe_battle','axe_hand','bow_short','bow_long','crossbow_light','crossbow_heavy','blackjack','club','hammer_throwing','hammer_war','mace','staff','dagger','dagger_silver','halberd','javelin','lance','pike','polearm','poleaxe','spear','trident','sword_short','sword_normal','sword_bastard','sword_twohanded','sling','shield_horned','shield_knife','shield_sword','shield_tusked','blowgun_short','blowgun_long','bola','cestus','holy_water','net_medium','burning_oil','thrown_rock','whip','bardiche','bill','gisarme','glaive','lochaber_axe','partizan','ranseur','spetum','spontoon','voulge','arrows20','quarrels30','sling_stones30'],
+    armorer:['shield','leather','scale','chain','banded','plate','suit'],
+    stable:['mule','pony','draft_horse','riding_horse','war_horse']
+  };
+
+  const RUMORS = [
+    {id:'stallanford_trouble',text:'A merchant in from Stallanford says the northern road has grown strangely quiet. The village is asking after reliable travelers who are willing to investigate trouble in the countryside.',learn:'stallanford'},
+    {id:'tollhouse',text:'A carter swears an abandoned toll house lies northwest of the Duke’s Road. He will not camp near it, though he cannot say exactly what frightened him there.',learn:'tollhouse'},
+    {id:'shrine',text:'A drover mentions an old wayside shrine on a wooded ridge near the road. Travelers still leave offerings beneath the oak.',learn:'shrine'},
+    {id:'hill_lights',text:'A hunter claims he saw three lights moving across the wooded hills after midnight. His companions insist he had been drinking.'}
+  ];
 
   const fixedHexes = {
     '0,0': {
@@ -231,10 +475,35 @@
 
   const sites = {
     market: {
-      name:'Penhaligon Market', outdoor:true, returnsToHex:true, aliases:['penhaligon','penhaligon market','market','town'], services:['resupply','provisions','general goods','shopping','rumors','lodging'],
-      desc:'Canvas awnings crowd a muddy square. Drovers bargain over mules, a cooper hammers iron hoops into place, and the Brazen Shield faces the market well. Travelers speak quietly of trouble farther north.',
-      exits:{},
-      searchText:'Among the notices you find a request for capable travelers willing to carry messages toward Stallanford. Another handbill warns of bandits near an abandoned toll house.'
+      name:'Penhaligon Market', outdoor:true, returnsToHex:true, aliases:['penhaligon','penhaligon market','market','town'], services:['directions'],
+      desc:'Canvas awnings crowd a muddy square inside Penhaligon. The Brazen Shield stands to the north, a general outfitter to the east, a weaponsmith to the west, and the stable yard to the south. An armorer works just beyond the weaponsmith.',
+      exits:{north:'brazen_shield',east:'general_store',west:'weaponsmith',south:'stable'},
+      searchText:'Notices advertise caravan work, livestock, and rooms. Conversation repeatedly turns toward the road north and the village of Stallanford.'
+    },
+    brazen_shield: {
+      name:'The Brazen Shield', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['brazen shield','inn','tavern'], services:['rumors','lodging','food'],
+      desc:'The Brazen Shield is a busy travelers’ inn facing the market. Teamsters, guards, and merchants crowd long tables beneath smoke-dark rafters. This prototype treats it primarily as a place to gather rumors.',
+      exits:{}
+    },
+    general_store: {
+      name:'Penhaligon General Outfitter', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['general store','outfitter','supply shop','provisioner'], services:['resupply','provisions','general goods','shopping'], shopType:'general_store',
+      desc:'Rope, sacks, lanterns, spikes, rations, waterskins, and other expedition gear fill a narrow shop off the market. Type “wares” to see the current stock, or buy things in ordinary language.',
+      exits:{}
+    },
+    weaponsmith: {
+      name:'Penhaligon Weaponsmith', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['weaponsmith','weapon shop','smith'], services:['weapons','shopping'], shopType:'weaponsmith',
+      desc:'Racks of practical arms line the walls: axes, swords, spears, bows, crossbows, and polearms. A doorway north leads to the neighboring armorer. Type “wares” to inspect the stock.',
+      exits:{north:'armorer'}
+    },
+    armorer: {
+      name:'Penhaligon Armorer', outdoor:true, returnsToSite:'weaponsmith', localParent:'market', aliases:['armorer','armor shop'], services:['armor','shields','shopping'], shopType:'armorer',
+      desc:'Mail, shields, and fitted pieces of armor hang from pegs and wooden stands. Type “wares” to inspect what can be purchased.',
+      exits:{}
+    },
+    stable: {
+      name:'Penhaligon Stable Yard', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['stable','stables','stable yard'], services:['mounts','horses','mules','shopping'], shopType:'stable',
+      desc:'The stable yard smells of hay, leather, and horse sweat. Riding animals and pack beasts can be purchased here. Type “wares” to see what is available.',
+      exits:{}
     },
     shrine: {
       name:'Wayside Shrine', outdoor:true, returnsToHex:true, aliases:['shrine','wayside shrine','oak ridge shrine'], services:[],
@@ -292,19 +561,19 @@
     knownPlaces:['market','stallanford'],
     torchLit:false,
     torchMinutes:0,
-    torches:6,
-    rations:28,
-    gold:122,
+    torches:0,
+    rations:0,
+    treasuryCp:0,
+    partyInventory:[],
+    mounts:[],
     seed:(Date.now()>>>0),
     eventLog:[],
     searched:{},
     discoveredSecrets:{},
-    party:[
-      {name:'Aldric', role:'Fighter 1', hp:7, maxHp:7, ac:3},
-      {name:'Mara', role:'Cleric 1', hp:5, maxHp:5, ac:4},
-      {name:'Elwyn', role:'Magic-User 1', hp:3, maxHp:3, ac:9},
-      {name:'Corwin', role:'Thief 1', hp:4, maxHp:4, ac:7}
-    ]
+    rumorsHeard:[],
+    campaignCreated:false,
+    rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false},
+    party:[]
   });
 
   let state = initialState();
@@ -467,9 +736,19 @@
         : (state.torchLit ? `Light: torch (${state.torchMinutes} min)` : 'Light: darkness');
       travelBadge.textContent = `Exploration turns: ${state.turn}`;
     }
-    partyPanel.innerHTML = state.party.map(member =>
-      `<p><strong>${esc(member.name)}</strong><br>${esc(member.role)} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}</p>`
-    ).join('');
+    partyPanel.innerHTML = state.party.length ? state.party.map(member =>
+      `<p><strong>${esc(member.name)}</strong><br>${esc(member.className || member.role)} ${member.level || 1} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}${member.equippedWeapon ? `<br>Weapon: ${esc(member.equippedWeapon.name)}` : ''}</p>`
+    ).join('') : '<p>No adventuring party yet.</p>';
+    const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false});
+    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Audit:</strong> ${rules.weaponAudit ? 'ON' : 'OFF'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)`;
+    rawWeaponsButton.disabled = rules.weaponDamageMode === 'RAW';
+    matrixWeaponsButton.disabled = rules.weaponDamageMode === 'MATRIX';
+    auditWeaponsButton.textContent = rules.weaponAudit ? 'AUDIT: ON' : 'AUDIT: OFF';
+    const site = currentSite();
+    if (site?.shopType) contextPanel.innerHTML = `<p><strong>Shop:</strong> ${esc(site.name)}<br>Type <strong>wares</strong>, or “buy rope”, “buy 4 torches”, “buy a sword for [name]”.</p>`;
+    else if (state.mode === 'site' && state.location === 'brazen_shield') contextPanel.innerHTML = '<p><strong>Inn:</strong> Ask for <strong>rumors</strong> or “what’s the talk around here?”</p>';
+    else if (state.mode === 'site' && state.location === 'market') contextPanel.innerHTML = '<p><strong>Penhaligon:</strong> “let’s resupply”, “find a weaponsmith”, “we need a mule”, or move north/east/west/south.</p>';
+    else contextPanel.innerHTML = '<p>Speak naturally. The command interpreter translates ordinary intent into deterministic game actions.</p>';
   }
 
   function setAiStatus(kind, text) {
@@ -556,7 +835,7 @@
     if (!site) return [];
     const exits = Object.keys(site.exits || {});
     if (site.secret && hasSecret(state.location)) exits.push(site.secret.direction);
-    if (site.returnsToHex) exits.push('leave');
+    if (site.returnsToHex || site.returnsToSite) exits.push('leave');
     return exits;
   }
 
@@ -722,6 +1001,13 @@
       return;
     }
     const site = currentSite();
+    if (site.returnsToSite) {
+      const oldName = site.name;
+      state.location = site.returnsToSite;
+      advanceClock(10,`Party left ${oldName} and returned to ${sites[state.location].name}.`);
+      look();
+      return;
+    }
     if (!site.returnsToHex) {
       write('You must first return to the surface or entrance of this site.','warning');
       return;
@@ -796,7 +1082,6 @@
     if (currentHex()?.site === siteId) {
       write(`The party reaches ${sites[siteId].name}.`, 'system');
       if (options.enter !== false) enterSite();
-      if (options.service) write(`This is the most relevant known place to ${options.service}. The purchasing interface itself is not yet implemented in this prototype.`, 'system');
       return true;
     }
     return false;
@@ -835,9 +1120,42 @@
     return false;
   }
 
+  function siteAnchor(siteId) {
+    if (SITE_LOCATIONS[siteId]) return siteId;
+    const parent = sites[siteId]?.localParent;
+    return parent && SITE_LOCATIONS[parent] ? parent : null;
+  }
+
   function serviceCandidates(service) {
     const wanted = String(service || '').toLowerCase();
-    return knownPlaceIds().filter(siteId => (sites[siteId].services || []).some(value => value.toLowerCase() === wanted));
+    return Object.keys(sites).filter(siteId => {
+      const matches = (sites[siteId].services || []).some(value => value.toLowerCase() === wanted);
+      if (!matches) return false;
+      const anchor = siteAnchor(siteId);
+      return anchor && knownPlaceIds().includes(anchor);
+    });
+  }
+
+  function enterLocalSite(siteId) {
+    const site = sites[siteId];
+    if (!site) return false;
+    state.mode = 'site';
+    state.location = siteId;
+    advanceClock(10,`Party went to ${site.name}.`);
+    look();
+    return true;
+  }
+
+  function goToServiceSite(siteId, service) {
+    const anchor = siteAnchor(siteId);
+    if (!anchor) return false;
+    if (SITE_LOCATIONS[siteId]) return travelToSite(siteId,{enter:true,service});
+    if (state.mode === 'site' && state.location === siteId) return true;
+    if (state.mode === 'site' && (state.location === anchor || sites[state.location]?.localParent === anchor)) {
+      return enterLocalSite(siteId);
+    }
+    if (!travelToSite(anchor,{enter:true})) return false;
+    return enterLocalSite(siteId);
   }
 
   function goForService(service) {
@@ -846,21 +1164,19 @@
       write(`The party does not know a suitable place to ${service}.`, 'warning');
       return false;
     }
-
     const ranked = candidates.map(id => {
-      const pos = SITE_LOCATIONS[id];
+      const anchor = siteAnchor(id);
+      const pos = SITE_LOCATIONS[anchor];
       const distance = pos ? hexDistance(state.hex.q-pos.q,state.hex.r-pos.r) : 999;
       const alreadyThere = state.mode === 'site' && state.location === id;
-      return {id,distance:alreadyThere ? -1 : distance};
-    }).sort((a,b)=>a.distance-b.distance);
-
+      return {id,distance:alreadyThere ? -2 : distance};
+    }).sort((a,b)=>a.distance-b.distance || a.id.localeCompare(b.id));
     if (ranked.length > 1 && ranked[0].distance === ranked[1].distance) {
       const tied = ranked.filter(entry => entry.distance === ranked[0].distance);
       write(`There is more than one equally relevant known place to ${service}: ${tied.map(entry=>sites[entry.id].name).join(' or ')}. Which one do you want?`, 'warning');
       return false;
     }
-
-    return travelToSite(ranked[0].id,{enter:true,service});
+    return goToServiceSite(ranked[0].id,service);
   }
 
   function search() {
@@ -938,20 +1254,275 @@
     updatePanels();
   }
 
+  function abilityAdjustment(score) {
+    if (score <= 3) return -3;
+    if (score <= 5) return -2;
+    if (score <= 8) return -1;
+    if (score <= 12) return 0;
+    if (score <= 15) return 1;
+    if (score <= 17) return 2;
+    return 3;
+  }
+
+  const LEVEL_ONE_SAVES = {
+    'Fighter': {death:12,wands:13,paralysis:14,breath:15,spells:16},
+    'Cleric': {death:11,wands:12,paralysis:14,breath:16,spells:15},
+    'Magic-User': {death:13,wands:14,paralysis:13,breath:16,spells:15},
+    'Thief': {death:13,wands:14,paralysis:13,breath:16,spells:15},
+    'Dwarf': {death:8,wands:9,paralysis:10,breath:13,spells:12},
+    'Elf': {death:12,wands:13,paralysis:13,breath:15,spells:15},
+    'Halfling': {death:8,wands:9,paralysis:10,breath:13,spells:12}
+  };
+
+  function charismaProfile(score) {
+    if(score<=3) return {reaction:-3,maxRetainers:1,retainerMorale:4};
+    if(score<=5) return {reaction:-2,maxRetainers:2,retainerMorale:5};
+    if(score<=8) return {reaction:-1,maxRetainers:3,retainerMorale:6};
+    if(score<=12) return {reaction:0,maxRetainers:4,retainerMorale:7};
+    if(score<=15) return {reaction:1,maxRetainers:5,retainerMorale:8};
+    if(score<=17) return {reaction:2,maxRetainers:6,retainerMorale:9};
+    return {reaction:3,maxRetainers:7,retainerMorale:10};
+  }
+
+  function characterMatrixSize(className){ return className==='Halfling' ? 'small' : 'medium'; }
+
+  function formatMoney(cp) {
+    cp = Math.max(0,Math.round(Number(cp)||0));
+    const gp = Math.floor(cp/100); cp %= 100;
+    const sp = Math.floor(cp/10); const copper = cp%10;
+    const parts=[];
+    if (gp) parts.push(`${gp} gp`);
+    if (sp) parts.push(`${sp} sp`);
+    if (copper || !parts.length) parts.push(`${copper} cp`);
+    return parts.join(' ');
+  }
+
   function party() {
-    write(state.party.map(member => `${member.name} — ${member.role}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}`).join('\n'));
+    if (!state.party.length) { write('No adventuring party has been created. Type “create party”.','warning'); return; }
+    write(state.party.map(member => {
+      const a=member.abilities || {};
+      const stats = ABILITIES.map(k=>`${k.toUpperCase()} ${a[k] ?? '—'}`).join(' ');
+      const weapon = member.equippedWeapon?.name || 'none';
+      const armor = member.equippedArmor?.name || 'none';
+      const shield = member.equippedShield ? ' + shield' : '';
+      const spells = member.spellbook?.length ? `\n  Spellbook: ${member.spellbook.join(', ')}` : '';
+      const sv=member.saves||{}; const saveLine=sv.death?`\n  Saves: Death/Poison ${sv.death}; Wands ${sv.wands}; Paralysis/Stone ${sv.paralysis}; Breath ${sv.breath}; Rod/Staff/Spell ${sv.spells}${member.spellSaveAdjustment?` (Wis ${member.spellSaveAdjustment>0?'+':''}${member.spellSaveAdjustment} to roll)`:''}`:'';
+      return `${member.name} — ${member.className || member.role} ${member.level || 1}; XP ${member.xp || 0}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}; THAC0 ${member.thac0||19}\n  ${stats}\n  Weapon: ${weapon}; Armor: ${armor}${shield}${spells}${saveLine}`;
+    }).join('\n\n'));
   }
 
   function inventory() {
-    write(`Pooled supplies: ${state.torches} torches; ${state.rations} person-days of rations; ${state.gold} gp.`);
+    const pooled = state.partyInventory?.length ? state.partyInventory.map(i=>`${i.qty}× ${i.name}`).join(', ') : 'none';
+    const members = state.party.map(m => `${m.name}: ${(m.inventory||[]).length ? m.inventory.map(i=>`${i.qty||1}× ${i.name}`).join(', ') : 'no carried gear assigned'}`).join('\n');
+    write(`Expedition treasury: ${formatMoney(state.treasuryCp)}\nPooled supplies: ${state.torches} torches; ${state.rations} person-days of rations.\nUnassigned expedition gear: ${pooled}\nMounts: ${(state.mounts||[]).length ? state.mounts.map(m=>m.name).join(', ') : 'none'}\n\n${members}`);
+  }
+
+  function funds() { write(`Expedition treasury: ${formatMoney(state.treasuryCp)}.`); }
+
+  function setWeaponMode(mode) {
+    const value = String(mode||'').toUpperCase();
+    if (!['RAW','MATRIX'].includes(value)) { write('Use “weapon mode raw” or “weapon mode matrix”.','warning'); return; }
+    state.rules.weaponDamageMode=value;
+    addEvent(`Weapon damage mode changed to ${value}.`);
+    write(value === 'RAW' ? 'Weapon damage set to Rules Cyclopedia RAW values.' : 'Contextual RC weapon matrix enabled. Only (RC) workbook weapons are eligible; natural monster attacks and siege weapons remain RAW.','system');
+    updatePanels();
+  }
+
+  function toggleWeaponAudit() {
+    state.rules.weaponAudit=!state.rules.weaponAudit;
+    addEvent(`Weapon audit ${state.rules.weaponAudit?'enabled':'disabled'}.`);
+    write(`Weapon rules audit ${state.rules.weaponAudit?'enabled':'disabled'}. When combat is implemented, both RAW and matrix damage will be calculated for comparison while only the selected mode changes state.`,'system');
+    updatePanels();
+  }
+
+  function weaponQueryTokens(value) {
+    return String(value||'').toLowerCase().replace(/\(rc\)/g,'').replace(/[^a-z0-9 ]/g,' ').split(/\s+/).filter(Boolean);
+  }
+
+  function findMatrixWeapons(query) {
+    const tokens=weaponQueryTokens(query);
+    if (!tokens.length) return [];
+    return Object.keys(RC_WEAPON_MATRIX).filter(name=>{
+      const nameTokens=weaponQueryTokens(name);
+      return tokens.every(t=>nameTokens.some(n=>n===t || n.startsWith(t) || t.startsWith(n)));
+    });
+  }
+
+  function weaponInfo(query) {
+    const matches=findMatrixWeapons(query);
+    if (!matches.length) { write('No (RC) weapon in the imported matrix matches that name.','warning'); return; }
+    if (matches.length>1) { write(`That could mean: ${matches.map(n=>n.replace(' (RC)','')).join(', ')}. Be more specific.`,'warning'); return; }
+    const name=matches[0], w=RC_WEAPON_MATRIX[name];
+    const rows=[];
+    for (const size of ['small','medium','large']) for (const protection of ['soft','hard']) {
+      const m=w.matrix[size][protection];
+      rows.push(`${size.toUpperCase()} / ${protection.toUpperCase()}: Band 1 (Close melee / Short range) ${m.close} · Band 2 (Normal melee / Medium range) ${m.normal} · Band 3 (Far melee / Long range) ${m.far}`);
+    }
+    write(`${name}\nRAW damage: ${w.rawDamage}\nWorkbook profile: size ${w.size}; power ${w.power}; range ${w.rangeProfile}; consistency ${w.consistency}\n${w.description}\n\nCONTEXTUAL DAMAGE\n${rows.join('\n')}`);
+  }
+
+  function matrixDamage(query,size,protection,range,magicBonus=0) {
+    const matches=findMatrixWeapons(query);
+    if (matches.length!==1) { weaponInfo(query); return; }
+    size=String(size||'medium').toLowerCase(); protection=String(protection||'soft').toLowerCase(); range=String(range||'normal').toLowerCase();
+    const rangeAliases={short:'close',medium:'normal',long:'far',close:'close',normal:'normal',far:'far'}; range=rangeAliases[range]||range;
+    if (!['small','medium','large'].includes(size)||!['soft','hard'].includes(protection)||!['close','normal','far'].includes(range)) {
+      write('Use: matrix <weapon> / <small|medium|large> / <soft|hard> / <close|normal|far>. Short/medium/long are accepted as ranged aliases.','warning'); return;
+    }
+    const w=RC_WEAPON_MATRIX[matches[0]];
+    const base=w.matrix[size][protection][range];
+    const bonus=Number(magicBonus)||0;
+    const bandLabel=range==='close'?'Band 1 (Close melee / Short range)':range==='normal'?'Band 2 (Normal melee / Medium range)':'Band 3 (Far melee / Long range)';
+    write(`${matches[0]} vs ${size} ${protection} target at ${bandLabel}: ${base}${base!=='None'&&bonus?` ${bonus>0?'+':'-'} ${Math.abs(bonus)} magic damage`:''}. RAW base would be ${w.rawDamage}${bonus?` ${bonus>0?'+':'-'} ${Math.abs(bonus)}`:''}.`);
+  }
+
+  function currentShopStock() {
+    const site=currentSite();
+    return site?.shopType ? (SHOP_STOCK[site.shopType]||[]) : [];
+  }
+
+  function listWares() {
+    const stock=currentShopStock();
+    if (!stock.length) { write('There is no purchasing counter here. Ask to resupply, find a weaponsmith, find armor, or visit the stable.','warning'); return; }
+    write(`${currentSite().name.toUpperCase()} — AVAILABLE STOCK\n`+stock.map(id=>`${SHOP_ITEMS[id].name} — ${formatMoney(SHOP_ITEMS[id].priceCp)}`).join('\n'));
+  }
+
+  function normalizedItemText(v){ return String(v||'').toLowerCase().replace(/[’']/g,'').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim(); }
+
+  function findShopItemMatches(query, restrictStock=null) {
+    const q=normalizedItemText(query);
+    const ids=restrictStock || Object.keys(SHOP_ITEMS);
+    const exact=[]; const loose=[];
+    for (const id of ids) {
+      const item=SHOP_ITEMS[id];
+      const aliases=[item.name,...(item.aliases||[])].map(normalizedItemText);
+      if (aliases.some(a=>q===a)) exact.push(id);
+      else if (aliases.some(a=>q.includes(a)||a.includes(q))) loose.push(id);
+    }
+    return exact.length?exact:loose;
+  }
+
+  function shopSitesForItem(itemId) {
+    return Object.entries(SHOP_STOCK).filter(([,stock])=>stock.includes(itemId)).map(([shopType])=>Object.keys(sites).filter(id=>sites[id].shopType===shopType)).flat();
+  }
+
+  function addInventoryRecord(list,item,qty) {
+    const existing=list.find(x=>x.itemId===item.itemId);
+    if (existing) existing.qty+=qty; else list.push({...item,qty});
+  }
+
+  function buyResolvedItem(itemId,qty=1,recipientName=null) {
+    const item=SHOP_ITEMS[itemId];
+    qty=Math.max(1,Math.floor(Number(qty)||1));
+    const total=item.priceCp*qty;
+    if (state.treasuryCp<total) { write(`That costs ${formatMoney(total)}, but the expedition treasury holds ${formatMoney(state.treasuryCp)}.`,'warning'); return false; }
+    state.treasuryCp-=total;
+    if (item.kind==='torch') state.torches += (item.torchCount||1)*qty;
+    else if (item.kind==='rations') state.rations += (item.rationDays||7)*qty;
+    else if (item.kind==='mount') for(let i=0;i<qty;i++) state.mounts.push({itemId,name:item.name});
+    else {
+      const rec={itemId,name:item.name,enc:item.enc,kind:item.kind,matrixId:item.matrixId||null,baseAc:item.baseAc??null,matrixProtection:item.matrixProtection||null};
+      const recipient=recipientName ? state.party.find(m=>m.name.toLowerCase()===recipientName.toLowerCase()) : null;
+      if (recipientName && !recipient) { state.treasuryCp+=total; write(`No adventurer named ${recipientName} is in the party.`,'warning'); return false; }
+      addInventoryRecord(recipient ? recipient.inventory : state.partyInventory,rec,qty);
+    }
+    addEvent(`Purchased ${qty}× ${item.name} for ${formatMoney(total)}.`);
+    write(`Purchased ${qty}× ${item.name} for ${formatMoney(total)}. Treasury remaining: ${formatMoney(state.treasuryCp)}.`,'system');
+    updatePanels();
+    return true;
+  }
+
+  function buyCommand(text) {
+    let body=String(text||'').trim().replace(/^buy\s+/i,'');
+    let qty=1;
+    const qmatch=/^(\d+)\s+/.exec(body); if(qmatch){qty=Number(qmatch[1]);body=body.slice(qmatch[0].length);}
+    if (/\b(for everyone|for everybody|for the whole party|for the party)\b/i.test(body)) { qty=Math.max(1,state.party.length); body=body.replace(/\b(for everyone|for everybody|for the whole party|for the party)\b/ig,'').trim(); }
+    body=body.replace(/^(?:a|an|some)\s+/i,'').replace(/^week(?:'s|s)?\s+of\s+/i,'').trim();
+    let recipient=null;
+    const recMatch=/\s+for\s+([a-z][a-z0-9 '-]*)$/i.exec(body);
+    if(recMatch && !/everyone|everybody|party/i.test(recMatch[1])) { recipient=recMatch[1].trim(); body=body.slice(0,recMatch.index).trim(); }
+    let matches=findShopItemMatches(body,currentShopStock());
+    if (!matches.length) {
+      const global=findShopItemMatches(body);
+      if (global.length===1) {
+        const shops=shopSitesForItem(global[0]);
+        if (shops.length===1) {
+          if (!goToServiceSite(shops[0],'shopping')) return false;
+          matches=[global[0]];
+        }
+      }
+    }
+    if (!matches.length) { write(`No currently implemented shop stock clearly matches “${body}”. Type “wares” at a shop.`,'warning'); return false; }
+    if (matches.length>1) { write(`That could mean: ${matches.map(id=>SHOP_ITEMS[id].name).join(' or ')}. Which do you want?`,'warning'); return false; }
+    return buyResolvedItem(matches[0],qty,recipient);
+  }
+
+  function hearRumor() {
+    if (!(state.mode==='site' && state.location==='brazen_shield')) {
+      if (goToServiceSite('brazen_shield','rumors')) return hearRumor();
+      write('The party needs to reach a place where travelers gather before asking for local talk.','warning'); return;
+    }
+    const unheard=RUMORS.filter(r=>!(state.rumorsHeard||[]).includes(r.id));
+    const rumor=(unheard.length?unheard:RUMORS)[rng(unheard.length||RUMORS.length)-1];
+    if(!state.rumorsHeard.includes(rumor.id)) state.rumorsHeard.push(rumor.id);
+    if(rumor.learn) learnPlace(rumor.learn);
+    advanceClock(20,'Party spent time listening to local rumors.');
+    write(`At the table: “${rumor.text}”`);
+  }
+
+  function recalcMemberAc(member) {
+    const dex=abilityAdjustment(member.abilities?.dex ?? 10);
+    const base=member.equippedArmor?.baseAc ?? 9;
+    member.ac=base-dex-(member.equippedShield?1:0);
+  }
+
+  function takeOneItem(list,itemId) {
+    const rec=list.find(x=>x.itemId===itemId && x.qty>0); if(!rec)return null;
+    rec.qty--; if(rec.qty<=0) list.splice(list.indexOf(rec),1); return rec;
+  }
+
+  function classAllowsItem(member,item) {
+    const rule=CLASS_RULES[member.className]?.weaponRule;
+    if(item.kind==='armor') return CLASS_RULES[member.className]?.armor==='any' || (member.className==='Thief'&&item.itemId==='leather');
+    if(item.kind==='shield') return !['Magic-User','Thief'].includes(member.className);
+    if(item.kind!=='weapon') return true;
+    if(rule==='any') return true;
+    if(rule==='cleric') return item.clericAllowed===true;
+    if(rule==='magic-user') return item.itemId==='dagger' || item.itemId==='dagger_silver';
+    if(rule==='thief') return Boolean(item.missile || item.oneHanded) && !item.twoHanded;
+    if(rule==='dwarf') return (item.missile ? ['bow_short','crossbow_light','crossbow_heavy'].includes(item.itemId) : ['small','medium'].includes(item.size));
+    if(rule==='halfling') return (item.missile ? ['bow_short','crossbow_light'].includes(item.itemId) : item.size==='small');
+    return false;
+  }
+
+  function equipCommand(text) {
+    const match=/^equip\s+([^ ]+)\s+(?:with\s+)?(.+)$/i.exec(text.trim());
+    if(!match){write('Use “equip Aldric with normal sword” or “equip Aldric plate mail”.','warning');return;}
+    const member=state.party.find(m=>m.name.toLowerCase()===match[1].toLowerCase());
+    if(!member){write(`No adventurer named ${match[1]} is in the party.`,'warning');return;}
+    const itemMatches=findShopItemMatches(match[2]);
+    if(itemMatches.length!==1){write('That equipment name is ambiguous or unknown.','warning');return;}
+    const itemId=itemMatches[0], item=SHOP_ITEMS[itemId];
+    let rec=member.inventory.find(x=>x.itemId===itemId&&x.qty>0);
+    if(!rec) {
+      const pooled=takeOneItem(state.partyInventory,itemId);
+      if(pooled){ addInventoryRecord(member.inventory,{...pooled,qty:undefined},1); rec=member.inventory.find(x=>x.itemId===itemId); }
+    }
+    if(!rec){write(`${member.name} does not have ${item.name}. Buy it first or assign it from expedition gear.`,'warning');return;}
+    if(!classAllowsItem(member,{...item,itemId})){write(`${member.className} cannot use ${item.name} under the current Rules Cyclopedia restrictions.`,'warning');return;}
+    if(item.kind==='weapon') member.equippedWeapon={itemId,name:item.name,matrixId:item.matrixId};
+    else if(item.kind==='armor') member.equippedArmor={itemId,name:item.name,baseAc:item.baseAc};
+    else if(item.kind==='shield') member.equippedShield=true;
+    else {write(`${item.name} is carried equipment rather than something this prototype equips.`,'warning');return;}
+    recalcMemberAc(member); addEvent(`${member.name} equipped ${item.name}.`); write(`${member.name} equips ${item.name}. AC is now ${member.ac}.`,'system'); updatePanels();
   }
 
   function status() {
     if (state.mode === 'wilderness') {
       const hex = currentHex();
-      write(`Mode: wilderness hex crawl\nLocation: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nHex scale: 6 miles\nTime: ${clockText()}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nParty size: ${state.party.length}\nAI backend: ${WORKER_URL}`);
+      write(`Mode: wilderness hex crawl\nLocation: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nHex scale: 6 miles\nTime: ${clockText()}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nAI backend: ${WORKER_URL}`);
     } else {
-      write(`Mode: site/dungeon exploration\nLocation: ${currentSite().name}\nTime: ${clockText()}\nExploration turns elapsed: ${state.turn}\nTorch: ${state.torchLit ? `${state.torchMinutes} minutes remaining` : 'not lit'}\nParty size: ${state.party.length}\nAI backend: ${WORKER_URL}`);
+      write(`Mode: site/dungeon exploration\nLocation: ${currentSite().name}\nTime: ${clockText()}\nExploration turns elapsed: ${state.turn}\nTorch: ${state.torchLit ? `${state.torchMinutes} minutes remaining` : 'not lit'}\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nAI backend: ${WORKER_URL}`);
     }
   }
 
@@ -980,29 +1551,133 @@
     addEvent(`Visible roll ${expression.trim()} = ${total}.`);
   }
 
+  let creatorDraft=null;
+  let creatorMode='append';
+
+  function rollDice(count,sides){ const rolls=[]; for(let i=0;i<count;i++) rolls.push(rng(sides)); return {rolls,total:rolls.reduce((a,b)=>a+b,0)}; }
+
+  function eligibleClasses(abilities) {
+    return Object.entries(CLASS_RULES).filter(([,rule])=>!rule.requires || rule.requires(abilities)).map(([name])=>name);
+  }
+
+  function draftAbilityText() {
+    for(const key of ABILITIES) document.getElementById('draft'+key[0].toUpperCase()+key.slice(1)).textContent=creatorDraft?.abilities?.[key] ?? '—';
+  }
+
+  function resetCreatorDraft(preserveMessage=false) {
+    creatorDraft=null; creatorName.value=''; creatorBackground.value=''; creatorClass.innerHTML='<option value="">Roll abilities first</option>'; abilityTradeArea.style.display='none'; spellChoiceArea.style.display='none'; if(!preserveMessage) creatorMessage.textContent=''; rollAbilitiesButton.disabled=false; draftAbilityText();
+  }
+
+  function refreshCreatorClassOptions() {
+    if(!creatorDraft) return;
+    const previous=creatorClass.value;
+    creatorClass.innerHTML='<option value="">Choose class</option>'+eligibleClasses(creatorDraft.abilities).map(name=>`<option>${name}</option>`).join('');
+    if([...creatorClass.options].some(o=>o.value===previous)) creatorClass.value=previous;
+  }
+
+  function refreshAbilityTradeControls() {
+    if(!creatorDraft || !creatorClass.value){abilityTradeArea.style.display='none';spellChoiceArea.style.display='none';return;}
+    const rule=CLASS_RULES[creatorClass.value];
+    abilityTradeArea.style.display='block';
+    const donors=['str','int','wis'].filter(k=>creatorDraft.abilities[k]>=11);
+    donorAbility.innerHTML=donors.map(k=>`<option value="${k}">${ABILITY_NAMES[k]} (${creatorDraft.abilities[k]})</option>`).join('') || '<option value="">No legal donor</option>';
+    primeAbility.innerHTML=rule.primes.filter(k=>creatorDraft.abilities[k]<18).map(k=>`<option value="${k}">${ABILITY_NAMES[k]} (${creatorDraft.abilities[k]})</option>`).join('') || '<option value="">Prime requisite already at maximum</option>';
+    spellChoiceArea.style.display=rule.spellbook?'block':'none';
+  }
+
+  function renderCreatorParty() {
+    creatorPartyList.innerHTML=state.party.length ? state.party.map((m,i)=>`<div class="party-draft-item"><strong>${esc(m.name)}</strong> — ${esc(m.className)} ${m.level}<br>STR ${m.abilities.str} INT ${m.abilities.int} WIS ${m.abilities.wis} DEX ${m.abilities.dex} CON ${m.abilities.con} CHA ${m.abilities.cha}<br>HP ${m.hp}/${m.maxHp} · AC ${m.ac} · ${esc(m.alignment)} <button type="button" data-remove-character="${i}" style="float:right;padding:3px 6px">REMOVE</button></div>`).join('') : '<p class="tiny">No adventurers added yet.</p>';
+    creatorPartyList.querySelectorAll('[data-remove-character]').forEach(button=>button.addEventListener('click',()=>{ const i=Number(button.dataset.removeCharacter); const removed=state.party[i]; if(!state.campaignCreated && removed?.startingMoneyCp) state.treasuryCp=Math.max(0,state.treasuryCp-removed.startingMoneyCp); state.party.splice(i,1); renderCreatorParty(); updatePanels(); }));
+  }
+
+  function openPartyCreator(fresh=false) {
+    if(fresh) { state.party=[]; state.treasuryCp=0; state.partyInventory=[]; state.mounts=[]; state.torches=0; state.rations=0; state.campaignCreated=false; }
+    creatorMode=fresh?'fresh':'append'; resetCreatorDraft(); renderCreatorParty(); partyCreator.classList.add('open'); partyCreator.setAttribute('aria-hidden','false');
+  }
+
+  function closePartyCreator(){ partyCreator.classList.remove('open'); partyCreator.setAttribute('aria-hidden','true'); command.focus(); }
+
+  function rollCreatorAbilities() {
+    if(creatorDraft) return;
+    const abilities={}; const detail=[];
+    for(const key of ABILITIES){ const roll=rollDice(3,6); abilities[key]=roll.total; detail.push(`${key.toUpperCase()} ${roll.rolls.join('+')}=${roll.total}`); }
+    creatorDraft={abilities}; rollAbilitiesButton.disabled=true; draftAbilityText(); refreshCreatorClassOptions(); creatorMessage.textContent=`Rolled in order: ${detail.join(' · ')}`;
+  }
+
+  function tradeCreatorAbility() {
+    if(!creatorDraft||!creatorClass.value) return;
+    const donor=donorAbility.value, prime=primeAbility.value;
+    if(!donor||!prime||donor===prime){creatorMessage.textContent='Choose a legal donor and a prime requisite to raise.';return;}
+    if(!['str','int','wis'].includes(donor)||creatorDraft.abilities[donor]-2<9||creatorDraft.abilities[prime]>=18){creatorMessage.textContent='That exchange is not legal under the current character-creation rules.';return;}
+    creatorDraft.abilities[donor]-=2; creatorDraft.abilities[prime]+=1; draftAbilityText(); refreshAbilityTradeControls(); creatorMessage.textContent=`${ABILITY_NAMES[donor]} lowered by 2; ${ABILITY_NAMES[prime]} raised by 1.`;
+  }
+
+  function xpBonusFor(className,a) {
+    const prime=k=>a[k];
+    if(['Fighter','Dwarf'].includes(className)){const s=prime('str');return s<=5?-20:s<=8?-10:s>=16?10:s>=13?5:0;}
+    if(className==='Cleric'){const s=prime('wis');return s<=5?-20:s<=8?-10:s>=16?10:s>=13?5:0;}
+    if(className==='Magic-User'){const s=prime('int');return s<=5?-20:s<=8?-10:s>=16?10:s>=13?5:0;}
+    if(className==='Thief'){const s=prime('dex');return s<=5?-20:s<=8?-10:s>=16?10:s>=13?5:0;}
+    if(className==='Elf') return a.str>=13 && a.int>=16 ? 10 : a.str>=13 && a.int>=13 ? 5 : 0;
+    if(className==='Halfling') return a.str>=13 && a.dex>=13 ? 10 : (a.str>=13 || a.dex>=13 ? 5 : 0);
+    return 0;
+  }
+
+  function addCreatorCharacter() {
+    if(!creatorDraft){creatorMessage.textContent='Roll ability scores first.';return;}
+    const className=creatorClass.value; if(!className){creatorMessage.textContent='Choose an eligible character class.';return;}
+    const name=creatorName.value.trim(); if(!name){creatorMessage.textContent='Give the adventurer a name.';return;}
+    if(state.party.some(m=>m.name.toLowerCase()===name.toLowerCase())){creatorMessage.textContent='That name is already used in the party.';return;}
+    const rule=CLASS_RULES[className], abilities={...creatorDraft.abilities};
+    const hpRoll=rollDice(1,rule.hd); const conAdj=abilityAdjustment(abilities.con); const hp=Math.max(1,hpRoll.total+conAdj);
+    const moneyRoll=rollDice(3,6); const startingGp=moneyRoll.total*10; state.treasuryCp+=moneyCp(startingGp);
+    const cha=charismaProfile(abilities.cha); const member={name,className,role:`${className} 1`,level:1,xp:0,xpBonus:xpBonusFor(className,abilities),alignment:creatorAlignment.value,abilities,hp,maxHp:hp,ac:9-abilityAdjustment(abilities.dex),thac0:19,saves:{...LEVEL_ONE_SAVES[className]},spellSaveAdjustment:abilityAdjustment(abilities.wis),reactionAdjustment:cha.reaction,maxRetainers:cha.maxRetainers,retainerMorale:cha.retainerMorale,matrixSize:characterMatrixSize(className),inventory:[],equippedWeapon:null,equippedArmor:null,equippedShield:false,background:creatorBackground.value.trim(),startingMoneyCp:moneyCp(startingGp),weaponMastery:{enabled:false,latentChoices:className==='Fighter'?4:(rule.demihuman?0:2),demihumanBasicAll:Boolean(rule.demihuman)}};
+    if(rule.spellbook) member.spellbook=['Read Magic',creatorSpell.value];
+    state.party.push(member); addEvent(`${name} created as a 1st-level ${className}: HP ${hpRoll.total}${conAdj?`${conAdj>0?'+':''}${conAdj}`:''}=${hp}; starting money ${moneyRoll.rolls.join('+')}×10=${startingGp} gp.`);
+    const successMessage=`${name} added. HP ${hp}; starting money ${startingGp} gp added to expedition treasury.`;
+    renderCreatorParty(); updatePanels(); resetCreatorDraft(true); creatorMessage.textContent=successMessage;
+  }
+
+  function finishCreatorParty() {
+    if(!state.party.length){creatorMessage.textContent='Add at least one adventurer first.';return;}
+    state.campaignCreated=true; closePartyCreator(); terminal.innerHTML='';
+    write(`THE EXPEDITION FORMS IN PENHALIGON — ${state.party.length} ADVENTURER${state.party.length===1?'':'S'}`,'system');
+    write(`Starting treasury: ${formatMoney(state.treasuryCp)}. The party has ordinary clothes and personal effects, but no expedition equipment has been purchased yet. Enter Penhaligon and resupply before setting out.`,'system');
+    write('You stand outside Penhaligon’s eastern gate. The Duke’s Road leads north toward Stallanford.');
+    look(); updatePanels(); save();
+  }
+
   function save() {
     state.version = APP_VERSION;
     localStorage.setItem(STORAGE.save,JSON.stringify(state));
     write('Campaign state saved in this browser.','system');
   }
 
+  function normalizeMember(member) {
+    const parsed=String(member.className||member.role||'Fighter 1').match(/^(.*?)(?:\s+(\d+))?$/);
+    const className=member.className || (parsed?.[1]||'Fighter').trim();
+    const level=member.level || Number(parsed?.[2]||1);
+    const abilities=member.abilities || {str:10,int:10,wis:10,dex:10,con:10,cha:10};
+    const cha=charismaProfile(abilities.cha??10); const result={name:member.name||'Adventurer',className,role:`${className} ${level}`,level,xp:member.xp||0,alignment:member.alignment||'Neutral',abilities,hp:member.hp||1,maxHp:member.maxHp||member.hp||1,ac:member.ac??9,thac0:member.thac0||19,saves:member.saves||({...LEVEL_ONE_SAVES[className]}),spellSaveAdjustment:member.spellSaveAdjustment??abilityAdjustment(abilities.wis??10),reactionAdjustment:member.reactionAdjustment??cha.reaction,maxRetainers:member.maxRetainers??cha.maxRetainers,retainerMorale:member.retainerMorale??cha.retainerMorale,matrixSize:member.matrixSize||characterMatrixSize(className),inventory:Array.isArray(member.inventory)?member.inventory:[],equippedWeapon:member.equippedWeapon||null,equippedArmor:member.equippedArmor||null,equippedShield:Boolean(member.equippedShield),background:member.background||'',startingMoneyCp:member.startingMoneyCp||0,weaponMastery:member.weaponMastery||{enabled:false,latentChoices:className==='Fighter'?4:(['Dwarf','Elf','Halfling'].includes(className)?0:2),demihumanBasicAll:['Dwarf','Elf','Halfling'].includes(className)}};
+    if(member.spellbook) result.spellbook=member.spellbook;
+    return result;
+  }
+
   function migrateSave(loaded) {
-    if (loaded.mode && loaded.hex) return {...initialState(),...loaded,version:APP_VERSION};
-    const oldLocations = {
-      penhaligon:{mode:'wilderness',hex:{q:0,r:0},location:null},
-      market:{mode:'site',hex:{q:0,r:0},location:'market'},
-      kingsroad:{mode:'wilderness',hex:{q:0,r:-1},location:null},
-      shrine:{mode:'site',hex:{q:1,r:-2},location:'shrine'},
-      ford:{mode:'wilderness',hex:{q:0,r:-2},location:null},
-      oldroad:{mode:'wilderness',hex:{q:-1,r:-1},location:null},
-      tollhouse:{mode:'site',hex:{q:-2,r:-1},location:'tollhouse'},
-      cellar:{mode:'site',hex:{q:-2,r:-1},location:'cellar'},
-      passage:{mode:'site',hex:{q:-2,r:-1},location:'passage'},
-      cistern:{mode:'site',hex:{q:-2,r:-1},location:'cistern'},
-      sealed:{mode:'site',hex:{q:-2,r:-1},location:'sealed'}
-    };
-    const mapped = oldLocations[loaded.location] || oldLocations.penhaligon;
-    return {...initialState(),...loaded,...mapped,travelUsed:0,version:APP_VERSION};
+    const base=initialState();
+    let merged={...base,...loaded,version:APP_VERSION};
+    if (!(loaded.mode && loaded.hex)) {
+      const oldLocations={penhaligon:{mode:'wilderness',hex:{q:0,r:0},location:null},market:{mode:'site',hex:{q:0,r:0},location:'market'},kingsroad:{mode:'wilderness',hex:{q:0,r:-1},location:null},shrine:{mode:'site',hex:{q:1,r:-2},location:'shrine'},ford:{mode:'wilderness',hex:{q:0,r:-2},location:null},oldroad:{mode:'wilderness',hex:{q:-1,r:-1},location:null},tollhouse:{mode:'site',hex:{q:-2,r:-1},location:'tollhouse'},cellar:{mode:'site',hex:{q:-2,r:-1},location:'cellar'},passage:{mode:'site',hex:{q:-2,r:-1},location:'passage'},cistern:{mode:'site',hex:{q:-2,r:-1},location:'cistern'},sealed:{mode:'site',hex:{q:-2,r:-1},location:'sealed'}};
+      merged={...merged,...(oldLocations[loaded.location]||oldLocations.penhaligon),travelUsed:0};
+    }
+    merged.rules={...base.rules,...(loaded.rules||{})};
+    merged.party=(loaded.party||[]).map(normalizeMember);
+    merged.partyInventory=Array.isArray(loaded.partyInventory)?loaded.partyInventory:[];
+    merged.mounts=Array.isArray(loaded.mounts)?loaded.mounts:[];
+    merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
+    if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
+    merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
+    return merged;
   }
 
   function load() {
@@ -1023,13 +1698,15 @@
 
   function newGame() {
     if (!confirm('Start a new campaign and discard unsaved progress?')) return;
+    localStorage.removeItem(STORAGE.save);
     state = initialState();
     terminal.innerHTML = '';
-    boot();
+    boot(false);
+    openPartyCreator(true);
   }
 
   function help() {
-    write(`COMMANDS\nlook — repeat the current description\n\nNATURAL-LANGUAGE INTENT\nYou can speak to the game as you would to a referee. Examples:\nhead toward Stallanford\nmake for the shrine\nfollow the Duke's Road\nfollow the river\nlet's go resupply\nwe need provisions\nThe game first tries deterministic parsing, then asks the AI interpreter when necessary. The rules engine—not the AI—executes any resulting action. If an instruction is ambiguous, the game asks what you mean.\n\nWILDERNESS HEX TRAVEL\nn, ne, se, s, sw, nw — cross one adjacent six-mile hex\nnorth, northeast, southeast, south, southwest, northwest — full direction names also work\nenter — enter a settlement or keyed site in the current hex\ncamp — spend the night, consume rations, and reset the next day's travel allowance\n\nSITE AND DUNGEON MOVEMENT\nnorth, south, east, west, up, down — move through keyed exits\nleave — return from a surface site to its wilderness hex\n\nGENERAL\nsearch — search the present hex or keyed area\nwait — spend one 10-minute exploration turn\nlight torch — light a one-hour torch underground\nparty — show adventurers\ninventory — show pooled supplies\nstatus — show time and travel state\nevents — show the recent rules log\nroll 2d6 — make a visible dice roll\nsave / load — use this browser's local storage\nreferee [question] — ask the connected AI referee directly\nnew game — restart the prototype\nclear — clear the transcript`);
+    write(`COMMANDS\nlook — repeat the current description\ncreate party — open Rules Cyclopedia party creation\n\nNATURAL-LANGUAGE INTENT\nSpeak as you would to a referee: “head toward Stallanford”, “follow the river”, “let's resupply”, “we need a mule”, “buy a rope”, or “what's the talk around here?” The engine translates intent into legal actions and asks when the meaning is ambiguous.\n\nPENHALIGON & EQUIPMENT\nwares — list the current shop's stock\nbuy 4 torches / buy rope / buy a sword for Aldric\nrumors — listen for local talk at the inn\nfunds — expedition treasury\nequip Aldric with normal sword — assign/equip purchased gear\n\nWEAPON RULES\nweapon mode raw — Rules Cyclopedia listed weapon damage\nweapon mode matrix — contextual (RC) weapon matrix\nweapon audit on/off — preserve side-by-side audit setting for combat\nweapon dagger — inspect RAW and contextual damage\nmatrix dagger / medium / hard / close — inspect one contextual lookup (short/medium/long accepted for ranged bands)\n\nWILDERNESS HEX TRAVEL\nn, ne, se, s, sw, nw — cross one adjacent six-mile hex\nenter / leave — enter or leave a settlement/site\ncamp — spend the night and consume rations\n\nSITE AND DUNGEON MOVEMENT\nnorth, south, east, west, up, down — move through keyed exits\nsearch / wait / light torch\n\nGENERAL\nparty / inventory / status / events\nroll 2d6\nsave / load\nreferee [question]\nnew game / clear`);
   }
 
   function locationContext() {
@@ -1038,18 +1715,29 @@
       const roads = roadDirections(hex);
       const rivers = Array.isArray(hex.riverDirs) ? hex.riverDirs : [];
       const known = knownPlaceIds().map(id => `${id}:${sites[id].name}`).join(', ') || 'none';
-      return `Mode: wilderness hex crawl\nCurrent hex: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nDescription: ${hex.desc}\nTravel directions: north, northeast, southeast, south, southwest, northwest\nRoad/trail directions: ${roads.length ? roads.join(', ') : 'none'}\nRiver/stream directions: ${rivers.length ? rivers.join(', ') : 'none'}\nEnterable site: ${hex.site ? (hex.siteLabel || sites[hex.site]?.name) : 'none'}\nKnown destination IDs and names: ${known}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles`;
+      return `Mode: wilderness hex crawl\nCurrent hex: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nDescription: ${hex.desc}\nTravel directions: north, northeast, southeast, south, southwest, northwest\nRoad/trail directions: ${roads.length ? roads.join(', ') : 'none'}\nRiver/stream directions: ${rivers.length ? rivers.join(', ') : 'none'}\nEnterable site: ${hex.site ? (hex.siteLabel || sites[hex.site]?.name) : 'none'}\nKnown destination IDs and names: ${known}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nWeapon damage mode: ${state.rules.weaponDamageMode}`;
     }
     const site = currentSite();
-    return `Mode: keyed site or dungeon\nLocation: ${site.name}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}`;
+    return `Mode: keyed site or dungeon\nLocation: ${site.name}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}\nLocal services: ${(site.services||[]).join(', ')||'none'}\nShop type: ${site.shopType||'none'}\nWeapon damage mode: ${state.rules.weaponDamageMode}`;
   }
 
   function parseLocalIntent(input) {
     const normalized = input.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
 
+    if (/\b(what'?s the talk|whats the talk|rumors?|gossip|local talk|hear anything)\b/.test(normalized)) return {kind:'RUMORS',confidence:1};
+    if (/^(?:show\s+)?wares$|\bwhat do (?:you|they) sell\b|\bshow (?:me )?(?:the )?stock\b/.test(normalized)) return {kind:'SHOP',confidence:1};
+    if (/^buy\b/.test(normalized) || /\b(?:i|we|the party) (?:want|need|would like) to buy\b/.test(normalized)) return {kind:'BUY',purchase:input.replace(/^.*?\bbuy\b/i,'buy'),confidence:1};
+    if (/\b(?:need|want|get|buy|find) (?:a )?(mule|pony|riding horse|war horse|draft horse)\b/.test(normalized)) return {kind:'SERVICE',service:'mounts',confidence:1};
+    if (/\b(?:find|go to|visit|need) (?:a |the )?(weaponsmith|weapon shop)\b/.test(normalized)) return {kind:'SERVICE',service:'weapons',confidence:1};
+    if (/\b(?:find|go to|visit|need) (?:an |the )?(armorer|armor shop)\b/.test(normalized)) return {kind:'SERVICE',service:'armor',confidence:1};
+    if (/\b(?:create|make|roll|form) (?:a |the )?(party|characters?|adventurers?)\b/.test(normalized)) return {kind:'CREATE_PARTY',confidence:1};
+
     const servicePatterns = [
       {service:'resupply', re:/\b(resupply|re-supply|stock up|restock|buy supplies|purchase supplies|get supplies|go shopping|shop for supplies)\b/},
-      {service:'provisions', re:/\b(buy|get|need|find|purchase|restock)(?: some| more)? (?:food|rations|provisions)\b/}
+      {service:'provisions', re:/\b(buy|get|need|find|purchase|restock)(?: some| more)? (?:food|rations|provisions)\b/},
+      {service:'weapons', re:/\b(?:find|visit|go to|need) (?:a |the )?(?:weaponsmith|weapon shop)\b/},
+      {service:'armor', re:/\b(?:find|visit|go to|need) (?:an |the )?(?:armorer|armor shop)\b/},
+      {service:'mounts', re:/\b(?:find|visit|go to|need|get|buy) (?:a |the )?(?:stable|mule|pony|horse)\b/}
     ];
     for (const entry of servicePatterns) if (entry.re.test(normalized)) return {kind:'SERVICE',service:entry.service,confidence:1};
 
@@ -1073,7 +1761,9 @@
 
   function intentInterpreterPrompt(playerInput) {
     const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
-    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply or provisions when the player broadly wants to shop for adventuring necessities.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\n\nPLAYER INPUT:\n${playerInput}`;
+    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
+- BUY means the player is actually purchasing something; copy their requested purchase phrase into purchase.
+- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function extractJsonObject(text) {
@@ -1134,6 +1824,10 @@
       }
       case 'FOLLOW_FEATURE': followFeature(intent.feature || 'road',intent.direction || null); return true;
       case 'SERVICE': goForService(intent.service || 'resupply'); return true;
+      case 'SHOP': listWares(); return true;
+      case 'BUY': buyCommand(intent.purchase || originalInput); return true;
+      case 'RUMORS': hearRumor(); return true;
+      case 'CREATE_PARTY': openPartyCreator(false); return true;
       case 'ENTER': enterSite(); return true;
       case 'LEAVE': leaveSite(); return true;
       case 'SEARCH': search(); return true;
@@ -1161,7 +1855,8 @@
     ).join('; ');
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
 
-    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, ${state.gold} gp pooled\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
+Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function friendlyAiError(error, status) {
@@ -1255,6 +1950,29 @@
     const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
+    if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
+    if (normalized === 'wares' || normalized === 'shop' || normalized === 'list wares') return listWares();
+    if (normalized.startsWith('buy ')) return buyCommand(input);
+    if (normalized === 'rumor' || normalized === 'rumors' || normalized === 'gossip' || normalized.includes("what's the talk") || normalized.includes('whats the talk')) return hearRumor();
+    if (normalized === 'funds' || normalized === 'money' || normalized === 'treasury') return funds();
+    if (normalized.startsWith('equip ')) return equipCommand(input);
+    if (normalized === 'weapon mode raw' || normalized === 'weapons raw' || normalized === 'raw weapon damage') return setWeaponMode('RAW');
+    if (normalized === 'weapon mode matrix' || normalized === 'weapons matrix' || normalized === 'contextual weapon damage') return setWeaponMode('MATRIX');
+    if (normalized === 'weapon audit on') { if(!state.rules.weaponAudit) toggleWeaponAudit(); return; }
+    if (normalized === 'weapon audit off') { if(state.rules.weaponAudit) toggleWeaponAudit(); return; }
+    if (normalized.startsWith('weapon ') && !normalized.startsWith('weapon mode ') && !normalized.startsWith('weapon audit ')) return weaponInfo(input.slice(7));
+    if (normalized.startsWith('matrix ')) {
+      const parts=input.slice(7).split('/').map(s=>s.trim());
+      if(parts.length===4) return matrixDamage(parts[0],parts[1],parts[2],parts[3]);
+      write('Use: matrix dagger / medium / hard / close','warning'); return;
+    }
+
+    const noPartyAllowed = ['look','l','look around','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    if (!state.party.length && !noPartyAllowed) {
+      write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
+      return;
+    }
+
     // Layer 1: explicit engine commands remain deterministic and require no AI call.
     if (directDirection) return move(directDirection);
     if (naturalDirection) return move(naturalDirection);
@@ -1306,17 +2024,23 @@
     return callReferee(input);
   }
 
-  function boot() {
-    write(`KNOWN WORLD REFEREE — NATURAL-LANGUAGE HEX-CRAWL BUILD v${APP_VERSION}`,'system');
-    write('Wilderness travel uses six-direction six-mile hexes, but you no longer have to speak in compass commands. Try ordinary instructions such as “head toward Stallanford,” “follow the road,” or “let’s go resupply.” The engine translates intent into legal actions and asks when the meaning is ambiguous.','system');
-    if (location.protocol === 'file:') {
-      write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
+  function boot(autoload=true) {
+    if(autoload){
+      const raw=localStorage.getItem(STORAGE.save);
+      if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
+    write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
+    write('This build adds Rules Cyclopedia party creation, a functional Penhaligon provisioning loop, rumors, and the optional (RC)-only contextual weapon matrix while preserving the natural-language six-direction hex crawl.','system');
+    if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
-    write('Your party stands outside the eastern gate of Penhaligon. The Duke’s Road runs north toward Stallanford, while the surrounding country is open to exploration in six directions.');
-    look();
-    updatePanels();
-    refreshTokenUi();
+    if(!state.party.length){
+      write('No adventuring party has been created yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
+      write('The campaign begins outside the eastern gate of Penhaligon.');
+    } else {
+      write(`Campaign ready with ${state.party.length} adventurer${state.party.length===1?'':'s'}. Treasury: ${formatMoney(state.treasuryCp)}.`,'system');
+      look();
+    }
+    updatePanels(); refreshTokenUi();
   }
 
   document.getElementById('commandForm').addEventListener('submit', event => {
@@ -1352,6 +2076,19 @@
     refreshTokenUi();
     write('The saved GAME_TOKEN was removed from this browser.','system');
   });
+
+  createPartyButton.addEventListener('click',()=>openPartyCreator(false));
+  rawWeaponsButton.addEventListener('click',()=>setWeaponMode('RAW'));
+  matrixWeaponsButton.addEventListener('click',()=>setWeaponMode('MATRIX'));
+  auditWeaponsButton.addEventListener('click',toggleWeaponAudit);
+  rollAbilitiesButton.addEventListener('click',rollCreatorAbilities);
+  resetDraftButton.addEventListener('click',resetCreatorDraft);
+  creatorClass.addEventListener('change',refreshAbilityTradeControls);
+  tradeAbilityButton.addEventListener('click',tradeCreatorAbility);
+  addCharacterButton.addEventListener('click',addCreatorCharacter);
+  finishPartyButton.addEventListener('click',finishCreatorParty);
+  closeCreatorButton.addEventListener('click',closePartyCreator);
+  partyCreator.addEventListener('click',event=>{ if(event.target===partyCreator) closePartyCreator(); });
 
   notes.value = localStorage.getItem(STORAGE.notes) || '';
   notes.addEventListener('input',()=>localStorage.setItem(STORAGE.notes,notes.value));
