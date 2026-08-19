@@ -82,8 +82,28 @@
   .shop-line { font-size:11px; color:var(--dim); margin:4px 0; }
   @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } }
   @media (max-width:800px) {
-    main { grid-template-columns:1fr; }
-    aside { border-left:0; border-top:1px solid var(--line); }
+    html, body { min-height:100%; }
+    body { display:block; }
+    #app { width:100%; min-height:100dvh; padding-bottom:74px; }
+    header { padding:12px 12px 9px; }
+    .statusbar { gap:6px 8px; margin-top:9px; }
+    .badge { padding:3px 5px; font-size:11px; }
+    main { grid-template-columns:1fr; min-height:0; }
+    #terminal { min-height:0; padding:14px 12px 20px; overflow:visible; }
+    #terminal > :last-child { scroll-margin-bottom:92px; }
+    aside { border-left:0; border-top:1px solid var(--line); padding:14px 12px 100px; }
+    footer {
+      position:fixed;
+      left:0; right:0; bottom:0; z-index:60;
+      padding:8px 8px calc(8px + env(safe-area-inset-bottom));
+      background:#0b0f09;
+      border-top:1px solid var(--line);
+      box-shadow:0 -8px 24px rgba(0,0,0,.55);
+    }
+    footer form { width:100%; max-width:1180px; margin:0 auto; gap:6px; }
+    footer .tiny { display:none; }
+    #command { padding:11px 10px; font-size:16px; }
+    #enterButton { padding:10px 12px; }
   }
 </style>
 </head>
@@ -229,7 +249,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.2.0';
+  const APP_VERSION = '0.2.1';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -2047,7 +2067,13 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     event.preventDefault();
     const value = command.value;
     command.value = '';
-    void handle(value);
+    void handle(value).finally(() => {
+      if (window.matchMedia('(max-width:800px)').matches) {
+        const latest = terminal.lastElementChild;
+        if (latest) latest.scrollIntoView({behavior:'smooth', block:'end'});
+      }
+      command.focus();
+    });
   });
 
   saveTokenButton.addEventListener('click', () => {
