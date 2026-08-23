@@ -20,7 +20,7 @@
   * { box-sizing:border-box; }
   html, body { margin:0; min-height:100%; background:var(--bg); color:var(--ink); font-family:Consolas,"Courier New",monospace; }
   body { display:flex; justify-content:center; }
-  #app { width:min(1180px,100%); min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+  #app { width:min(1180px,100%); min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; padding-bottom:76px; }
   header { padding:18px 20px 12px; border-bottom:1px solid var(--line); background:linear-gradient(#12170f,#0c100b); }
   h1 { margin:0; font-size:clamp(20px,4vw,34px); letter-spacing:.06em; color:var(--accent); }
   .subtitle { margin-top:5px; color:var(--dim); font-size:13px; }
@@ -41,7 +41,9 @@
   aside section { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; }
   aside p, aside li { color:var(--dim); font-size:12px; line-height:1.45; }
   aside ul { padding-left:18px; margin:6px 0; }
-  footer { border-top:1px solid var(--line); padding:12px 14px 16px; background:#0b0f09; }
+  footer { position:fixed; left:0; right:0; bottom:0; z-index:60; border-top:1px solid var(--line); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:#0b0f09; box-shadow:0 -8px 24px rgba(0,0,0,.55); }
+  footer form { width:min(1180px,100%); margin:0 auto; }
+  footer .tiny { display:none; }
   form { display:flex; gap:8px; }
   input, textarea { background:#050704; color:var(--ink); border:1px solid #53634a; padding:10px; font:inherit; outline:none; }
   #command { flex:1; min-width:0; padding:12px; }
@@ -84,7 +86,7 @@
   @media (max-width:800px) {
     html, body { min-height:100%; }
     body { display:block; }
-    #app { width:100%; min-height:100dvh; padding-bottom:74px; }
+    #app { width:100%; min-height:100dvh; padding-bottom:82px; }
     header { padding:12px 12px 9px; }
     .statusbar { gap:6px 8px; margin-top:9px; }
     .badge { padding:3px 5px; font-size:11px; }
@@ -92,16 +94,8 @@
     #terminal { min-height:0; padding:14px 12px 20px; overflow:visible; }
     #terminal > :last-child { scroll-margin-bottom:92px; }
     aside { border-left:0; border-top:1px solid var(--line); padding:14px 12px 100px; }
-    footer {
-      position:fixed;
-      left:0; right:0; bottom:0; z-index:60;
-      padding:8px 8px calc(8px + env(safe-area-inset-bottom));
-      background:#0b0f09;
-      border-top:1px solid var(--line);
-      box-shadow:0 -8px 24px rgba(0,0,0,.55);
-    }
+    footer { padding:8px 8px calc(8px + env(safe-area-inset-bottom)); }
     footer form { width:100%; max-width:1180px; margin:0 auto; gap:6px; }
-    footer .tiny { display:none; }
     #command { padding:11px 10px; font-size:16px; }
     #enterButton { padding:10px 12px; }
   }
@@ -163,9 +157,9 @@
         <div class="button-row">
           <button type="button" id="rawWeaponsButton">RAW DAMAGE</button>
           <button type="button" id="matrixWeaponsButton">CONTEXTUAL MATRIX</button>
-          <button type="button" id="auditWeaponsButton">AUDIT</button>
+          <button type="button" id="auditWeaponsButton">WEAPON AUDIT: OFF</button>
         </div>
-        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks and siege weapons remain Rules Cyclopedia damage. Combat is not active yet; this build lets you inspect and configure the subsystem before combat arrives.</p>
+        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks and siege weapons remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> is a playtest tool: once combat exists, it will calculate both RAW and Matrix damage side-by-side while applying only the selected damage mode. It has no gameplay effect yet.</p>
       </section>
 
       <section>
@@ -270,7 +264,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.2.4';
+  const APP_VERSION = '0.2.5';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -800,10 +794,10 @@
       `<p><strong>${esc(member.name)}</strong><br>${esc(member.className || member.role)} ${member.level || 1} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}${member.equippedWeapon ? `<br>Weapon: ${esc(member.equippedWeapon.name)}` : ''}</p>`
     ).join('') : '<p>No adventuring party yet.</p>';
     const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false});
-    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Audit:</strong> ${rules.weaponAudit ? 'ON' : 'OFF'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)`;
+    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)`;
     rawWeaponsButton.disabled = rules.weaponDamageMode === 'RAW';
     matrixWeaponsButton.disabled = rules.weaponDamageMode === 'MATRIX';
-    auditWeaponsButton.textContent = rules.weaponAudit ? 'AUDIT: ON' : 'AUDIT: OFF';
+    auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
     const site = currentSite();
     if (site?.shopType) contextPanel.innerHTML = `<p><strong>Shop:</strong> ${esc(site.name)}<br>Type <strong>wares</strong>, or “buy rope”, “buy 4 torches”, “buy a sword for [name]”.</p>`;
     else if (state.mode === 'site' && state.location === 'brazen_shield') contextPanel.innerHTML = '<p><strong>Inn:</strong> Ask for <strong>rumors</strong> or “what’s the talk around here?”</p>';
@@ -1842,6 +1836,7 @@
     write(`THE EXPEDITION FORMS IN PENHALIGON — ${state.party.length} ADVENTURER${state.party.length===1?'':'S'}`,'system');
     write(`Starting treasury: ${formatMoney(state.treasuryCp)}. The party has ordinary clothes and personal effects, but no expedition equipment has been purchased yet. Enter Penhaligon and resupply before setting out.`,'system');
     write('You stand outside Penhaligon’s eastern gate. The Duke’s Road leads north toward Stallanford.');
+    write('The command bar remains docked at the bottom of the screen. Type what the party does and press ENTER.','system');
     look(); updatePanels(); save();
   }
 
