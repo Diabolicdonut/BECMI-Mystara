@@ -270,7 +270,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.2.3';
+  const APP_VERSION = '0.2.4';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1771,7 +1771,7 @@
   function autoEquipMember(member) {
     let budget=member.startingMoneyCp;
     const spend=itemId=>{ const item=SHOP_ITEMS[itemId]; if(!item || item.priceCp>budget || !classAllowsItem(member,{...item,itemId})) return false; budget-=item.priceCp; state.treasuryCp-=item.priceCp; grantAutoItem(member,itemId); return true; };
-    const weaponPool=(AUTO_WEAPON_OPTIONS[member.className]||['dagger']).filter(id=>{const item=SHOP_ITEMS[id]; return item && item.priceCp<=budget && classAllowsItem(member,{...item,itemId});});
+    const weaponPool=(AUTO_WEAPON_OPTIONS[member.className]||['dagger']).filter(id=>{const item=SHOP_ITEMS[id]; return item && item.priceCp<=budget && classAllowsItem(member,{...item,itemId:id});});
     if(weaponPool.length) spend(weaponPool[rng(weaponPool.length)-1]);
     if(member.className==='Thief') spend('thieves_tools');
     const weaponItem=member.equippedWeapon ? SHOP_ITEMS[member.equippedWeapon.itemId] : null;
@@ -2228,7 +2228,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds a class-aware male/female name generator from the attached character-sheet name lists and allows the active roster to be expanded during an existing campaign. Party creation still supports browser rolls, entered table rolls, and quick generation of 1–12 adventurers with or without legally purchased starting equipment. Penhaligon provisioning, rumors, the optional (RC)-only weapon matrix, and the natural-language hex crawl remain intact.','system');
+    write('This build fixes equipped quick-party generation, retains the class-aware male/female name generator from the attached character-sheet name lists, and allows the active roster to be expanded during an existing campaign. Party creation supports browser rolls, entered table rolls, and quick generation of 1–12 adventurers with or without legally purchased starting equipment. Penhaligon provisioning, rumors, the optional (RC)-only weapon matrix, and the natural-language hex crawl remain intact.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
