@@ -134,7 +134,7 @@
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
@@ -159,7 +159,17 @@
           <button type="button" id="matrixWeaponsButton">CONTEXTUAL MATRIX</button>
           <button type="button" id="auditWeaponsButton">WEAPON AUDIT: OFF</button>
         </div>
-        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks and siege weapons remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> is a playtest tool: once combat exists, it will calculate both RAW and Matrix damage side-by-side while applying only the selected damage mode. It has no gameplay effect yet.</p>
+        <div class="button-row" style="margin-top:8px">
+          <button type="button" id="rawInitiativeButton">RAW INITIATIVE</button>
+          <button type="button" id="phasedInitiativeButton">PHASE-BASED INITIATIVE</button>
+        </div>
+        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> now records RAW and Matrix damage side-by-side on successful weapon hits while applying only the selected system. In <strong>Phase-Based Initiative</strong>, the initiative winner chooses which side moves first; the initiative winner then acts first in missile, magic, and melee.</p>
+      </section>
+
+      <section>
+        <h2>COMBAT</h2>
+        <div id="combatPanel"><p>No combat in progress.</p></div>
+        <p class="tiny">Type <strong>combat help</strong>. For isolated engine testing, <strong>encounter 4 goblins</strong> creates a clearly labeled test encounter without adding it to the campaign map.</p>
       </section>
 
       <section>
@@ -255,7 +265,7 @@
         <h3 style="margin-top:16px">PARTY BEING FORMED</h3>
         <div id="creatorPartyList" class="party-draft"></div>
         <div class="button-row"><button type="button" id="finishPartyButton">BEGIN CAMPAIGN WITH THIS PARTY</button><button type="button" id="closeCreatorButton">CLOSE</button></div>
-        <p class="tiny">There is no party-size cap. Every adventurer added here receives a full XP share when the expedition later earns experience.</p>
+        <p class="tiny">There is no party-size cap. Every player character added here receives a full XP share. Adventuring NPC retainers count as ½ share under the Mentzer BECMI campaign rule.</p>
       </div>
     </div>
   </div>
@@ -264,7 +274,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.2.5';
+  const APP_VERSION = '0.3.1';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -292,6 +302,9 @@
   const rawWeaponsButton = document.getElementById('rawWeaponsButton');
   const matrixWeaponsButton = document.getElementById('matrixWeaponsButton');
   const auditWeaponsButton = document.getElementById('auditWeaponsButton');
+  const rawInitiativeButton = document.getElementById('rawInitiativeButton');
+  const phasedInitiativeButton = document.getElementById('phasedInitiativeButton');
+  const combatPanel = document.getElementById('combatPanel');
   const contextPanel = document.getElementById('contextPanel');
   const partyCreator = document.getElementById('partyCreator');
   const rollAbilitiesButton = document.getElementById('rollAbilitiesButton');
@@ -626,7 +639,9 @@
     discoveredSecrets:{},
     rumorsHeard:[],
     campaignCreated:false,
-    rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false},
+    pendingMonsterXp:0,
+    combat:null,
+    rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5},
     party:[]
   });
 
@@ -635,7 +650,7 @@
 
   function rng(max) {
     state.seed = (Math.imul(1664525, state.seed) + 1013904223) >>> 0;
-    return (state.seed % max) + 1;
+    return Math.floor((state.seed / 4294967296) * max) + 1;
   }
 
   function esc(value) {
@@ -791,13 +806,21 @@
       travelBadge.textContent = `Exploration turns: ${state.turn}`;
     }
     partyPanel.innerHTML = state.party.length ? state.party.map(member =>
-      `<p><strong>${esc(member.name)}</strong><br>${esc(member.className || member.role)} ${member.level || 1} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}${member.equippedWeapon ? `<br>Weapon: ${esc(member.equippedWeapon.name)}` : ''}</p>`
+      `<p><strong>${esc(member.name)}${member.dead?' — DEAD':''}</strong><br>${esc(member.className || member.role)} ${member.level || 1} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}${member.equippedWeapon ? `<br>Weapon: ${esc(member.equippedWeapon.name)}` : ''}${member.spellbook?.length?`<br>Spell: ${esc(member.memorizedSpell||member.spellbook[1]||'none')} (${member.spellReady?'ready':'spent'})`:''}</p>`
     ).join('') : '<p>No adventuring party yet.</p>';
-    const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false});
-    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)`;
+    const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5});
+    if(!rules.initiativeMode) rules.initiativeMode='RAW';
+    rules.retainerXpShare=0.5; // Mentzer BECMI: NPC retainers count as half an XP share. Fixed campaign rule.
+    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Initiative:</strong> ${rules.initiativeMode==='PHASED'?'PHASE-BASED':'RC RAW SIDE-BASED'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)<br><strong>Retainer XP:</strong> ½ share (Mentzer BECMI)`;
     rawWeaponsButton.disabled = rules.weaponDamageMode === 'RAW';
     matrixWeaponsButton.disabled = rules.weaponDamageMode === 'MATRIX';
+    rawInitiativeButton.disabled = rules.initiativeMode === 'RAW';
+    phasedInitiativeButton.disabled = rules.initiativeMode === 'PHASED';
     auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
+    if(combatPanel){
+      if(state.combat?.active){ const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length; combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${Object.keys(state.combat.pcOrders||{}).length}/${livingParty().length}<br>${state.combat.awaitingMoveChoice?'<strong>Movement-order choice required.</strong>':'Type <strong>combat</strong> for details.'}</p>`; }
+      else combatPanel.innerHTML='<p>No combat in progress.</p>';
+    }
     const site = currentSite();
     if (site?.shopType) contextPanel.innerHTML = `<p><strong>Shop:</strong> ${esc(site.name)}<br>Type <strong>wares</strong>, or “buy rope”, “buy 4 torches”, “buy a sword for [name]”.</p>`;
     else if (state.mode === 'site' && state.location === 'brazen_shield') contextPanel.innerHTML = '<p><strong>Inn:</strong> Ask for <strong>rumors</strong> or “what’s the talk around here?”</p>';
@@ -1283,7 +1306,8 @@
     state.travelUsed = 0;
     state.torchLit = false;
     state.torchMinutes = 0;
-    addEvent(`Party camped overnight and consumed ${rationCost} person-days of rations.`);
+    restoreDailySpells();
+    addEvent(`Party camped overnight and consumed ${rationCost} person-days of rations; daily memorized spells refreshed.`);
     const nightCheck = rng(6);
     addEvent(`Hidden overnight wilderness encounter check: 1d6 = ${nightCheck}.`);
     if (nightCheck === 1) write('During the night, something moves beyond the firelight, but no direct encounter is resolved in this prototype.','warning');
@@ -1359,15 +1383,17 @@
       const weapon = member.equippedWeapon?.name || 'none';
       const armor = member.equippedArmor?.name || 'none';
       const shield = member.equippedShield ? ' + shield' : '';
-      const spells = member.spellbook?.length ? `\n  Spellbook: ${member.spellbook.join(', ')}` : '';
+      const spells = member.spellbook?.length ? `\n  Spellbook: ${member.spellbook.join(', ')}\n  Memorized: ${member.memorizedSpell||member.spellbook[1]||'none'} (${member.spellReady?'ready':'spent / pending rest'})` : '';
+      const life = member.dead ? ' [DEAD]' : '';
       const sv=member.saves||{}; const saveLine=sv.death?`\n  Saves: Death/Poison ${sv.death}; Wands ${sv.wands}; Paralysis/Stone ${sv.paralysis}; Breath ${sv.breath}; Rod/Staff/Spell ${sv.spells}${member.spellSaveAdjustment?` (Wis ${member.spellSaveAdjustment>0?'+':''}${member.spellSaveAdjustment} to roll)`:''}`:'';
-      return `${member.name} — ${member.className || member.role} ${member.level || 1}; XP ${member.xp || 0}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}; THAC0 ${member.thac0||19}\n  ${stats}\n  Weapon: ${weapon}; Armor: ${armor}${shield}${spells}${saveLine}`;
+      return `${member.name}${life} — ${member.className || member.role} ${member.level || 1}; XP ${member.xp || 0}; HP ${member.hp}/${member.maxHp}; AC ${member.ac}; THAC0 ${member.thac0||19}\n  ${stats}\n  Weapon: ${weapon}; Armor: ${armor}${shield}${spells}${saveLine}`;
     }).join('\n\n'));
   }
 
   function inventory() {
-    const pooled = state.partyInventory?.length ? state.partyInventory.map(i=>`${i.qty}× ${i.name}`).join(', ') : 'none';
-    const members = state.party.map(m => `${m.name}: ${(m.inventory||[]).length ? m.inventory.map(i=>`${i.qty||1}× ${i.name}`).join(', ') : 'no carried gear assigned'}`).join('\n');
+    const invLabel=i=>{ const rule=Object.values(AMMO_RULES).find(r=>r.ammoId===i.itemId); return rule ? `${ammoRemaining(i,rule.perPack)} ${i.name.replace(/ \(\d+\)$/,'')} remaining` : `${i.qty||1}× ${i.name}`; };
+    const pooled = state.partyInventory?.length ? state.partyInventory.map(invLabel).join(', ') : 'none';
+    const members = state.party.map(m => `${m.name}: ${(m.inventory||[]).length ? m.inventory.map(invLabel).join(', ') : 'no carried gear assigned'}`).join('\n');
     write(`Expedition treasury: ${formatMoney(state.treasuryCp)}\nPooled supplies: ${state.torches} torches; ${state.rations} person-days of rations.\nUnassigned expedition gear: ${pooled}\nMounts: ${(state.mounts||[]).length ? state.mounts.map(m=>m.name).join(', ') : 'none'}\n\n${members}`);
   }
 
@@ -1385,7 +1411,7 @@
   function toggleWeaponAudit() {
     state.rules.weaponAudit=!state.rules.weaponAudit;
     addEvent(`Weapon audit ${state.rules.weaponAudit?'enabled':'disabled'}.`);
-    write(`Weapon rules audit ${state.rules.weaponAudit?'enabled':'disabled'}. When combat is implemented, both RAW and matrix damage will be calculated for comparison while only the selected mode changes state.`,'system');
+    write(`Weapon rules audit ${state.rules.weaponAudit?'enabled':'disabled'}. During combat, successful weapon hits calculate RAW and matrix damage side-by-side while only the selected mode changes hit points.`,'system');
     updatePanels();
   }
 
@@ -1571,12 +1597,744 @@
     recalcMemberAc(member); addEvent(`${member.name} equipped ${item.name}.`); write(`${member.name} equips ${item.name}. AC is now ${member.ac}.`,'system'); updatePanels();
   }
 
+  // --- v0.3 core combat ----------------------------------------------------
+  // The deterministic engine resolves combat. The AI may only translate a
+  // player's prose into orders; it never decides hit, damage, saves, morale,
+  // initiative, or state changes.
+
+  const COMBAT_MONSTERS = {
+    goblin:{name:'Goblin',ac:6,hd:0.875,hpKind:'1d8-1',move:30,thac0:19,morale:7,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'sword_short',damageMod:0,daylightPenalty:-1},
+    kobold:{name:'Kobold',ac:7,hd:0.5,hpKind:'1d4',move:30,thac0:19,morale:6,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'spear',damageMod:-1,daylightPenalty:0},
+    orc:{name:'Orc',ac:6,hd:1,hpKind:'1d8',move:40,thac0:19,morale:8,intelligence:7,alignment:'Chaotic',xp:10,size:'medium',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:-1},
+    skeleton:{name:'Skeleton',ac:7,hd:1,hpKind:'1d8',move:20,thac0:19,morale:12,intelligence:0,alignment:'Chaotic',xp:10,size:'medium',protection:'hard',saveSpells:16,kind:'undead',weaponId:'sword_normal',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true},
+    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',saveSpells:16,kind:'animal',naturalDamage:'1d6',damageMod:0,daylightPenalty:0}
+  };
+
+  const AMMO_RULES = {
+    bow_short:{ammoId:'arrows20',perPack:20,label:'arrow'},
+    bow_long:{ammoId:'arrows20',perPack:20,label:'arrow'},
+    crossbow_light:{ammoId:'quarrels30',perPack:30,label:'quarrel'},
+    crossbow_heavy:{ammoId:'quarrels30',perPack:30,label:'quarrel'},
+    sling:{ammoId:'sling_stones30',perPack:30,label:'sling stone'}
+  };
+
+  const THROWABLE_WEAPONS = new Set(['axe_hand','hammer_throwing','javelin','spear','trident','dagger','dagger_silver','bola','holy_water','burning_oil','thrown_rock']);
+  const RANGE_ORDER = ['close','normal','far'];
+
+  function ensureCombatRuleState(){
+    if(!state.rules) state.rules={};
+    if(!['RAW','PHASED'].includes(state.rules.initiativeMode)) state.rules.initiativeMode='RAW';
+  }
+
+  function setInitiativeMode(mode){
+    ensureCombatRuleState();
+    const normalized=String(mode||'').toUpperCase();
+    const value=(normalized==='PHASE' || normalized==='PHASES' || normalized==='PHASED' || normalized==='PHASE-BASED') ? 'PHASED' : normalized;
+    if(!['RAW','PHASED'].includes(value)){ write('Use “initiative mode raw” or “initiative mode phases”.','warning'); return; }
+    if(state.combat?.active && state.combat.initiative){ write('Finish the current combat round before changing initiative procedure.','warning'); return; }
+    state.rules.initiativeMode=value;
+    addEvent(`Initiative procedure changed to ${value}.`);
+    write(value==='RAW' ? 'Initiative set to Rules Cyclopedia RAW side-based turns.' : 'Initiative set to phase-based turns. The initiative winner chooses which side moves first; the winner then acts first in missile, magic, and melee phases.','system');
+    updatePanels();
+  }
+
+  function combatActive(){ return Boolean(state.combat?.active); }
+  function livingParty(){ return state.party.filter(m=>!m.dead && Number(m.hp)>0); }
+  function livingHostiles(){ return combatActive() ? state.combat.monsters.filter(m=>monsterCanFight(m)) : []; }
+  function monsterCanFight(m){ return m && !m.dead && !m.fled && !m.charmed && !m.sleeping && Number(m.hp)>0; }
+  function monsterStillPresent(m){ return m && !m.dead && !m.fled && Number(m.hp)>0; }
+
+  function normalizeCombatState(){
+    if(!state.combat || typeof state.combat!=='object') { state.combat=null; return; }
+    const c=state.combat;
+    c.active=Boolean(c.active);
+    c.round=Math.max(1,Number(c.round)||1);
+    c.monsters=Array.isArray(c.monsters)?c.monsters:[];
+    for(const m of c.monsters){ m.moraleFirstHit=Boolean(m.moraleFirstHit); m.moraleQuarterHp=Boolean(m.moraleQuarterHp); }
+    c.pcOrders=c.pcOrders&&typeof c.pcOrders==='object'?c.pcOrders:{};
+    c.monsterOrders=c.monsterOrders&&typeof c.monsterOrders==='object'?c.monsterOrders:{};
+    c.engagements=c.engagements&&typeof c.engagements==='object'?c.engagements:{};
+    c.initiative=c.initiative||null;
+    c.awaitingMoveChoice=Boolean(c.awaitingMoveChoice);
+    c.moveOrder=Array.isArray(c.moveOrder)?c.moveOrder:null;
+    c.monsterMoralePending=Boolean(c.monsterMoralePending);
+    c.monsterMoraleQueue=Array.isArray(c.monsterMoraleQueue)?c.monsterMoraleQueue:[];
+    c.monsterFirstDeath=Boolean(c.monsterFirstDeath);
+    c.halfDisabledTriggered=Boolean(c.halfDisabledTriggered);
+    c.initialMonsterCount=Math.max(1,Number(c.initialMonsterCount)||c.monsters.length||1);
+    c.auditCounter=Number(c.auditCounter)||0;
+  }
+
+  function shadowRngFactory(seed){
+    let local=(seed>>>0);
+    return max=>{ local=(Math.imul(1664525,local)+1013904223)>>>0; return Math.floor((local/4294967296)*max)+1; };
+  }
+
+  function rollDamageExpression(expression, roller=rng){
+    let source=String(expression??'').trim().toLowerCase();
+    if(!source || source==='none' || source==='nil') return {total:0,rolls:[],expression:String(expression||'None')};
+    if(source==='1 dmg' || source==='1 damage') return {total:1,rolls:[1],expression:String(expression)};
+    // Some workbook labels retain notes such as “1d10 (generic polearm)”.
+    // Parenthetical labels are descriptive, not part of the dice expression.
+    source=source.replace(/\([^)]*\)/g,'').replace(/\s+/g,'').replace(/−/g,'-');
+    const pieces=source.match(/[+-]?[^+-]+/g) || [];
+    let total=0; const rolls=[];
+    for(const pieceRaw of pieces){
+      let piece=pieceRaw, sign=1;
+      if(piece[0]==='+') piece=piece.slice(1); else if(piece[0]==='-'){sign=-1;piece=piece.slice(1);}
+      const dice=/^(\d*)d(\d+)$/.exec(piece);
+      if(dice){
+        const count=Math.max(1,Number(dice[1]||1)); const sides=Number(dice[2]);
+        for(let i=0;i<count;i++){ const r=roller(sides); rolls.push(sign*r); total+=sign*r; }
+      } else if(/^\d+$/.test(piece)) total+=sign*Number(piece);
+    }
+    return {total:Math.max(0,total),rolls,expression:String(expression)};
+  }
+
+  function rollMonsterHp(profile){ return Math.max(1,rollDamageExpression(profile.hpKind).total); }
+
+  function monsterTypeKey(text){
+    const n=String(text||'').toLowerCase().replace(/[^a-z ]/g,' ').replace(/\s+/g,' ').trim();
+    if(/goblins?/.test(n)) return 'goblin';
+    if(/kobolds?/.test(n)) return 'kobold';
+    if(/orcs?/.test(n)) return 'orc';
+    if(/skeletons?/.test(n)) return 'skeleton';
+    if(/wolves|wolf/.test(n)) return 'wolf';
+    return null;
+  }
+
+  function createCombatMonster(type,index){
+    const p=COMBAT_MONSTERS[type]; const hp=rollMonsterHp(p);
+    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
+  }
+
+  function startTestEncounter(count,type){
+    if(combatActive()){ write('A combat is already in progress.','warning'); return; }
+    if(!livingParty().length){ write('There is no living adventurer available to fight.','warning'); return; }
+    const key=monsterTypeKey(type); if(!key){ write('Test encounters currently support goblins, kobolds, orcs, skeletons, and wolves.','warning'); return; }
+    count=Math.max(1,Math.min(24,Math.floor(Number(count)||1)));
+    const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0};
+    addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}.`);
+    write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}\nThis is an explicit combat-engine test encounter, not a keyed campaign encounter. Give orders, then type “resolve round”.`,'system');
+    combatStatus(); updatePanels();
+  }
+
+  function engagementKey(pcName,monsterId){ return `${pcName.toLowerCase()}|${monsterId}`; }
+  function getEngagement(pc,monster){ return state.combat?.engagements?.[engagementKey(pc.name,monster.id)] || null; }
+  function setEngagement(pc,monster,range='normal'){
+    if(!combatActive()) return;
+    state.combat.engagements[engagementKey(pc.name,monster.id)]={pcName:pc.name,monsterId:monster.id,range:RANGE_ORDER.includes(range)?range:'normal'};
+  }
+  function clearEngagement(pc,monster){ if(combatActive()) delete state.combat.engagements[engagementKey(pc.name,monster.id)]; }
+  function clearAllPcEngagements(pc){
+    if(!combatActive()) return;
+    for(const key of Object.keys(state.combat.engagements)) if(key.startsWith(`${pc.name.toLowerCase()}|`)) delete state.combat.engagements[key];
+  }
+  function engagementsForPc(pc){
+    if(!combatActive()) return [];
+    return Object.values(state.combat.engagements).filter(e=>e.pcName.toLowerCase()===pc.name.toLowerCase()).map(e=>({entry:e,monster:state.combat.monsters.find(m=>m.id===e.monsterId)})).filter(x=>monsterStillPresent(x.monster));
+  }
+  function engagementsForMonster(monster){
+    if(!combatActive()) return [];
+    return Object.values(state.combat.engagements).filter(e=>e.monsterId===monster.id).map(e=>({entry:e,pc:state.party.find(p=>p.name.toLowerCase()===e.pcName.toLowerCase())})).filter(x=>x.pc && !x.pc.dead && x.pc.hp>0);
+  }
+
+  function combatMonsterLabel(m){
+    const conditions=[m.dead?'dead':null,m.fled?'fled':null,m.sleeping?'asleep':null,m.charmed?'charmed':null].filter(Boolean).join(', ');
+    return `${m.name} — HP ${Math.max(0,m.hp)}/${m.maxHp}, AC ${m.ac}${conditions?` (${conditions})`:''}`;
+  }
+
+  function combatStatus(){
+    if(!combatActive()){ write('No combat is in progress. For engine testing, try “encounter 4 goblins”.'); return; }
+    const c=state.combat; const init=c.initiative ? `PC ${c.initiative.pc} / foes ${c.initiative.monster}${c.initiative.winner?` — ${c.initiative.winner==='pc'?'PCs':'foes'} won`:' — tied'}` : 'not rolled';
+    const orders=state.party.map(pc=>{ const o=c.pcOrders[pc.name.toLowerCase()]; return `${pc.name}: ${pc.dead?'DEAD':o?combatOrderText(o):'no order'}`; }).join('\n');
+    const engagements=Object.values(c.engagements).map(e=>`${e.pcName} ↔ ${state.combat.monsters.find(m=>m.id===e.monsterId)?.name||e.monsterId}: ${String(e.range).toUpperCase()}`).join('\n')||'none';
+    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\n\nHOSTILES\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}`,'system');
+  }
+
+  function combatOrderText(o){
+    if(!o) return 'none';
+    const target=o.targetId?state.combat?.monsters.find(m=>m.id===o.targetId)?.name||o.targetId:null;
+    const pieces=[o.action];
+    if(o.spell) pieces.push(o.spell);
+    if(target) pieces.push(`→ ${target}`);
+    if(o.rangeBand) pieces.push(`(${o.rangeBand} range)`);
+    if(o.rangeIntent) pieces.push(`[${o.rangeIntent}]`);
+    return pieces.join(' ');
+  }
+
+  function findPc(query){
+    const q=String(query||'').trim().toLowerCase();
+    if(!q) return null;
+    return state.party.find(m=>m.name.toLowerCase()===q) || state.party.find(m=>m.name.toLowerCase().startsWith(q));
+  }
+
+  function findMonster(query,allowInactive=false){
+    if(!combatActive()) return null;
+    const q=String(query||'').trim().toLowerCase().replace(/^the\s+/,'');
+    if(!q) return null;
+    let candidates=state.combat.monsters.filter(m=>allowInactive || monsterStillPresent(m));
+    let exact=candidates.find(m=>m.id===q || m.name.toLowerCase()===q); if(exact) return exact;
+    const number=/\b(\d+)\b/.exec(q); const type=monsterTypeKey(q);
+    if(type && number){ exact=candidates.find(m=>m.type===type && m.id.endsWith(`-${Number(number[1])}`)); if(exact)return exact; }
+    if(type){ const same=candidates.filter(m=>m.type===type); if(same.length) return same[0]; }
+    return candidates.find(m=>m.name.toLowerCase().includes(q)) || null;
+  }
+
+  function equippedWeaponItem(actor){
+    const id=actor?.equippedWeapon?.itemId; return id ? SHOP_ITEMS[id]||null : null;
+  }
+
+  function weaponMatrixProfile(item){ return item?.matrixId ? RC_WEAPON_MATRIX[item.matrixId]||null : null; }
+  function targetProtection(target){
+    if(target.type) return target.protection||'soft';
+    const armorId=target.equippedArmor?.itemId; return SHOP_ITEMS[armorId]?.matrixProtection || 'soft';
+  }
+  function targetSize(target){ return target.type ? (target.size||'medium') : (target.matrixSize||'medium'); }
+
+  function weaponDamageExpressions(item,target,range='normal'){
+    const profile=weaponMatrixProfile(item);
+    const raw=profile?.rawDamage || '1d2';
+    if(!profile) return {raw,matrix:raw};
+    const size=targetSize(target); const protection=targetProtection(target); const band=RANGE_ORDER.includes(range)?range:'normal';
+    const matrix=profile.matrix?.[size]?.[protection]?.[band] ?? raw;
+    return {raw,matrix};
+  }
+
+  function rollComparedWeaponDamage(item,target,range,modifier=0){
+    const expr=weaponDamageExpressions(item,target,range); const active=state.rules.weaponDamageMode||'RAW';
+    const seedBefore=state.seed>>>0;
+    let rawRoll,matrixRoll,activeRoll;
+    if(active==='RAW'){
+      rawRoll=rollDamageExpression(expr.raw,rng); const seedAfter=state.seed>>>0;
+      matrixRoll=rollDamageExpression(expr.matrix,shadowRngFactory(seedBefore)); state.seed=seedAfter; activeRoll=rawRoll;
+    } else {
+      matrixRoll=rollDamageExpression(expr.matrix,rng); const seedAfter=state.seed>>>0;
+      rawRoll=rollDamageExpression(expr.raw,shadowRngFactory(seedBefore)); state.seed=seedAfter; activeRoll=matrixRoll;
+    }
+    const adjusted=value=>Math.max(0,value+modifier);
+    return {active,rawExpr:expr.raw,matrixExpr:expr.matrix,raw:adjusted(rawRoll.total),matrix:adjusted(matrixRoll.total),applied:adjusted(activeRoll.total)};
+  }
+
+  function writeWeaponAudit(attacker,target,result){
+    if(!state.rules.weaponAudit) return;
+    const labelA=attacker.name||'attacker', labelT=target.name||'target';
+    write(`WEAPON AUDIT — ${labelA} → ${labelT}: RAW ${result.raw} [${result.rawExpr}] · MATRIX ${result.matrix} [${result.matrixExpr}] · applied ${result.active} ${result.applied}.`,'system');
+  }
+
+  function effectivePcAc(pc,attackKind='melee'){
+    let ac=Number(pc.ac??9);
+    if(pc.shieldSpellRounds>0) ac=Math.min(ac,attackKind==='missile'?2:4);
+    if(pc.retreatingThisRound && pc.equippedShield) ac+=1;
+    return ac;
+  }
+
+  function attackRoll(attacker,target,kind='melee',extra=0){
+    const d20=rng(20); let mod=extra;
+    if(attacker.type){
+      const outdoors=state.mode==='wilderness' || Boolean(currentSite()?.outdoor);
+      mod+=attacker.daylightPenalty && daylight() && outdoors ? attacker.daylightPenalty : 0;
+    } else {
+      mod+=abilityAdjustment(kind==='melee'?(attacker.abilities?.str??10):(attacker.abilities?.dex??10));
+      mod+=Number(attacker.equippedWeapon?.magicBonus||0);
+    }
+    const targetAc=target.type ? target.ac : effectivePcAc(target,kind);
+    const thac0=attacker.thac0||19; const needed=thac0-targetAc;
+    const total=d20+mod;
+    // The RC attack tables can require totals above 20 against extreme ACs. A
+    // natural 1 misses, but a natural 20 is not a blanket success if modifiers
+    // still leave the total short of the required number.
+    const hit=d20!==1 && total>=needed;
+    return {d20,mod,total,needed,targetAc,hit};
+  }
+
+  function queueMonsterMorale(reason,monsterId=null){
+    if(!combatActive()) return;
+    const c=state.combat;
+    if(!Array.isArray(c.monsterMoraleQueue)) c.monsterMoraleQueue=[];
+    c.monsterMoraleQueue.push({dueRound:c.round+1,reason:String(reason||'combat event'),monsterId:monsterId||null});
+    c.monsterMoralePending=true;
+  }
+
+  function damagePc(pc,amount,source){
+    if(pc.dead) return;
+    amount=Math.max(0,Math.floor(Number(amount)||0)); pc.hp=Math.max(0,pc.hp-amount);
+    if(pc.hp<=0){
+      pc.dead=true; pc.hp=0; clearAllPcEngagements(pc); write(`${pc.name} falls at 0 hit points and is dead.`,'error'); addEvent(`${pc.name} died in combat (${source||'combat'}).`);
+      const c=state.combat;
+      if(c && !c.monsterFirstDeath){ c.monsterFirstDeath=true; queueMonsterMorale(`first death in the fight (${pc.name})`); }
+    }
+  }
+
+  function damageMonster(monster,amount,source){
+    if(monster.dead) return;
+    amount=Math.max(0,Math.floor(Number(amount)||0)); monster.hp=Math.max(0,monster.hp-amount);
+    const c=state.combat;
+    if(amount>0 && !monster.moraleFirstHit){ monster.moraleFirstHit=true; queueMonsterMorale(`${monster.name} was first hit`,monster.id); }
+    if(amount>0 && monster.hp>0 && monster.hp<=Math.max(1,Math.floor(monster.maxHp/4)) && !monster.moraleQuarterHp){ monster.moraleQuarterHp=true; queueMonsterMorale(`${monster.name} was reduced to one-quarter hit points or less`,monster.id); }
+    if(monster.hp<=0){
+      monster.dead=true; monster.hp=0;
+      for(const key of Object.keys(c.engagements)) if(c.engagements[key].monsterId===monster.id) delete c.engagements[key];
+      write(`${monster.name} is killed.`,'system'); addEvent(`${monster.name} killed (${source||'combat'}).`);
+      if(!c.monsterFirstDeath){ c.monsterFirstDeath=true; queueMonsterMorale(`first death in the fight (${monster.name})`); }
+      checkHalfDisabledMorale();
+    }
+  }
+
+  function checkHalfDisabledMorale(){
+    if(!combatActive()) return;
+    const c=state.combat; const disabled=c.monsters.filter(m=>m.dead||m.fled||m.charmed||m.sleeping).length;
+    if(!c.halfDisabledTriggered && disabled>=Math.ceil(c.initialMonsterCount/2)){ c.halfDisabledTriggered=true; queueMonsterMorale('half of the monsters are unable to act'); }
+  }
+
+  function monsterMoralePhase(){
+    if(!combatActive()) return;
+    const c=state.combat;
+    const queue=Array.isArray(c.monsterMoraleQueue)?c.monsterMoraleQueue:[];
+    const due=queue.filter(e=>(Number(e.dueRound)||0)<=c.round);
+    c.monsterMoraleQueue=queue.filter(e=>(Number(e.dueRound)||0)>c.round);
+    c.monsterMoralePending=c.monsterMoraleQueue.length>0;
+    if(!due.length) return;
+
+    const fleeMonster=m=>{
+      if(!m || !monsterCanFight(m)) return;
+      m.fled=true;
+      for(const key of Object.keys(c.engagements)) if(c.engagements[key].monsterId===m.id) delete c.engagements[key];
+    };
+    const checkOne=(event,m)=>{
+      if(!m || !monsterCanFight(m)) return true;
+      const morale=Number(m.morale??7);
+      if(morale>=12){ write(`MORALE — ${event.reason}: ${m.name} has Morale 12 and continues fighting.`,'system'); return true; }
+      if(morale<=2){ write(`MORALE — ${event.reason}: ${m.name} has Morale 2 and automatically breaks.`,'system'); fleeMonster(m); return false; }
+      const r1=rng(6),r2=rng(6),total=r1+r2;
+      if(total>morale){ write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: ${m.name} fails and flees.`,'system'); fleeMonster(m); return false; }
+      write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: ${m.name} holds.`,'system'); return true;
+    };
+
+    for(const event of due){
+      if(!livingHostiles().length) break;
+      if(event.monsterId){
+        checkOne(event,c.monsters.find(m=>m.id===event.monsterId));
+        continue;
+      }
+      // Group events (first death and half unable to act) use the RC's one
+      // morale roll for the remaining creatures. A mixed-morale group uses
+      // the lowest remaining morale score as the conservative referee rule.
+      const active=livingHostiles(); if(!active.length) break;
+      const morale=Math.min(...active.map(m=>Number(m.morale??7)));
+      if(morale>=12){ write(`MORALE — ${event.reason}: Morale 12 foes continue fighting.`,'system'); continue; }
+      if(morale<=2){ write(`MORALE — ${event.reason}: Morale 2 foes automatically break.`,'system'); for(const m of active)fleeMonster(m); break; }
+      const r1=rng(6),r2=rng(6),total=r1+r2;
+      if(total>morale){
+        write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: the remaining foes fail and flee.`,'system');
+        for(const m of active) fleeMonster(m);
+        break;
+      }
+      write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: the remaining foes hold.`,'system');
+    }
+    c.monsterMoralePending=c.monsterMoraleQueue.length>0;
+  }
+
+  function ammoRemaining(record,perPack){ return Math.max(0,(Number(record?.qty)||0)*perPack-(Number(record?.ammoUsed)||0)); }
+  function consumeAmmo(pc,weaponId){
+    const rule=AMMO_RULES[weaponId]; if(!rule) return {ok:true,label:null};
+    const lists=[pc.inventory||[],state.partyInventory||[]];
+    for(const list of lists){ const rec=list.find(x=>x.itemId===rule.ammoId && ammoRemaining(x,rule.perPack)>0); if(rec){ rec.ammoUsed=(Number(rec.ammoUsed)||0)+1; return {ok:true,label:rule.label,remaining:ammoRemaining(rec,rule.perPack)}; } }
+    return {ok:false,label:rule.label};
+  }
+
+  function missileCapable(item){ return Boolean(item?.missile); }
+  function throwableCapable(item){ return Boolean(item && THROWABLE_WEAPONS.has(item.itemId)); }
+
+  function pcWeaponAttack(pc,monster,kind='melee',rangeBand='normal',phaseEligible=true,simultaneous=false){
+    if(!phaseEligible || (!simultaneous && (pc.dead || pc.hp<=0)) || !monster || (!simultaneous && !monsterStillPresent(monster))) return;
+    const baseItem=equippedWeaponItem(pc);
+    const item=baseItem ? {...baseItem,itemId:pc.equippedWeapon.itemId} : null;
+    if(!item && kind==='missile'){ write(`${pc.name} has no equipped missile weapon.`,'warning'); return; }
+    if(kind==='missile'){
+      if(!missileCapable(item)){ write(`${pc.name}'s ${item.name} is not currently being treated as a missile weapon in this core pass.`, 'warning'); return; }
+      if(engagementsForPc(pc).length){ write(`${pc.name} is engaged hand-to-hand and cannot make that missile attack in the current abstract positioning.`,'warning'); return; }
+      if(item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18 && pc.heavyCrossbowNeedsReload){
+        pc.heavyCrossbowNeedsReload=false;
+        write(`${pc.name} spends the missile action reloading the heavy crossbow; Strength below 18 limits it to one shot every two rounds.`,'system'); return;
+      }
+      const ammo=consumeAmmo(pc,item.itemId); if(!ammo.ok){ write(`${pc.name} has no ${ammo.label}s available for ${item.name}.`,'warning'); return; }
+    }
+    const result=attackRoll(pc,monster,kind,kind==='missile'?(rangeBand==='short'?1:rangeBand==='long'?-1:0):0);
+    const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
+    const attackName=item?.name||'unarmed strike';
+    write(`${pc.name} attacks ${monster.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total}; needs ${result.needed} vs AC ${result.targetAc} — ${result.hit?'HIT':'miss'}.`);
+    if(kind==='missile' && item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18) pc.heavyCrossbowNeedsReload=true;
+    if(!result.hit) return;
+    if(!item){
+      const damage=Math.max(1,1+abilityAdjustment(pc.abilities?.str??10));
+      write(`${pc.name} deals ${damage} unarmed damage.`); damageMonster(monster,damage,`${pc.name}'s unarmed strike`); return;
+    }
+    const damageMod=(kind==='melee'?abilityAdjustment(pc.abilities?.str??10):0) + Number(pc.equippedWeapon?.magicBonus||0);
+    const band=kind==='missile'?(rangeBand==='short'?'close':rangeBand==='long'?'far':'normal'):(rangeBand||'normal');
+    const dmg=rollComparedWeaponDamage(item,monster,band,damageMod);
+    writeWeaponAudit(pc,monster,dmg); write(`${pc.name} deals ${dmg.applied} damage.`);
+    damageMonster(monster,dmg.applied,`${pc.name}'s ${item.name}`);
+  }
+
+  function monsterWeaponItem(monster){
+    if(!monster.weaponId) return null; const item=SHOP_ITEMS[monster.weaponId]; return item?{...item,itemId:monster.weaponId}:null;
+  }
+
+  function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){
+    if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return;
+    const result=attackRoll(monster,pc,'melee',pc.retreatingThisRound?2:0);
+    const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
+    const weapon=monsterWeaponItem(monster);
+    const attackName=monster.naturalDamage?'bite':(weapon?.name||'weapon');
+    write(`${monster.name} attacks ${pc.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total}; needs ${result.needed} vs AC ${result.targetAc} — ${result.hit?'HIT':'miss'}.`);
+    if(!result.hit) return;
+    let damage=0;
+    if(monster.naturalDamage){ damage=Math.max(0,rollDamageExpression(monster.naturalDamage).total+(monster.damageMod||0)); }
+    else {
+      const engagement=getEngagement(pc,monster); const band=engagement?.range||'normal';
+      const dmg=rollComparedWeaponDamage(weapon,pc,band,monster.damageMod||0); writeWeaponAudit(monster,pc,dmg); damage=dmg.applied;
+    }
+    write(`${monster.name} deals ${damage} damage to ${pc.name}.`);
+    damagePc(pc,damage,monster.name);
+  }
+
+  function monsterSavingThrow(monster,type='spells',modifier=0){
+    const needed=type==='spells'?(monster.saveSpells||16):16; const d20=rng(20); const total=d20+modifier; const success=d20===20 || (d20!==1 && total>=needed);
+    return {d20,total,needed,success};
+  }
+
+  function spellReadyName(pc){ return pc.memorizedSpell || (pc.spellbook?.[1]||null); }
+  function canCastPrepared(pc,spell){ return Boolean(pc.spellbook?.length && pc.spellReady && spellReadyName(pc)?.toLowerCase()===String(spell||'').toLowerCase()); }
+
+  function castPcSpell(pc,order,phaseEligible=true,simultaneous=false){
+    if(!phaseEligible || (!simultaneous && (pc.dead || pc.hp<=0))) return;
+    const spell=String(order.spell||'').trim();
+    if(!spell){ write(`${pc.name} has no spell specified.`,'warning'); return; }
+    if(!canCastPrepared(pc,spell)){ write(`${pc.name} does not have ${spell} memorized and ready. Prepared spell: ${spellReadyName(pc)||'none'}${pc.spellReady?'':' (spent)'}.`,'warning'); return; }
+    const lower=spell.toLowerCase();
+    if(lower==='magic missile'){
+      const target=state.combat.monsters.find(m=>m.id===order.targetId) || livingHostiles()[0]; if(!target){return;}
+      pc.spellReady=false; const dmg=rollDamageExpression('1d6+1').total; write(`${pc.name} casts Magic Missile at ${target.name}. It strikes automatically for ${dmg} damage.`,'system'); damageMonster(target,dmg,'Magic Missile');
+    } else if(lower==='sleep'){
+      pc.spellReady=false; const budgetRoll=rollDice(2,8); let budget=budgetRoll.total; const affected=[];
+      const eligible=livingHostiles().filter(m=>!m.immuneSleep && m.hd<=4.25).sort((a,b)=>a.hd-b.hd || a.id.localeCompare(b.id));
+      for(const m of eligible){ if(m.hd<=budget+1e-9){ m.sleeping=true; affected.push(m); budget-=m.hd; } }
+      write(`${pc.name} casts Sleep: 2d8 = ${budgetRoll.total} Hit Dice. ${affected.length?affected.map(m=>m.name).join(', ')+' fall asleep':'no eligible foe is affected'}. No saving throw applies.`,'system'); checkHalfDisabledMorale();
+    } else if(lower==='shield'){
+      pc.spellReady=false; pc.shieldSpellRounds=120; write(`${pc.name} casts Shield. For 2 turns, ${pc.name}'s AC is no worse than 2 against missiles and 4 against other attacks; Shield may also stop Magic Missile with a saving throw.`,'system');
+    } else if(lower==='charm person'){
+      const target=state.combat.monsters.find(m=>m.id===order.targetId) || livingHostiles()[0]; if(!target){return;}
+      if(target.immuneCharm || target.kind!=='humanoid'){ write(`${pc.name} casts Charm Person, but ${target.name} is not a valid creature for that spell.`,'warning'); return; }
+      pc.spellReady=false; const save=monsterSavingThrow(target,'spells',0);
+      write(`${pc.name} casts Charm Person on ${target.name}. ${target.name} saves vs spells: d20 ${save.d20}, needs ${save.needed} — ${save.success?'saved':'FAILED'}.`,'system');
+      if(!save.success){ target.charmed=true; for(const key of Object.keys(state.combat.engagements)) if(state.combat.engagements[key].monsterId===target.id) delete state.combat.engagements[key]; write(`${target.name} regards ${pc.name} as a trusted friend and is no longer a hostile combatant.`,'system'); checkHalfDisabledMorale(); }
+    } else write(`${spell} is in the spellbook data, but its combat effect is not implemented in this core combat pass.`,'warning');
+  }
+
+  function prepareSpellCommand(text){
+    if(combatActive()){ write('Spells must be selected for the day before combat; you cannot rememorize one during a fight.','warning'); return; }
+    const body=String(text||'').replace(/^(memorize|prepare)\s+/i,'').trim();
+    const pc=state.party.slice().sort((a,b)=>b.name.length-a.name.length).find(m=>body.toLowerCase().startsWith(m.name.toLowerCase()));
+    if(!pc){ write('Name the spellcaster, for example: “memorize Elwyn sleep”.','warning'); return; }
+    const spell=body.slice(pc.name.length).trim();
+    const known=pc.spellbook?.find(s=>s.toLowerCase()===spell.toLowerCase()); if(!known){ write(`${pc.name} does not have ${spell||'that spell'} in the spellbook.`,'warning'); return; }
+    pc.memorizedSpell=known; pc.spellReady=false; pc.spellPendingRest=true;
+    write(`${pc.name} will memorize ${known} after the next full night's rest.`,'system'); updatePanels();
+  }
+
+  function restoreDailySpells(){
+    for(const pc of state.party){
+      if(pc.dead || !pc.spellbook?.length) continue;
+      if(!pc.memorizedSpell) pc.memorizedSpell=pc.spellbook[1]||pc.spellbook[0];
+      pc.spellReady=true; pc.spellPendingRest=false; pc.shieldSpellRounds=0;
+    }
+  }
+
+  function setPcCombatOrder(pc,order){
+    if(!combatActive()){ write('No combat is in progress.','warning'); return false; }
+    if(!pc || pc.dead || pc.hp<=0){ write('That adventurer cannot act.','warning'); return false; }
+    if(state.combat.initiative){ write('The round is already being resolved; orders are locked until it ends.','warning'); return false; }
+    state.combat.pcOrders[pc.name.toLowerCase()]={...(state.combat.pcOrders[pc.name.toLowerCase()]||{}),...order};
+    write(`${pc.name}: ${combatOrderText(state.combat.pcOrders[pc.name.toLowerCase()])}.`,'system'); updatePanels(); return true;
+  }
+
+  function combatTargetFromText(text){
+    let q=String(text||'').trim().replace(/^(?:at|the)\s+/i,'').replace(/\s+(?:at )?(short|medium|long) range$/i,'').trim();
+    return findMonster(q);
+  }
+
+  function parsePcCombatCommand(input){
+    if(!combatActive()) return false;
+    const sorted=state.party.slice().sort((a,b)=>b.name.length-a.name.length);
+    const lower=input.toLowerCase().trim();
+    let pc=sorted.find(m=>lower===m.name.toLowerCase() || lower.startsWith(m.name.toLowerCase()+' '));
+    let rest=input.trim();
+    if(!pc){
+      const m=/^order\s+(.+?)\s+(attack|shoot|cast|withdraw|retreat|press|open|hold)\b/i.exec(input);
+      if(m){ pc=findPc(m[1]); if(pc) rest=input.slice(input.toLowerCase().indexOf(m[2].toLowerCase(),m[1].length)).trim(); }
+    } else rest=input.trim().slice(pc.name.length).trim();
+    if(!pc) return false;
+    const r=rest.replace(/^to\s+/i,'').trim();
+    if(/^(withdraw|withdraws|fighting withdrawal)\b/i.test(r)) return setPcCombatOrder(pc,{action:'withdraw'});
+    if(/^(retreat|retreats|run away|runs away)\b/i.test(r)) return setPcCombatOrder(pc,{action:'retreat'});
+    if(/^(hold|holds)(?: range| position)?\b/i.test(r)){ const current=state.combat.pcOrders[pc.name.toLowerCase()]||{action:'hold'}; return setPcCombatOrder(pc,{...current,rangeIntent:'hold'}); }
+    if(/^(press|presses|close|closes)\b/i.test(r)){
+      const target=combatTargetFromText(r.replace(/^(press|presses|close|closes)(?:\s+(?:on|with|toward))?\s*/i,'').replace(/\s+and\s+attacks?.*$/i,''));
+      const current=state.combat.pcOrders[pc.name.toLowerCase()]||{action:/and\s+attacks?/i.test(r)?'melee':'hold'};
+      if(target) current.targetId=target.id; current.rangeIntent='press'; if(/and\s+attacks?/i.test(r)) current.action='melee'; return setPcCombatOrder(pc,current);
+    }
+    if(/^(open|opens|give ground|gives ground)\b/i.test(r)){
+      const target=combatTargetFromText(r.replace(/^(open|opens|give ground|gives ground)(?:\s+(?:from|against))?\s*/i,'').replace(/\s+and\s+attacks?.*$/i,''));
+      const current=state.combat.pcOrders[pc.name.toLowerCase()]||{action:'hold'};
+      if(target) current.targetId=target.id; current.rangeIntent='open'; if(/and\s+attacks?/i.test(r)) current.action='melee'; return setPcCombatOrder(pc,current);
+    }
+    const cast=/^(?:cast|casts)\s+(charm person|magic missile|sleep|shield)(?:\s+(?:at|on)\s+(.+))?$/i.exec(r);
+    if(cast){ const spell=cast[1].replace(/\b\w/g,c=>c.toUpperCase()).replace('Magic Missile','Magic Missile').replace('Charm Person','Charm Person'); const target=cast[2]?combatTargetFromText(cast[2]):null; return setPcCombatOrder(pc,{action:'spell',spell,targetId:target?.id||null}); }
+    const missile=/^(?:shoot|shoots|fire|fires)\s+(?:at\s+)?(.+)$/i.exec(r);
+    if(missile){ const band=/\b(short|medium|long)\s+range\b/i.exec(missile[1])?.[1]?.toLowerCase()||'medium'; const target=combatTargetFromText(missile[1]); if(!target){write('Which foe is the missile target?','warning');return true;} return setPcCombatOrder(pc,{action:'missile',targetId:target.id,rangeBand:band}); }
+    const melee=/^(?:attack|attacks|strike|strikes|fight|fights)\s+(?:at\s+)?(.+)$/i.exec(r);
+    if(melee){ const target=combatTargetFromText(melee[1]); if(!target){write('Which foe is the melee target?','warning');return true;} return setPcCombatOrder(pc,{action:'melee',targetId:target.id}); }
+    return false;
+  }
+
+  function applyCombatPlan(orders){
+    if(!combatActive() || !Array.isArray(orders)) return false;
+    let any=false;
+    for(const entry of orders){
+      const pc=findPc(entry.actor); if(!pc) continue;
+      const action=String(entry.action||'').toLowerCase(); const target=entry.target?findMonster(entry.target):null;
+      if(['melee','missile','spell','withdraw','retreat','hold'].includes(action)){
+        const order={action,targetId:target?.id||null};
+        if(entry.spell) order.spell=entry.spell;
+        if(entry.rangeIntent && ['press','hold','open'].includes(String(entry.rangeIntent).toLowerCase())) order.rangeIntent=String(entry.rangeIntent).toLowerCase();
+        if(entry.rangeBand && ['short','medium','long'].includes(String(entry.rangeBand).toLowerCase())) order.rangeBand=String(entry.rangeBand).toLowerCase();
+        any=setPcCombatOrder(pc,order)||any;
+      }
+    }
+    return any;
+  }
+
+  function autoPcOrders(){
+    if(!combatActive()){write('No combat is in progress.','warning');return;}
+    if(state.combat.initiative){write('Orders are locked during round resolution.','warning');return;}
+    const foes=livingHostiles(); if(!foes.length)return;
+    let index=0;
+    for(const pc of livingParty()){
+      if(state.combat.pcOrders[pc.name.toLowerCase()]) continue;
+      const target=foes[index++%foes.length]; const item=equippedWeaponItem(pc);
+      if(item?.missile) setPcCombatOrder(pc,{action:'missile',targetId:target.id,rangeBand:'medium'});
+      else if(pc.spellbook?.length && pc.spellReady && ['Magic Missile','Sleep'].includes(spellReadyName(pc))) setPcCombatOrder(pc,{action:'spell',spell:spellReadyName(pc),targetId:target.id});
+      else setPcCombatOrder(pc,{action:'melee',targetId:target.id});
+    }
+  }
+
+  function chooseMonsterOrders(){
+    if(!combatActive()) return;
+    const pcs=livingParty(); state.combat.monsterOrders={}; if(!pcs.length)return;
+    let i=0;
+    for(const m of livingHostiles()){
+      let engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean); let target=engaged[0]||pcs[i++%pcs.length];
+      state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name};
+    }
+  }
+
+  function shiftEngagement(pc,monster,intent){
+    let e=getEngagement(pc,monster); if(!e){ setEngagement(pc,monster,'normal'); e=getEngagement(pc,monster); write(`${pc.name} and ${monster.name} close to NORMAL melee distance.`); return; }
+    const idx=RANGE_ORDER.indexOf(e.range); let next=idx;
+    if(intent==='press') next=Math.max(0,idx-1); else if(intent==='open') next=Math.min(RANGE_ORDER.length-1,idx+1); else return;
+    if(next!==idx){ e.range=RANGE_ORDER[next]; write(`${pc.name} ${intent==='press'?'presses inward':'opens the distance'} against ${monster.name}: ${e.range.toUpperCase()}.`); }
+  }
+
+  function freeAttackAgainstFollower(pc,monster){
+    if(pc.dead || !monsterCanFight(monster))return;
+    const item=equippedWeaponItem(pc); if(!item)return;
+    write(`${monster.name} follows ${pc.name}'s fighting withdrawal; ${pc.name} receives the withdrawal attack at the end of the foe's movement.`,'system');
+    pcWeaponAttack(pc,monster,'melee','normal',true);
+  }
+
+  function movementPhase(side){
+    if(!combatActive())return;
+    if(side==='pc'){
+      for(const pc of livingParty()){
+        pc.retreatingThisRound=false; pc.withdrewThisRound=false;
+        const o=state.combat.pcOrders[pc.name.toLowerCase()]||{action:'hold'};
+        if(o.action==='retreat'){
+          pc.retreatingThisRound=true; clearAllPcEngagements(pc); write(`${pc.name} retreats at encounter speed, giving up shield protection and exposing a +2 attack bonus to foes later this round.`,'system'); continue;
+        }
+        if(o.action==='withdraw'){
+          pc.withdrewThisRound=true; clearAllPcEngagements(pc); write(`${pc.name} makes a fighting withdrawal.`,'system'); continue;
+        }
+        const target=o.targetId?state.combat.monsters.find(m=>m.id===o.targetId):null;
+        if(target && monsterStillPresent(target) && (o.action==='melee' || o.rangeIntent)) shiftEngagement(pc,target,o.rangeIntent||'hold');
+      }
+    } else {
+      for(const monster of livingHostiles()){
+        const o=state.combat.monsterOrders[monster.id]; if(!o)continue; const pc=findPc(o.targetName); if(!pc||pc.dead)continue;
+        if(o.action==='melee'){
+          const wasWithdrawn=Boolean(pc.withdrewThisRound); if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal');
+          if(wasWithdrawn) freeAttackAgainstFollower(pc,monster);
+        }
+      }
+    }
+  }
+
+  function missilePhase(side,eligibleIds=null){
+    if(side==='pc'){
+      for(const pc of state.party){ const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()); const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='missile')continue; const target=state.combat.monsters.find(m=>m.id===o.targetId); pcWeaponAttack(pc,target,'missile',o.rangeBand||'medium',eligible,Boolean(eligibleIds)); }
+    }
+    // The initial RC test monsters use melee/natural attacks. Missile-armed monster
+    // profiles can plug into this phase later without changing the round engine.
+  }
+
+  function magicPhase(side,eligibleIds=null){
+    if(side!=='pc')return;
+    for(const pc of state.party){ const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()); const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action==='spell') castPcSpell(pc,o,eligible,Boolean(eligibleIds)); }
+  }
+
+  function meleePhase(side,eligibleIds=null){
+    if(side==='pc'){
+      for(const pc of state.party){ const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()); const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='melee')continue; const target=state.combat.monsters.find(m=>m.id===o.targetId); if(!target)continue; const e=getEngagement(pc,target); if(!e && !eligibleIds){write(`${pc.name} cannot reach ${target.name} for a hand-to-hand attack this phase.`,'warning');continue;} pcWeaponAttack(pc,target,'melee',e?.range||'normal',eligible,Boolean(eligibleIds)); }
+    } else {
+      for(const m of state.combat.monsters){ const eligible=!eligibleIds||eligibleIds.has(m.id); const o=state.combat.monsterOrders[m.id]; if(!o?.targetName)continue; const pc=findPc(o.targetName); if(!pc)continue; if(!getEngagement(pc,m) && !eligibleIds)continue; monsterAttack(m,pc,eligible,Boolean(eligibleIds)); }
+    }
+  }
+
+  function moralePhase(side){ if(side==='monster') monsterMoralePhase(); }
+
+  function decrementCombatEffects(){
+    for(const pc of state.party){ if(pc.shieldSpellRounds>0) pc.shieldSpellRounds=Math.max(0,pc.shieldSpellRounds-1); delete pc.retreatingThisRound; delete pc.withdrewThisRound; }
+  }
+
+  function sideLabel(side){return side==='pc'?'PCs':'foes';}
+
+  function resolveSideTurn(side){
+    write(`— ${sideLabel(side).toUpperCase()} TURN —`,'system');
+    moralePhase(side); if(combatConcluded())return;
+    write('MOVEMENT','system'); movementPhase(side); if(combatConcluded())return;
+    write('MISSILE','system'); missilePhase(side); if(combatConcluded())return;
+    write('MAGIC','system'); magicPhase(side); if(combatConcluded())return;
+    write('HAND-TO-HAND','system'); meleePhase(side);
+  }
+
+  function phaseEligible(side){
+    if(side==='pc') return new Set(livingParty().map(p=>p.name.toLowerCase()));
+    return new Set(livingHostiles().map(m=>m.id));
+  }
+
+  function resolveSimultaneousPhase(name,resolver){
+    const pcEligible=phaseEligible('pc'), monsterEligible=phaseEligible('monster');
+    write(`${name.toUpperCase()} — SIMULTANEOUS`,'system');
+    resolver('pc',pcEligible); resolver('monster',monsterEligible);
+  }
+
+  function resolveTiedRound(){
+    write('Initiative is tied. Actions are simultaneous within each phase; phases still occur in order.','system');
+    moralePhase('monster'); if(combatConcluded())return finishCombatRound();
+    resolveSimultaneousPhase('movement',(side)=>movementPhase(side)); if(combatConcluded())return finishCombatRound();
+    resolveSimultaneousPhase('missile',missilePhase); if(combatConcluded())return finishCombatRound();
+    resolveSimultaneousPhase('magic',magicPhase); if(combatConcluded())return finishCombatRound();
+    resolveSimultaneousPhase('hand-to-hand',meleePhase); finishCombatRound();
+  }
+
+  function resolvePhasedRoundAfterMovementChoice(){
+    const c=state.combat, winner=c.initiative.winner, loser=winner==='pc'?'monster':'pc';
+    write(`MOVEMENT — ${sideLabel(c.moveOrder[0])} first, then ${sideLabel(c.moveOrder[1])}.`,'system');
+    movementPhase(c.moveOrder[0]); if(!combatConcluded())movementPhase(c.moveOrder[1]); if(combatConcluded())return finishCombatRound();
+    write(`MISSILE — ${sideLabel(winner)} first.`,'system'); missilePhase(winner); if(!combatConcluded())missilePhase(loser); if(combatConcluded())return finishCombatRound();
+    write(`MAGIC — ${sideLabel(winner)} first.`,'system'); magicPhase(winner); if(!combatConcluded())magicPhase(loser); if(combatConcluded())return finishCombatRound();
+    write(`HAND-TO-HAND — ${sideLabel(winner)} first.`,'system'); meleePhase(winner); if(!combatConcluded())meleePhase(loser); finishCombatRound();
+  }
+
+  function chooseMovementOrder(choice){
+    if(!combatActive() || !state.combat.awaitingMoveChoice){ write('The combat is not waiting for a movement-order choice.','warning'); return; }
+    const winner=state.combat.initiative.winner, loser=winner==='pc'?'monster':'pc';
+    const wantSelfFirst=choice==='winner'; state.combat.moveOrder=wantSelfFirst?[winner,loser]:[loser,winner]; state.combat.awaitingMoveChoice=false;
+    addEvent(`Phase initiative movement order: ${sideLabel(state.combat.moveOrder[0])} first.`);
+    resolvePhasedRoundAfterMovementChoice();
+  }
+
+  function combatConcluded(){
+    if(!combatActive())return true;
+    return livingParty().length===0 || state.combat.monsters.every(m=>!monsterCanFight(m));
+  }
+
+  function finishCombatIfConcluded(){
+    if(!combatActive() || !combatConcluded()) return false;
+    const c=state.combat; const pcs=livingParty(); const hostile=c.monsters.filter(monsterCanFight);
+    if(!pcs.length){ write('COMBAT ENDS — no player character remains able to fight. The fallen remain in the campaign roster.','error'); addEvent('Combat ended in party defeat.'); }
+    else if(!hostile.length){
+      const killed=c.monsters.filter(m=>m.dead); const fled=c.monsters.filter(m=>m.fled); const neutralized=c.monsters.filter(m=>m.sleeping||m.charmed);
+      write(`COMBAT ENDS — opposition neutralized.${killed.length?` Killed: ${killed.length}.`:''}${fled.length?` Fled: ${fled.length}.`:''}${neutralized.length?` Asleep/charmed: ${neutralized.length}.`:''} XP is not distributed at combat end; adventure-end XP will be handled by the campaign/company system.`,'system');
+      addEvent('Combat ended; XP distribution deferred to adventure-end company accounting.');
+    }
+    c.active=false; c.initiative=null; c.awaitingMoveChoice=false; c.moveOrder=null; updatePanels(); return true;
+  }
+
+  function finishCombatRound(){
+    if(!combatActive())return;
+    decrementCombatEffects();
+    if(finishCombatIfConcluded())return;
+    const c=state.combat; write(`— END OF ROUND ${c.round} —`,'system'); c.round++; c.pcOrders={}; c.monsterOrders={}; c.initiative=null; c.moveOrder=null; c.awaitingMoveChoice=false; updatePanels();
+    write(`Round ${c.round}: give new orders, then “resolve round”.`,'system');
+  }
+
+  function resolveCombatRound(){
+    if(!combatActive()){write('No combat is in progress.','warning');return;}
+    const c=state.combat; if(c.awaitingMoveChoice){write('Choose movement order first: “move us first” or “make them move first”.','warning');return;}
+    if(c.initiative){write('This round is already being resolved.','warning');return;}
+    if(!livingParty().length || !livingHostiles().length){finishCombatIfConcluded();return;}
+    chooseMonsterOrders();
+    const pc=rng(6),monster=rng(6); let winner=null; if(pc>monster)winner='pc';else if(monster>pc)winner='monster';
+    c.initiative={pc,monster,winner}; addEvent(`Combat round ${c.round} initiative: PCs ${pc}, foes ${monster}${winner?`; ${sideLabel(winner)} win`:'; tie'}.`);
+    write(`INITIATIVE — PCs ${pc}; foes ${monster}. ${winner?`${sideLabel(winner)} win.`:'TIE — the round is simultaneous within phases.'}`,'system');
+    if(!winner){ resolveTiedRound(); return; }
+    if((state.rules.initiativeMode||'RAW')==='RAW'){
+      const loser=winner==='pc'?'monster':'pc'; resolveSideTurn(winner); if(!combatConcluded())resolveSideTurn(loser); finishCombatRound();
+    } else {
+      write('MORALE / ONGOING EFFECTS','system');
+      moralePhase(winner); if(!combatConcluded()) moralePhase(winner==='pc'?'monster':'pc');
+      if(combatConcluded()){ finishCombatRound(); return; }
+      c.awaitingMoveChoice=true;
+      write(`${sideLabel(winner)} won initiative. The winner chooses MOVEMENT order. Type “move us first” / “make them move first”${winner==='monster'?' — for monster-won initiative the referee chooses automatically in this test build.':''}.`,'system');
+      if(winner==='monster'){
+        // Monster side uses the straightforward tactical choice in this core build:
+        // it makes the PCs commit movement first, then responds.
+        c.moveOrder=['pc','monster']; c.awaitingMoveChoice=false; write('The foes choose to make the PCs move first.','system'); resolvePhasedRoundAfterMovementChoice();
+      }
+    }
+    updatePanels();
+  }
+
+  function combatHelp(){
+    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state\nAldric attacks goblin 1 — melee order\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve the round\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
+  }
+
+  function handleCombatDirect(input,normalized){
+    if(normalized==='combat' || normalized==='combat status') {combatStatus();return true;}
+    if(normalized==='combat help'){combatHelp();return true;}
+    let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(Number(m[1]),m[2]);return true;}
+    m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(1,m[1]);return true;}
+    if(normalized==='resolve round' || normalized==='resolve combat round' || normalized==='roll initiative'){resolveCombatRound();return true;}
+    if(normalized==='auto orders' || normalized==='automatic orders'){autoPcOrders();return true;}
+    if(['move us first','we move first','pcs move first','party moves first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='pc'?'winner':'loser');return true;}
+    if(['make them move first','they move first','foes move first','monsters move first','enemy moves first','enemies move first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='monster'?'winner':'loser');return true;}
+    if(normalized==='initiative mode raw' || normalized==='initiative raw'){setInitiativeMode('RAW');return true;}
+    if(normalized==='initiative mode phases' || normalized==='initiative mode phased' || normalized==='phase based initiative' || normalized==='phase-based initiative'){setInitiativeMode('PHASED');return true;}
+    if(/^(memorize|prepare)\s+/i.test(input.trim())){prepareSpellCommand(input);return true;}
+    if(combatActive() && parsePcCombatCommand(input))return true;
+    if(combatActive() && /^(everyone|everybody|all)\s+attacks?$/i.test(normalized)){autoPcOrders();return true;}
+    return false;
+  }
+
+
   function status() {
     if (state.mode === 'wilderness') {
       const hex = currentHex();
-      write(`Mode: wilderness hex crawl\nLocation: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nHex scale: 6 miles\nTime: ${clockText()}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nAI backend: ${WORKER_URL}`);
+      write(`Mode: wilderness hex crawl\nLocation: ${hex.name}\nTerrain: ${TERRAIN[hex.terrain].name}\nHex scale: 6 miles\nTime: ${clockText()}\nTravel used today: ${state.travelUsed}/${DAILY_TRAVEL_ALLOWANCE} clear-equivalent miles\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nInitiative: ${state.rules.initiativeMode||'RAW'}\nRetainer XP: ½ share (Mentzer BECMI)\nCombat: ${state.combat?.active?`round ${state.combat.round}`:'none'}\nAI backend: ${WORKER_URL}`);
     } else {
-      write(`Mode: site/dungeon exploration\nLocation: ${currentSite().name}\nTime: ${clockText()}\nExploration turns elapsed: ${state.turn}\nTorch: ${state.torchLit ? `${state.torchMinutes} minutes remaining` : 'not lit'}\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nAI backend: ${WORKER_URL}`);
+      write(`Mode: site/dungeon exploration\nLocation: ${currentSite().name}\nTime: ${clockText()}\nExploration turns elapsed: ${state.turn}\nTorch: ${state.torchLit ? `${state.torchMinutes} minutes remaining` : 'not lit'}\nParty size: ${state.party.length}\nTreasury: ${formatMoney(state.treasuryCp)}\nWeapon damage: ${state.rules.weaponDamageMode}\nInitiative: ${state.rules.initiativeMode||'RAW'}\nRetainer XP: ½ share (Mentzer BECMI)\nCombat: ${state.combat?.active?`round ${state.combat.round}`:'none'}\nAI backend: ${WORKER_URL}`);
     }
   }
 
@@ -1744,7 +2502,7 @@
     const moneyRoll=rollDice(3,6); const startingGp=moneyRoll.total*10; const startingMoneyCp=moneyCp(startingGp);
     const cha=charismaProfile(abilities.cha);
     const member={name,sex:sex||null,className,role:`${className} 1`,level:1,xp:0,xpBonus:xpBonusFor(className,abilities),alignment,abilities:{...abilities},hp,maxHp:hp,ac:9-abilityAdjustment(abilities.dex),thac0:19,saves:{...LEVEL_ONE_SAVES[className]},spellSaveAdjustment:abilityAdjustment(abilities.wis),reactionAdjustment:cha.reaction,maxRetainers:cha.maxRetainers,retainerMorale:cha.retainerMorale,matrixSize:characterMatrixSize(className),inventory:[],equippedWeapon:null,equippedArmor:null,equippedShield:false,background,startingMoneyCp,startingMoneyUnspentCp:startingMoneyCp,weaponMastery:{enabled:false,latentChoices:className==='Fighter'?4:(rule.demihuman?0:2),demihumanBasicAll:Boolean(rule.demihuman)}};
-    if(rule.spellbook) member.spellbook=['Read Magic',spellChoice || ['Charm Person','Magic Missile','Sleep','Shield'][rng(4)-1]];
+    if(rule.spellbook){ member.spellbook=['Read Magic',spellChoice || ['Charm Person','Magic Missile','Sleep','Shield'][rng(4)-1]]; member.memorizedSpell=member.spellbook[1]; member.spellReady=true; member.spellPendingRest=false; member.shieldSpellRounds=0; }
     return {member,hpRoll,conAdj,moneyRoll,startingGp};
   }
 
@@ -1851,8 +2609,8 @@
     const className=member.className || (parsed?.[1]||'Fighter').trim();
     const level=member.level || Number(parsed?.[2]||1);
     const abilities=member.abilities || {str:10,int:10,wis:10,dex:10,con:10,cha:10};
-    const cha=charismaProfile(abilities.cha??10); const result={name:member.name||'Adventurer',sex:member.sex||null,className,role:`${className} ${level}`,level,xp:member.xp||0,alignment:member.alignment||'Neutral',abilities,hp:member.hp||1,maxHp:member.maxHp||member.hp||1,ac:member.ac??9,thac0:member.thac0||19,saves:member.saves||({...LEVEL_ONE_SAVES[className]}),spellSaveAdjustment:member.spellSaveAdjustment??abilityAdjustment(abilities.wis??10),reactionAdjustment:member.reactionAdjustment??cha.reaction,maxRetainers:member.maxRetainers??cha.maxRetainers,retainerMorale:member.retainerMorale??cha.retainerMorale,matrixSize:member.matrixSize||characterMatrixSize(className),inventory:Array.isArray(member.inventory)?member.inventory:[],equippedWeapon:member.equippedWeapon||null,equippedArmor:member.equippedArmor||null,equippedShield:Boolean(member.equippedShield),background:member.background||'',startingMoneyCp:member.startingMoneyCp||0,startingMoneyUnspentCp:member.startingMoneyUnspentCp ?? member.startingMoneyCp ?? 0,weaponMastery:member.weaponMastery||{enabled:false,latentChoices:className==='Fighter'?4:(['Dwarf','Elf','Halfling'].includes(className)?0:2),demihumanBasicAll:['Dwarf','Elf','Halfling'].includes(className)}};
-    if(member.spellbook) result.spellbook=member.spellbook;
+    const cha=charismaProfile(abilities.cha??10); const result={name:member.name||'Adventurer',sex:member.sex||null,className,role:`${className} ${level}`,level,xp:member.xp||0,alignment:member.alignment||'Neutral',abilities,hp:member.hp??1,maxHp:member.maxHp||Math.max(1,member.hp||1),dead:Boolean(member.dead || Number(member.hp)===0),ac:member.ac??9,thac0:member.thac0||19,saves:member.saves||({...LEVEL_ONE_SAVES[className]}),spellSaveAdjustment:member.spellSaveAdjustment??abilityAdjustment(abilities.wis??10),reactionAdjustment:member.reactionAdjustment??cha.reaction,maxRetainers:member.maxRetainers??cha.maxRetainers,retainerMorale:member.retainerMorale??cha.retainerMorale,matrixSize:member.matrixSize||characterMatrixSize(className),inventory:Array.isArray(member.inventory)?member.inventory:[],equippedWeapon:member.equippedWeapon||null,equippedArmor:member.equippedArmor||null,equippedShield:Boolean(member.equippedShield),background:member.background||'',startingMoneyCp:member.startingMoneyCp||0,startingMoneyUnspentCp:member.startingMoneyUnspentCp ?? member.startingMoneyCp ?? 0,weaponMastery:member.weaponMastery||{enabled:false,latentChoices:className==='Fighter'?4:(['Dwarf','Elf','Halfling'].includes(className)?0:2),demihumanBasicAll:['Dwarf','Elf','Halfling'].includes(className)}};
+    if(member.spellbook){ result.spellbook=member.spellbook; result.memorizedSpell=member.memorizedSpell||member.spellbook[1]||member.spellbook[0]; result.spellReady=member.spellReady!==false; result.spellPendingRest=Boolean(member.spellPendingRest); result.shieldSpellRounds=Number(member.shieldSpellRounds)||0; }
     return result;
   }
 
@@ -1870,6 +2628,7 @@
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
     if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
     merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
+    state=merged; normalizeCombatState(); merged=state;
     return merged;
   }
 
@@ -1899,7 +2658,55 @@
   }
 
   function help() {
-    write(`COMMANDS\nlook — repeat the current description\ncreate party — open the roster; add one or more adventurers at any time, roll 3d6, enter your own rolled scores, use the name generator, or quick-generate 1–12 with/without purchased equipment\n\nNATURAL-LANGUAGE INTENT\nSpeak as you would to a referee: “head toward Stallanford”, “follow the river”, “let's resupply”, “we need a mule”, “buy a rope”, or “what's the talk around here?” The engine translates intent into legal actions and asks when the meaning is ambiguous.\n\nPENHALIGON & EQUIPMENT\nwares — list the current shop's stock\nbuy 4 torches / buy rope / buy a sword for Aldric\nrumors — listen for local talk at the inn\nfunds — expedition treasury\nequip Aldric with normal sword — assign/equip purchased gear\n\nWEAPON RULES\nweapon mode raw — Rules Cyclopedia listed weapon damage\nweapon mode matrix — contextual (RC) weapon matrix\nweapon audit on/off — preserve side-by-side audit setting for combat\nweapon dagger — inspect RAW and contextual damage\nmatrix dagger / medium / hard / close — inspect one contextual lookup (short/medium/long accepted for ranged bands)\n\nWILDERNESS HEX TRAVEL\nn, ne, se, s, sw, nw — cross one adjacent six-mile hex\nenter / leave — enter or leave a settlement/site\ncamp — spend the night and consume rations\n\nSITE AND DUNGEON MOVEMENT\nnorth, south, east, west, up, down — move through keyed exits\nsearch / wait / light torch\n\nGENERAL\nparty / inventory / status / events\nroll 2d6\nsave / load\nreferee [question]\nnew game / clear`);
+    write(`COMMANDS
+look — repeat the current description
+create party — open the roster; add adventurers at any time, roll 3d6, enter your own scores, use the name generator, or quick-generate 1–12 with/without purchased equipment
+
+COMBAT
+combat help — full combat command list
+encounter 4 goblins — explicit isolated engine test encounter
+combat — current round, hostiles, orders, and melee ranges
+Aldric attacks goblin 1 / Corwin shoots goblin 2 / Elwyn casts sleep
+Aldric presses goblin 1 / opens from goblin 1 / withdraws / retreats
+auto orders — fill missing PC orders
+resolve round — roll initiative and resolve the combat round
+initiative mode raw — RC side-based turns
+initiative mode phases — phase-based; initiative winner chooses which side moves first
+move us first / make them move first — movement-order choice after a PC initiative win in phase mode
+memorize Elwyn sleep — selected spell becomes ready after the next full night's rest
+
+NATURAL-LANGUAGE INTENT
+Speak as you would to a referee: “head toward Stallanford”, “follow the river”, “let's resupply”, or a combat plan. The engine translates supported intent into deterministic actions and asks when meaning is ambiguous.
+
+PENHALIGON & EQUIPMENT
+wares — list the current shop's stock
+buy 4 torches / buy rope / buy a sword for Aldric
+rumors — listen for local talk at the inn
+funds — expedition treasury
+equip Aldric with normal sword — assign/equip purchased gear
+
+WEAPON RULES
+weapon mode raw — Rules Cyclopedia listed weapon damage
+weapon mode matrix — contextual (RC) weapon matrix
+weapon audit on/off — compare both damage systems during successful weapon hits
+weapon dagger — inspect RAW and contextual damage
+matrix dagger / medium / hard / close — inspect one contextual lookup
+
+WILDERNESS HEX TRAVEL
+n, ne, se, s, sw, nw — cross one adjacent six-mile hex
+enter / leave — enter or leave a settlement/site
+camp — spend the night, consume rations, and refresh memorized daily spells
+
+SITE AND DUNGEON MOVEMENT
+north, south, east, west, up, down — move through keyed exits
+search / wait / light torch
+
+GENERAL
+party / inventory / status / events
+roll 2d6
+save / load
+referee [question]
+new game / clear`);
   }
 
   function locationContext() {
@@ -1954,9 +2761,9 @@
 
   function intentInterpreterPrompt(playerInput) {
     const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
-    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
+    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, COMBAT_PLAN, COMBAT_STATUS, RESOLVE_ROUND, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"orders\":[],\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
 - BUY means the player is actually purchasing something; copy their requested purchase phrase into purchase.
-- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\n\nPLAYER INPUT:\n${playerInput}`;
+- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, COMBAT_PLAN may include orders:[{actor,action,target,spell,rangeIntent,rangeBand}]. action is melee, missile, spell, withdraw, retreat, or hold. rangeIntent is press, hold, or open. Use only the visible PC and foe names. RESOLVE_ROUND resolves declared orders.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>m.name)}) : 'none'}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function extractJsonObject(text) {
@@ -2033,6 +2840,9 @@
       case 'STATUS': status(); return true;
       case 'INVENTORY': inventory(); return true;
       case 'PARTY': party(); return true;
+      case 'COMBAT_STATUS': combatStatus(); return true;
+      case 'RESOLVE_ROUND': resolveCombatRound(); return true;
+      case 'COMBAT_PLAN': return applyCombatPlan(intent.orders||[]);
       case 'CLARIFY': write(intent.clarification || 'What exactly do you want the party to do?','warning'); return true;
       case 'REFEREE': return false;
       case 'UNSUPPORTED': write(intent.clarification || 'That action is not yet implemented in this prototype.','warning'); return true;
@@ -2049,7 +2859,7 @@
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
 
     return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
-Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,hp:m.hp,maxHp:m.maxHp,asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function friendlyAiError(error, status) {
@@ -2143,6 +2953,8 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
+    if (handleCombatDirect(input,normalized)) return;
+
     if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
     if (normalized === 'wares' || normalized === 'shop' || normalized === 'list wares') return listWares();
     if (normalized.startsWith('buy ')) return buyCommand(input);
@@ -2167,6 +2979,10 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     }
 
     // Layer 1: explicit engine commands remain deterministic and require no AI call.
+    if (combatActive()) {
+      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
+      if(!safeDuringCombat){ write('Combat is in progress. Give combat orders or type “combat help”.','warning'); return; }
+    }
     if (directDirection) return move(directDirection);
     if (naturalDirection) return move(naturalDirection);
     if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
@@ -2223,7 +3039,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build fixes equipped quick-party generation, retains the class-aware male/female name generator from the attached character-sheet name lists, and allows the active roster to be expanded during an existing campaign. Party creation supports browser rolls, entered table rolls, and quick generation of 1–12 adventurers with or without legally purchased starting equipment. Penhaligon provisioning, rumors, the optional (RC)-only weapon matrix, and the natural-language hex crawl remain intact.','system');
+    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -2280,6 +3096,8 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
   rawWeaponsButton.addEventListener('click',()=>setWeaponMode('RAW'));
   matrixWeaponsButton.addEventListener('click',()=>setWeaponMode('MATRIX'));
   auditWeaponsButton.addEventListener('click',toggleWeaponAudit);
+  rawInitiativeButton.addEventListener('click',()=>setInitiativeMode('RAW'));
+  phasedInitiativeButton.addEventListener('click',()=>setInitiativeMode('PHASED'));
   rollAbilitiesButton.addEventListener('click',rollCreatorAbilities);
   enterAbilitiesButton.addEventListener('click',openManualAbilityEntry);
   applyManualAbilitiesButton.addEventListener('click',applyManualAbilities);
