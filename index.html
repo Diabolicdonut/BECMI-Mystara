@@ -274,7 +274,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.4';
+  const APP_VERSION = '0.3.5';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -2196,13 +2196,36 @@
     return false;
   }
 
+  function combatTargetsFromText(text){
+    const q=String(text||'').toLowerCase().replace(/[^a-z0-9\s-]/g,' ').replace(/\b(the|those|these|all|remaining)\b/g,' ').replace(/\s+/g,' ').trim();
+    const foes=livingHostiles();
+    if(!q) return foes;
+    const exact=foes.find(m=>m.name.toLowerCase()===q); if(exact) return [exact];
+    const singular=q.endsWith('s')?q.slice(0,-1):q;
+    const matches=foes.filter(m=>{
+      const n=m.name.toLowerCase();
+      const base=n.replace(/\s+\d+$/,'');
+      return n===q || base===q || base===singular || n.startsWith(q+' ') || n.startsWith(singular+' ');
+    });
+    return matches.length?matches:foes;
+  }
+
+  function groupCombatActors(actor){
+    const a=String(actor||'').toLowerCase().trim();
+    if(['party','the party','everyone','everybody','all','all of us','we','pcs','characters'].includes(a)) return livingParty();
+    const pc=findPc(actor); return pc?[pc]:[];
+  }
+
   function applyCombatPlan(orders){
     if(!combatActive() || !Array.isArray(orders)) return false;
-    let any=false;
+    let any=false, targetIndex=0;
     for(const entry of orders){
-      const pc=findPc(entry.actor); if(!pc) continue;
-      const action=String(entry.action||'').toLowerCase(); const target=entry.target?findMonster(entry.target):null;
-      if(['melee','missile','spell','withdraw','retreat','hold'].includes(action)){
+      const actors=groupCombatActors(entry.actor); if(!actors.length) continue;
+      const action=String(entry.action||'').toLowerCase();
+      if(!['melee','missile','spell','withdraw','retreat','hold'].includes(action)) continue;
+      const targets=combatTargetsFromText(entry.target);
+      for(const pc of actors){
+        const target=(action==='withdraw'||action==='retreat'||action==='hold')?null:targets[targetIndex++%Math.max(1,targets.length)];
         const order={action,targetId:target?.id||null};
         if(entry.spell) order.spell=entry.spell;
         if(entry.rangeIntent && ['press','hold','open'].includes(String(entry.rangeIntent).toLowerCase())) order.rangeIntent=String(entry.rangeIntent).toLowerCase();
@@ -2211,6 +2234,22 @@
       }
     }
     return any;
+  }
+
+  function parseLocalGroupCombat(input){
+    if(!combatActive()) return false;
+    const normalized=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
+    const closeAttack=/^(?:(?:the\s+)?party|everyone|everybody|all(?:\s+of\s+us)?|we)\s+(?:(?:move|moves|rush|rushes|charge|charges|close|closes|advance|advances)\s+(?:in|forward|up)?\s*(?:to|and)?\s*)?(?:attack|attacks|fight|fights|engage|engages|strike|strikes)(?:\s+(?:at\s+)?(.+))?$/i.exec(normalized);
+    if(!closeAttack) return false;
+    const targetText=(closeAttack[1]||'').trim();
+    const targets=combatTargetsFromText(targetText);
+    if(!targets.length){ write('Which foes does the party attack?','warning'); return true; }
+    let i=0;
+    for(const pc of livingParty()){
+      const target=targets[i++%targets.length];
+      setPcCombatOrder(pc,{action:'melee',targetId:target.id});
+    }
+    return true;
   }
 
   function autoPcOrders(){
@@ -2862,7 +2901,7 @@ new game / clear`);
     const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
     return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, COMBAT_PLAN, COMBAT_STATUS, RESOLVE_ROUND, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"orders\":[],\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
 - BUY means the player is actually purchasing something; copy their requested purchase phrase into purchase.
-- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, COMBAT_PLAN may include orders:[{actor,action,target,spell,rangeIntent,rangeBand}]. action is melee, missile, spell, withdraw, retreat, or hold. rangeIntent is press, hold, or open. Use only the visible PC and foe names. RESOLVE_ROUND resolves declared orders.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>m.name)}) : 'none'}\n\nPLAYER INPUT:\n${playerInput}`;
+- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, ordinary language should be interpreted as combat intent whenever reasonably possible; do not treat combat movement as wilderness MOVE. COMBAT_PLAN may include orders:[{actor,action,target,spell,rangeIntent,rangeBand}]. action is melee, missile, spell, withdraw, retreat, or hold. rangeIntent is press, hold, or open. Use only the visible PC and foe names. RESOLVE_ROUND resolves declared orders.\n- Group subjects such as “the party”, “everyone”, “everybody”, “all of us”, or “we” must be expanded into individual PC orders. “The party moves in to attack the goblins” means the living PCs close for melee and attack the visible goblins, distributing targets as needed. Do not spend a prepared spell unless the player actually says to cast it.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>({name:m.name,equipped:equippedWeaponItem(m)?.name||'unarmed',missile:Boolean(equippedWeaponItem(m)?.missile),preparedSpell:spellReadyName(m)||null,spellReady:Boolean(m.spellReady)}))}) : 'none'}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function extractJsonObject(text) {
@@ -3079,9 +3118,23 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     }
 
     // Layer 1: explicit engine commands remain deterministic and require no AI call.
+    // During combat, natural-language orders must reach the combat parser instead of
+    // being rejected by the exploration-command guard.
     if (combatActive()) {
       const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
-      if(!safeDuringCombat){ write('Combat is in progress. Give combat orders or type “combat help”.','warning'); return; }
+      if(!safeDuringCombat){
+        if(parseLocalGroupCombat(input)) return;
+        const localCombatIntent=parseLocalIntent(input);
+        if(localCombatIntent && ['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(String(localCombatIntent.kind||'').toUpperCase()) && await executeIntent(localCombatIntent,input)) return;
+        const aiCombatIntent=await interpretWithAi(input);
+        if(aiCombatIntent){
+          const combatKind=String(aiCombatIntent.kind||'').toUpperCase();
+          if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(combatKind) && await executeIntent(aiCombatIntent,input)) return;
+          if(combatKind==='REFEREE') return callReferee(input);
+        }
+        write('Combat is in progress. I could not turn that into legal combat orders. Try phrasing what the party or a named adventurer does, or type “combat help”.','warning');
+        return;
+      }
     }
     if (directDirection) return move(directDirection);
     if (naturalDirection) return move(naturalDirection);
@@ -3139,7 +3192,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map. Combat status now includes a party ready-reference for equipped/carried weapons, ammunition, spellbooks, and prepared-spell readiness. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics are hidden; hostile condition is conveyed descriptively, while observable armor, shields, body structure, and other physical protection are described in-world.','system');
+    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. Natural group combat language such as “the party moves in to attack the goblins” is parsed into individual combat orders before round resolution. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map. Combat status now includes a party ready-reference for equipped/carried weapons, ammunition, spellbooks, and prepared-spell readiness. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics are hidden; hostile condition is conveyed descriptively, while observable armor, shields, body structure, and other physical protection are described in-world.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
