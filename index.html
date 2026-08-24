@@ -134,7 +134,7 @@
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
@@ -169,7 +169,7 @@
       <section>
         <h2>COMBAT</h2>
         <div id="combatPanel"><p>No combat in progress.</p></div>
-        <p class="tiny">Type <strong>combat help</strong>. For isolated engine testing, <strong>encounter 4 goblins</strong> creates a clearly labeled test encounter without adding it to the campaign map.</p>
+        <p class="tiny">Type <strong>combat</strong> for the full combat state, <strong>combat party</strong> for a quick weapons/ammunition/spells reference, or <strong>combat help</strong> for commands. For isolated engine testing, <strong>encounter 4 goblins</strong> creates a clearly labeled test encounter without adding it to the campaign map.</p>
       </section>
 
       <section>
@@ -274,7 +274,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.1';
+  const APP_VERSION = '0.3.4';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -818,7 +818,11 @@
     phasedInitiativeButton.disabled = rules.initiativeMode === 'PHASED';
     auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
     if(combatPanel){
-      if(state.combat?.active){ const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length; combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${Object.keys(state.combat.pcOrders||{}).length}/${livingParty().length}<br>${state.combat.awaitingMoveChoice?'<strong>Movement-order choice required.</strong>':'Type <strong>combat</strong> for details.'}</p>`; }
+      if(state.combat?.active){
+        const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length;
+        const ready=state.party.filter(pc=>!pc.dead&&Number(pc.hp)>0).map(combatLoadoutHtml).join('');
+        combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${Object.keys(state.combat.pcOrders||{}).length}/${livingParty().length}<br>${state.combat.awaitingMoveChoice?'<strong>Movement-order choice required.</strong>':'Type <strong>combat</strong> for full details.'}</p><div class="tiny"><strong>READY REFERENCE</strong>${ready||'<br>No living adventurers.'}<br><em>Type combat party for carried weapons, ammunition, and spellbooks.</em></div>`;
+      }
       else combatPanel.innerHTML='<p>No combat in progress.</p>';
     }
     const site = currentSite();
@@ -1603,11 +1607,15 @@
   // initiative, or state changes.
 
   const COMBAT_MONSTERS = {
-    goblin:{name:'Goblin',ac:6,hd:0.875,hpKind:'1d8-1',move:30,thac0:19,morale:7,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'sword_short',damageMod:0,daylightPenalty:-1},
-    kobold:{name:'Kobold',ac:7,hd:0.5,hpKind:'1d4',move:30,thac0:19,morale:6,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'spear',damageMod:-1,daylightPenalty:0},
-    orc:{name:'Orc',ac:6,hd:1,hpKind:'1d8',move:40,thac0:19,morale:8,intelligence:7,alignment:'Chaotic',xp:10,size:'medium',protection:'soft',saveSpells:16,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:-1},
-    skeleton:{name:'Skeleton',ac:7,hd:1,hpKind:'1d8',move:20,thac0:19,morale:12,intelligence:0,alignment:'Chaotic',xp:10,size:'medium',protection:'hard',saveSpells:16,kind:'undead',weaponId:'sword_normal',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true},
-    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',saveSpells:16,kind:'animal',naturalDamage:'1d6',damageMod:0,daylightPenalty:0}
+    // AC, HP, HD, THAC0, morale, saves, Matrix size/protection, and similar
+    // mechanical values are referee-only. armorDesc is player-visible because
+    // it describes what an adventurer can actually observe. The engine converts
+    // those facts to Soft/Hard internally for Contextual Matrix resolution.
+    goblin:{name:'Goblin',ac:6,hd:0.875,hpKind:'1d8-1',move:30,thac0:19,morale:7,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',armorDesc:'patched leather armor and a small shield',saveSpells:16,kind:'humanoid',weaponId:'sword_short',damageMod:0,daylightPenalty:-1},
+    kobold:{name:'Kobold',ac:7,hd:0.5,hpKind:'1d4',move:30,thac0:19,morale:6,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',armorDesc:'light leather armor',saveSpells:16,kind:'humanoid',weaponId:'spear',damageMod:-1,daylightPenalty:0},
+    orc:{name:'Orc',ac:6,hd:1,hpKind:'1d8',move:40,thac0:19,morale:8,intelligence:7,alignment:'Chaotic',xp:10,size:'medium',protection:'soft',armorDesc:'hide and leather armor with a shield',saveSpells:16,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:-1},
+    skeleton:{name:'Skeleton',ac:7,hd:1,hpKind:'1d8',move:20,thac0:19,morale:12,intelligence:0,alignment:'Chaotic',xp:10,size:'medium',protection:'hard',armorDesc:'exposed rigid bone with scraps of old gear',saveSpells:16,kind:'undead',weaponId:'sword_normal',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true},
+    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:16,kind:'animal',naturalDamage:'1d6',damageMod:0,daylightPenalty:0}
   };
 
   const AMMO_RULES = {
@@ -1650,7 +1658,14 @@
     c.active=Boolean(c.active);
     c.round=Math.max(1,Number(c.round)||1);
     c.monsters=Array.isArray(c.monsters)?c.monsters:[];
-    for(const m of c.monsters){ m.moraleFirstHit=Boolean(m.moraleFirstHit); m.moraleQuarterHp=Boolean(m.moraleQuarterHp); }
+    for(const m of c.monsters){
+      m.moraleFirstHit=Boolean(m.moraleFirstHit); m.moraleQuarterHp=Boolean(m.moraleQuarterHp);
+      const profile=COMBAT_MONSTERS[m.type];
+      if(profile){
+        if(!m.armorDesc) m.armorDesc=profile.armorDesc||null;
+        if(!m.protection) m.protection=profile.protection||'soft';
+      }
+    }
     c.pcOrders=c.pcOrders&&typeof c.pcOrders==='object'?c.pcOrders:{};
     c.monsterOrders=c.monsterOrders&&typeof c.monsterOrders==='object'?c.monsterOrders:{};
     c.engagements=c.engagements&&typeof c.engagements==='object'?c.engagements:{};
@@ -1705,7 +1720,7 @@
 
   function createCombatMonster(type,index){
     const p=COMBAT_MONSTERS[type]; const hp=rollMonsterHp(p);
-    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
+    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
   }
 
   function startTestEncounter(count,type){
@@ -1716,7 +1731,7 @@
     const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
     state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0};
     addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}.`);
-    write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}\nThis is an explicit combat-engine test encounter, not a keyed campaign encounter. Give orders, then type “resolve round”.`,'system');
+    write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}\nThis is an explicit combat-engine test encounter, not a keyed campaign encounter. Type “combat” at any time to see party weapons, ammunition, spells, foes, and current orders. Give orders, then type “resolve round”.`,'system');
     combatStatus(); updatePanels();
   }
 
@@ -1740,9 +1755,79 @@
     return Object.values(state.combat.engagements).filter(e=>e.monsterId===monster.id).map(e=>({entry:e,pc:state.party.find(p=>p.name.toLowerCase()===e.pcName.toLowerCase())})).filter(x=>x.pc && !x.pc.dead && x.pc.hp>0);
   }
 
+  function monsterHealthDescription(m){
+    if(!m) return 'condition unclear';
+    if(m.dead || Number(m.hp)<=0) return 'dead';
+    if(m.fled) return 'fled from the fight';
+    if(m.sleeping) return 'asleep';
+    if(m.charmed) return 'no longer acting as a hostile';
+    const ratio=Math.max(0,Math.min(1,Number(m.hp)/Math.max(1,Number(m.maxHp)||1)));
+    if(ratio>=1) return 'appears unhurt';
+    if(ratio>=0.75) return 'lightly wounded';
+    if(ratio>=0.5) return 'visibly wounded';
+    if(ratio>=0.25) return 'badly wounded';
+    return 'reeling and barely able to continue';
+  }
+
+  function monsterProtectionDescription(m){
+    // Player-facing text reports only observable physical protection.
+    // Soft/Hard remains hidden referee-side Matrix data.
+    return m?.armorDesc || 'its protection is not yet clear';
+  }
+
   function combatMonsterLabel(m){
-    const conditions=[m.dead?'dead':null,m.fled?'fled':null,m.sleeping?'asleep':null,m.charmed?'charmed':null].filter(Boolean).join(', ');
-    return `${m.name} — HP ${Math.max(0,m.hp)}/${m.maxHp}, AC ${m.ac}${conditions?` (${conditions})`:''}`;
+    return `${m.name} — ${monsterHealthDescription(m)}; ${monsterProtectionDescription(m)}`;
+  }
+
+  function combatAmmoSummary(pc){
+    const weaponId=pc?.equippedWeapon?.itemId;
+    const rule=weaponId ? AMMO_RULES[weaponId] : null;
+    if(!rule) return null;
+    let remaining=0;
+    for(const list of [pc.inventory||[],state.partyInventory||[]]){
+      for(const rec of list) if(rec.itemId===rule.ammoId) remaining+=ammoRemaining(rec,rule.perPack);
+    }
+    return `${remaining} ${rule.label}${remaining===1?'':'s'} available`;
+  }
+
+  function combatCarriedWeapons(pc){
+    const equippedId=pc?.equippedWeapon?.itemId||null;
+    const found=[];
+    for(const rec of pc?.inventory||[]){
+      const item=SHOP_ITEMS[rec.itemId];
+      if(item?.kind!=='weapon') continue;
+      found.push(`${Number(rec.qty)>1?`${rec.qty}× `:''}${item.name}${rec.itemId===equippedId?' [EQUIPPED]':''}`);
+    }
+    if(!found.length && pc?.equippedWeapon?.name) found.push(`${pc.equippedWeapon.name} [EQUIPPED]`);
+    return found.length?found.join(', '):'none';
+  }
+
+  function combatSpellSummary(pc){
+    if(!pc?.spellbook?.length) return null;
+    const prepared=spellReadyName(pc)||'none';
+    const stateText=pc.spellReady?'READY':'SPENT';
+    const active=pc.shieldSpellRounds>0?` | Shield active (${pc.shieldSpellRounds} rounds)` : '';
+    return `Spellbook: ${pc.spellbook.join(', ')} | Prepared: ${prepared} [${stateText}]${active}`;
+  }
+
+  function combatLoadoutLine(pc){
+    const equipped=pc?.equippedWeapon?.name||'unarmed';
+    const ammo=combatAmmoSummary(pc);
+    const spell=combatSpellSummary(pc);
+    const condition=pc.dead?'DEAD':Number(pc.hp)<=0?'DOWN':'';
+    return `${pc.name}${condition?` [${condition}]`:''} — ${pc.className||pc.role} ${pc.level||1}; HP ${pc.hp}/${pc.maxHp}; AC ${pc.ac}; THAC0 ${pc.thac0||19}\n  Equipped weapon: ${equipped}${ammo?` (${ammo})`:''}\n  Carried weapons: ${combatCarriedWeapons(pc)}${spell?`\n  ${spell}`:''}`;
+  }
+
+  function combatLoadoutHtml(pc){
+    const equipped=pc?.equippedWeapon?.name||'unarmed';
+    const ammo=combatAmmoSummary(pc);
+    const spell=pc?.spellbook?.length ? `${esc(spellReadyName(pc)||'none')} ${pc.spellReady?'READY':'SPENT'}` : null;
+    return `<br><strong>${esc(pc.name)}</strong> — HP ${pc.hp}/${pc.maxHp}; ${esc(equipped)}${ammo?`; ${esc(ammo)}`:''}${spell?`; spell ${spell}`:''}`;
+  }
+
+  function combatPartyReference(){
+    if(!state.party.length){ write('No adventuring party has been created.','warning'); return; }
+    write(`PARTY COMBAT REFERENCE\n${state.party.map(combatLoadoutLine).join('\n\n')}\n\nCombat attacks currently use the equipped weapon. Carried alternatives are shown for reference; changing equipped weapons during a combat round is not yet implemented.`,'system');
   }
 
   function combatStatus(){
@@ -1750,7 +1835,8 @@
     const c=state.combat; const init=c.initiative ? `PC ${c.initiative.pc} / foes ${c.initiative.monster}${c.initiative.winner?` — ${c.initiative.winner==='pc'?'PCs':'foes'} won`:' — tied'}` : 'not rolled';
     const orders=state.party.map(pc=>{ const o=c.pcOrders[pc.name.toLowerCase()]; return `${pc.name}: ${pc.dead?'DEAD':o?combatOrderText(o):'no order'}`; }).join('\n');
     const engagements=Object.values(c.engagements).map(e=>`${e.pcName} ↔ ${state.combat.monsters.find(m=>m.id===e.monsterId)?.name||e.monsterId}: ${String(e.range).toUpperCase()}`).join('\n')||'none';
-    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\n\nHOSTILES\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}`,'system');
+    const loadout=state.party.map(combatLoadoutLine).join('\n\n');
+    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\n\nPARTY READY REFERENCE\n${loadout}\n\nHOSTILES — OBSERVABLE CONDITION / EQUIPMENT\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}`,'system');
   }
 
   function combatOrderText(o){
@@ -1819,6 +1905,9 @@
 
   function writeWeaponAudit(attacker,target,result){
     if(!state.rules.weaponAudit) return;
+    // Keep referee-side enemy mechanics hidden. Audit is exposed for the
+    // party's weapon tests, not as a way to reverse-engineer monster stats.
+    if(attacker?.type) return;
     const labelA=attacker.name||'attacker', labelT=target.name||'target';
     write(`WEAPON AUDIT — ${labelA} → ${labelT}: RAW ${result.raw} [${result.rawExpr}] · MATRIX ${result.matrix} [${result.matrixExpr}] · applied ${result.active} ${result.applied}.`,'system');
   }
@@ -1879,6 +1968,14 @@
       write(`${monster.name} is killed.`,'system'); addEvent(`${monster.name} killed (${source||'combat'}).`);
       if(!c.monsterFirstDeath){ c.monsterFirstDeath=true; queueMonsterMorale(`first death in the fight (${monster.name})`); }
       checkHalfDisabledMorale();
+    } else if(amount>0){
+      const condition=monsterHealthDescription(monster);
+      const line=condition==='lightly wounded' ? `${monster.name} is hurt, but still looks strong.` :
+        condition==='visibly wounded' ? `${monster.name} is visibly wounded.` :
+        condition==='badly wounded' ? `${monster.name} is badly wounded and struggling.` :
+        condition==='reeling and barely able to continue' ? `${monster.name} reels from the wound and looks barely able to continue.` :
+        `${monster.name} is wounded.`;
+      write(line,'system');
     }
   }
 
@@ -1905,11 +2002,11 @@
     const checkOne=(event,m)=>{
       if(!m || !monsterCanFight(m)) return true;
       const morale=Number(m.morale??7);
-      if(morale>=12){ write(`MORALE — ${event.reason}: ${m.name} has Morale 12 and continues fighting.`,'system'); return true; }
-      if(morale<=2){ write(`MORALE — ${event.reason}: ${m.name} has Morale 2 and automatically breaks.`,'system'); fleeMonster(m); return false; }
+      if(morale>=12){ write(`${m.name} shows no sign of breaking.`,'system'); return true; }
+      if(morale<=2){ write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false; }
       const r1=rng(6),r2=rng(6),total=r1+r2;
-      if(total>morale){ write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: ${m.name} fails and flees.`,'system'); fleeMonster(m); return false; }
-      write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: ${m.name} holds.`,'system'); return true;
+      if(total>morale){ write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false; }
+      write(`${m.name} steels itself and keeps fighting.`,'system'); return true;
     };
 
     for(const event of due){
@@ -1923,15 +2020,15 @@
       // the lowest remaining morale score as the conservative referee rule.
       const active=livingHostiles(); if(!active.length) break;
       const morale=Math.min(...active.map(m=>Number(m.morale??7)));
-      if(morale>=12){ write(`MORALE — ${event.reason}: Morale 12 foes continue fighting.`,'system'); continue; }
-      if(morale<=2){ write(`MORALE — ${event.reason}: Morale 2 foes automatically break.`,'system'); for(const m of active)fleeMonster(m); break; }
+      if(morale>=12){ write(`The remaining foes show no sign of breaking.`,'system'); continue; }
+      if(morale<=2){ write(`The remaining foes break and flee.`,'system'); for(const m of active)fleeMonster(m); break; }
       const r1=rng(6),r2=rng(6),total=r1+r2;
       if(total>morale){
-        write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: the remaining foes fail and flee.`,'system');
+        write(`The remaining foes lose their nerve and flee.`,'system');
         for(const m of active) fleeMonster(m);
         break;
       }
-      write(`MORALE — ${event.reason}: 2d6 ${r1}+${r2}=${total} vs ${morale}: the remaining foes hold.`,'system');
+      write(`The remaining foes hold their ground.`,'system');
     }
     c.monsterMoralePending=c.monsterMoraleQueue.length>0;
   }
@@ -1964,7 +2061,7 @@
     const result=attackRoll(pc,monster,kind,kind==='missile'?(rangeBand==='short'?1:rangeBand==='long'?-1:0):0);
     const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
     const attackName=item?.name||'unarmed strike';
-    write(`${pc.name} attacks ${monster.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total}; needs ${result.needed} vs AC ${result.targetAc} — ${result.hit?'HIT':'miss'}.`);
+    write(`${pc.name} attacks ${monster.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total} — ${result.hit?'HIT':'miss'}.`);
     if(kind==='missile' && item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18) pc.heavyCrossbowNeedsReload=true;
     if(!result.hit) return;
     if(!item){
@@ -1988,7 +2085,7 @@
     const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
     const weapon=monsterWeaponItem(monster);
     const attackName=monster.naturalDamage?'bite':(weapon?.name||'weapon');
-    write(`${monster.name} attacks ${pc.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total}; needs ${result.needed} vs AC ${result.targetAc} — ${result.hit?'HIT':'miss'}.`);
+    write(`${monster.name} attacks ${pc.name} with ${attackName} — ${result.hit?'HIT':'miss'}.`);
     if(!result.hit) return;
     let damage=0;
     if(monster.naturalDamage){ damage=Math.max(0,rollDamageExpression(monster.naturalDamage).total+(monster.damageMod||0)); }
@@ -2028,7 +2125,7 @@
       const target=state.combat.monsters.find(m=>m.id===order.targetId) || livingHostiles()[0]; if(!target){return;}
       if(target.immuneCharm || target.kind!=='humanoid'){ write(`${pc.name} casts Charm Person, but ${target.name} is not a valid creature for that spell.`,'warning'); return; }
       pc.spellReady=false; const save=monsterSavingThrow(target,'spells',0);
-      write(`${pc.name} casts Charm Person on ${target.name}. ${target.name} saves vs spells: d20 ${save.d20}, needs ${save.needed} — ${save.success?'saved':'FAILED'}.`,'system');
+      write(`${pc.name} casts Charm Person on ${target.name}. ${save.success?`${target.name} resists the enchantment.`:`${target.name}'s hostility suddenly falters.`}`,'system');
       if(!save.success){ target.charmed=true; for(const key of Object.keys(state.combat.engagements)) if(state.combat.engagements[key].monsterId===target.id) delete state.combat.engagements[key]; write(`${target.name} regards ${pc.name} as a trusted friend and is no longer a hostile combatant.`,'system'); checkHalfDisabledMorale(); }
     } else write(`${spell} is in the spellbook data, but its combat effect is not implemented in this core combat pass.`,'warning');
   }
@@ -2308,11 +2405,12 @@
   }
 
   function combatHelp(){
-    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state\nAldric attacks goblin 1 — melee order\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve the round\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
+    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, and spells\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve the round\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
   }
 
   function handleCombatDirect(input,normalized){
     if(normalized==='combat' || normalized==='combat status') {combatStatus();return true;}
+    if(['combat party','combat gear','combat equipment','combat loadout','party gear','party equipment','loadout','spells'].includes(normalized)) {combatPartyReference();return true;}
     if(normalized==='combat help'){combatHelp();return true;}
     let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(Number(m[1]),m[2]);return true;}
     m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(1,m[1]);return true;}
@@ -2664,8 +2762,9 @@ create party — open the roster; add adventurers at any time, roll 3d6, enter y
 
 COMBAT
 combat help — full combat command list
+combat party — weapons, ammunition, spellbooks, and prepared spells
 encounter 4 goblins — explicit isolated engine test encounter
-combat — current round, hostiles, orders, and melee ranges
+combat — current round, party ready-reference, hostiles, orders, and melee ranges
 Aldric attacks goblin 1 / Corwin shoots goblin 2 / Elwyn casts sleep
 Aldric presses goblin 1 / opens from goblin 1 / withdraws / retreats
 auto orders — fill missing PC orders
@@ -2858,8 +2957,9 @@ new game / clear`);
     ).join('; ');
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
 
-    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
-Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,hp:m.hp,maxHp:m.maxHp,asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.
+- Never reveal the engine's Soft/Hard Matrix protection category or target-size category during ordinary play. Describe only observable facts such as worn armor, shields, scales, shell, exposed bone, hide, or other visible construction. Soft/Hard remains referee-side rules data.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
+Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function friendlyAiError(error, status) {
@@ -3039,7 +3139,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map.','system');
+    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map. Combat status now includes a party ready-reference for equipped/carried weapons, ammunition, spellbooks, and prepared-spell readiness. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics are hidden; hostile condition is conveyed descriptively, while observable armor, shields, body structure, and other physical protection are described in-world.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
