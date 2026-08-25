@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.13';
+  const APP_VERSION = '0.3.14';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1077,13 +1077,38 @@
     return String(value).replace(/[&<>]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[character]));
   }
 
-  function write(text, cls='') {
+  function renderTerminalEntry(text, cls='') {
     const div = document.createElement('div');
     if (cls) div.className = cls;
     div.innerHTML = esc(text).replace(/\n/g,'<br>');
     terminal.appendChild(div);
     terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  function write(text, cls='') {
+    renderTerminalEntry(text,cls);
     void appendJournalEntry(text,journalCategoryForClass(cls),'player',{cssClass:cls||''});
+  }
+
+  async function restoreTerminalFromJournal(limit=400) {
+    const rows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+    if(!rows.length) return false;
+    const recent=rows.slice(-Math.max(1,limit));
+    terminal.innerHTML='';
+    if(rows.length>recent.length){
+      renderTerminalEntry(`— ${rows.length-recent.length} earlier transcript entr${rows.length-recent.length===1?'y is':'ies are'} preserved in CAMPAIGN JOURNAL —`,'system');
+    }
+    for(const entry of recent){
+      let cls=entry?.meta?.cssClass || '';
+      if(!cls){
+        if(entry.category==='command') cls='prompt';
+        else if(entry.category==='ai') cls='ai';
+        else if(entry.category==='system') cls='system';
+      }
+      renderTerminalEntry(entry.text,cls);
+    }
+    renderTerminalEntry('— CAMPAIGN RESUMED — recent transcript restored from the permanent journal.','system');
+    return true;
   }
 
   function hexKey(q,r) { return `${q},${r}`; }
@@ -1536,7 +1561,7 @@ W: swollen wooden door · E: cellar`;
           : '';
         combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${progress.ordered}/${progress.total}<br>${nextStep}</p>${resolveButton}<div class="tiny"><strong>READY REFERENCE</strong>${ready||'<br>No living adventurers.'}<br><em>Type combat for full details; combat party shows carried weapons, ammunition, and spellbooks.</em></div>`;
         const resolveBtn=document.getElementById('combatResolveButton');
-        if(resolveBtn) resolveBtn.addEventListener('click',()=>{ resolveCombatRound(); command.focus(); });
+        if(resolveBtn) resolveBtn.addEventListener('click',()=>{ resolveCombatRound(); persistStateSilently(); command.focus(); });
       }
       else combatPanel.innerHTML='<p>No combat in progress.</p>';
     }
@@ -3663,10 +3688,20 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     look(); updatePanels(); save();
   }
 
+  function persistStateSilently() {
+    try {
+      state.version = APP_VERSION;
+      if(!state.campaignId) state.campaignId=newCampaignId();
+      localStorage.setItem(STORAGE.save,JSON.stringify(state));
+      return true;
+    } catch(error) {
+      console.warn('Silent campaign autosave failed:',error);
+      return false;
+    }
+  }
+
   function save() {
-    state.version = APP_VERSION;
-    if(!state.campaignId) state.campaignId=newCampaignId();
-    localStorage.setItem(STORAGE.save,JSON.stringify(state));
+    persistStateSilently();
     write('Campaign state saved in this browser. The permanent journal is stored separately in IndexedDB.','system');
     void refreshJournalStatus();
   }
@@ -4166,7 +4201,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds per-monster morale checks, a persistent referee-side engine log, optional Developer Mode for rules transparency, and collapsible Options / Quick Commands panels. Hidden engine records remain invisible in ordinary play but can be inspected and queried while Developer Mode is enabled.','system');
+    write('This build restores the recent visible transcript from the permanent campaign journal after a refresh and silently autosaves campaign/combat state after each command. Developer Mode and per-monster morale auditing remain available.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -4178,7 +4213,12 @@ ${playerInput}`;
     }
     updatePanels(); refreshTokenUi();
     journalBooting=false;
-    void migrateLegacyJournal().then(refreshJournalStatus);
+    void (async()=>{
+      await migrateLegacyJournal();
+      await restoreTerminalFromJournal();
+      await refreshJournalStatus();
+      updatePanels();
+    })();
   }
 
   if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow('','all'); });
@@ -4208,6 +4248,7 @@ ${playerInput}`;
     const value = command.value;
     command.value = '';
     void handle(value).finally(() => {
+      persistStateSilently();
       if (window.matchMedia('(max-width:800px)').matches) {
         const latest = terminal.lastElementChild;
         if (latest) latest.scrollIntoView({behavior:'smooth', block:'end'});
@@ -4264,6 +4305,8 @@ ${playerInput}`;
   closeCreatorButton.addEventListener('click',closePartyCreator);
   partyCreator.addEventListener('click',event=>{ if(event.target===partyCreator) closePartyCreator(); });
 
+
+  window.addEventListener('beforeunload',()=>{ persistStateSilently(); });
 
   boot();
 })();
