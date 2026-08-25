@@ -82,6 +82,8 @@
   .party-draft-item strong { color:var(--ink); }
   .creator-message { min-height:2.8em; color:var(--warn); font-size:11px; line-height:1.35; margin-top:8px; }
   .shop-line { font-size:11px; color:var(--dim); margin:4px 0; }
+  .map-panel { margin:8px 0 0; padding:10px; border:1px solid var(--line); background:#070a06; color:var(--ink); font:11px/1.35 Consolas,"Courier New",monospace; white-space:pre; overflow-x:auto; max-width:100%; }
+  .map-note { color:var(--dim); font-size:10px; line-height:1.35; margin-top:7px; }
   @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } }
   @media (max-width:800px) {
     html, body { min-height:100%; }
@@ -132,15 +134,22 @@
       </section>
 
       <section>
+        <h2>LOCAL MAP</h2>
+        <pre id="mapPanel" class="map-panel">Map unavailable.</pre>
+        <div class="button-row"><button type="button" id="showMapButton">SHOW MAP IN LOG</button></div>
+        <p class="map-note">A limited referee aid for the current hex, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
+      </section>
+
+      <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look / map / combat map</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
-        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex; no automatic map is shown.</p>
+        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The LOCAL MAP shows only the current hex and one surrounding ring as a mapping aid; you still maintain the campaign map yourself.</p>
       </section>
 
       <section>
@@ -274,7 +283,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.5';
+  const APP_VERSION = '0.3.7';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -306,6 +315,8 @@
   const phasedInitiativeButton = document.getElementById('phasedInitiativeButton');
   const combatPanel = document.getElementById('combatPanel');
   const contextPanel = document.getElementById('contextPanel');
+  const mapPanel = document.getElementById('mapPanel');
+  const showMapButton = document.getElementById('showMapButton');
   const partyCreator = document.getElementById('partyCreator');
   const rollAbilitiesButton = document.getElementById('rollAbilitiesButton');
   const enterAbilitiesButton = document.getElementById('enterAbilitiesButton');
@@ -770,6 +781,170 @@
   function currentHex() { return getHex(state.hex.q,state.hex.r); }
   function currentPlace() { return state.mode === 'wilderness' ? currentHex() : currentSite(); }
 
+  const TERRAIN_MAP_CODE = {clear:'CLR',forest:'FOR',hills:'HIL',mountain:'MTN',swamp:'SWP'};
+
+  function knownSiteVisibleInHex(hex,isCurrent=false){
+    if(!hex?.site) return false;
+    if(isCurrent) return true;
+    ensureKnowledgeState();
+    return state.knownPlaces.includes(hex.site);
+  }
+
+  function wildernessCell(q,r,label,isCurrent=false){
+    const hex=getHex(q,r);
+    if(!hex) return `[${label} ---]`;
+    const terrain=TERRAIN_MAP_CODE[hex.terrain]||String(hex.terrain||'?').slice(0,3).toUpperCase();
+    const marks=`${Array.isArray(hex.roadDirs)&&hex.roadDirs.length?'=':''}${Array.isArray(hex.riverDirs)&&hex.riverDirs.length?'~':''}${knownSiteVisibleInHex(hex,isCurrent)?'*':''}`;
+    return `[${isCurrent?'@':label} ${terrain}${marks}]`;
+  }
+
+  function renderWildernessAsciiMap(){
+    const q=state.hex.q,r=state.hex.r;
+    const n=wildernessCell(q,r-1,'N');
+    const ne=wildernessCell(q+1,r-1,'NE');
+    const se=wildernessCell(q+1,r,'SE');
+    const so=wildernessCell(q,r+1,'S');
+    const sw=wildernessCell(q-1,r+1,'SW');
+    const nw=wildernessCell(q-1,r,'NW');
+    const here=wildernessCell(q,r,'@',true);
+    const hex=currentHex();
+    const name=hex?.name||'Unknown country';
+    const roads=roadDirections(hex);
+    const waters=Array.isArray(hex?.riverDirs)?hex.riverDirs:[];
+    return `WILDERNESS LOCAL VIEW
+
+             ${n}
+      ${nw}       ${ne}
+             ${here}
+      ${sw}       ${se}
+             ${so}
+
+@ current · = road/trail · ~ water · * known site
+Current: ${name}
+From @: road ${roads.length?roads.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'} · water ${waters.length?waters.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'}`;
+  }
+
+  function renderMarketAsciiMap(){
+    return `PENHALIGON MARKET
+
+          [Brazen Shield]
+                N
+                |
+[Weaponsmith] W-@-E [Outfitter]
+                |
+                S
+            [Stable]
+
+@ current position`;
+  }
+
+  function renderPassageAsciiMap(){
+    return `LOW STONE PASSAGE — 30'
+
+W door  ║══════ @ ══════  E
+          ~ damp floor ~
+
+W: swollen wooden door · E: cellar`;
+  }
+
+  function roomFeatureFor(siteId){
+    if(siteId==='cellar') return {symbol:'b',legend:'b barrel hoops near south wall'};
+    if(siteId==='cistern') return {symbol:'O',legend:'O dry stone cistern'};
+    if(siteId==='sealed') return {symbol:'C',legend:'C iron coffer beneath west shelf'};
+    if(siteId==='tollhouse') return {symbol:'v',legend:'v stair descending into cellar'};
+    return null;
+  }
+
+  function visibleExitSet(siteId){
+    const site=sites[siteId];
+    const out=new Set(Object.keys(site?.exits||{}));
+    if(site?.secret && hasSecret(siteId)) out.add(site.secret.direction);
+    return out;
+  }
+
+  function renderRoomAsciiMap(siteId=state.location){
+    const site=sites[siteId];
+    if(!site) return 'LOCAL ROOM VIEW\n\nNo keyed room is available.';
+    if(siteId==='market') return renderMarketAsciiMap();
+    if(siteId==='passage') return renderPassageAsciiMap();
+    if(!canSee() && !site.outdoor) return `${site.name.toUpperCase()}\n\nComplete darkness. No room geometry can be read without light.`;
+    const exits=visibleExitSet(siteId);
+    const n=exits.has('north'),e=exits.has('east'),so=exits.has('south'),w=exits.has('west'),up=exits.has('up'),down=exits.has('down');
+    const f=roomFeatureFor(siteId);
+    const feature=f?.symbol||' ';
+    const title=siteId==='cellar'?`${site.name.toUpperCase()} — 20'×15'`:site.name.toUpperCase();
+    const top=n?'       N ↑':' ';
+    const bottom=so?'       ↓ S':' ';
+    const west=w?'W ←─':'   ';
+    const east=e?'─→ E':'';
+    const verticalNotes=[up?'↑ stairs/up':'',down?'↓ stairs/down':''].filter(Boolean).join(' · ');
+    const outNote=site.returnsToSite?`OUT → ${sites[site.returnsToSite]?.name||'previous area'}`:site.returnsToHex?'OUT → wilderness':'';
+    const legend=[f?.legend,verticalNotes,outNote].filter(Boolean).join(' · ');
+    return `${title}\n\n${top}\n   ┌───────────────┐\n${west}│   ${feature}   @       │${east}\n   │               │\n   └───────────────┘\n${bottom}${legend?`\n\n${legend}`:''}`;
+  }
+
+  function mapMonsterToken(m){
+    const base={goblin:'G',kobold:'K',orc:'O',skeleton:'S',wolf:'W'}[m?.type]||'F';
+    const num=/-(\d+)$/.exec(String(m?.id||''))?.[1]||'';
+    return `${base}${num}`;
+  }
+
+  function combatDistanceUnit(){ return state.combat?.distanceUnit==='yd'?'yd':'ft'; }
+  function combatDistanceLabel(value){
+    const n=Math.round(Number(value)||0);
+    return combatDistanceUnit()==='yd'?`${n} yd`:`${n}'`;
+  }
+
+  function renderCombatAsciiMap(){
+    if(!state.combat?.active) return 'COMBAT POSITION\n\nNo combat in progress.';
+    const c=state.combat;
+    const unit=combatDistanceUnit();
+    const bands=new Map();
+    const add=(pos,label,kind,id)=>{
+      const key=Number(pos)||0;
+      if(!bands.has(key)) bands.set(key,[]);
+      bands.get(key).push({label,kind,id});
+    };
+    for(const m of c.monsters.filter(monsterStillPresent)) add(combatMonsterPosition(m),mapMonsterToken(m),'monster',m.id);
+    for(const pc of livingParty()) add(combatPcPosition(pc),pc.name,'pc',pc.name.toLowerCase());
+    const positions=[...bands.keys()].sort((a,b)=>b-a);
+    if(!positions.length) return `COMBAT POSITION — ROUND ${c.round}\n\nNo active figures.`;
+    const lines=[`COMBAT POSITION — ROUND ${c.round}`,'','ENEMY SIDE ↑',''];
+    positions.forEach((pos,index)=>{
+      const entries=bands.get(pos);
+      lines.push(entries.map(x=>`[${x.label}]`).join(' '));
+      const annotations=[];
+      for(const engagement of Object.values(c.engagements||{})){
+        const pc=state.party.find(p=>p.name.toLowerCase()===String(engagement.pcName||'').toLowerCase());
+        const mon=c.monsters.find(m=>m.id===engagement.monsterId);
+        if(!pc||!mon||!monsterStillPresent(mon)||pc.dead||pc.hp<=0) continue;
+        if(Math.abs(combatPcPosition(pc)-pos)<0.001 && Math.abs(combatMonsterPosition(mon)-pos)<0.001){
+          annotations.push(`${mapMonsterToken(mon)} ↔ ${pc.name}: ${String(engagement.range||'normal').toUpperCase()}`);
+        }
+      }
+      if(annotations.length) lines.push(`  ${annotations.join(' · ')}`);
+      if(index<positions.length-1){
+        const gap=Math.max(0,Math.round(pos-positions[index+1]));
+        lines.push('      │',`      │ ${combatDistanceLabel(gap)}`,'      │');
+      }
+    });
+    lines.push('','PARTY SIDE ↓');
+    return lines.join('\n');
+  }
+
+  function currentAsciiMap(preference='auto'){
+    const pref=String(preference||'auto').toLowerCase();
+    if(pref==='combat') return renderCombatAsciiMap();
+    if(pref==='hex' || pref==='wilderness') return renderWildernessAsciiMap();
+    if(pref==='room' || pref==='site') return state.mode==='site'?renderRoomAsciiMap():renderWildernessAsciiMap();
+    if(state.combat?.active) return renderCombatAsciiMap();
+    return state.mode==='wilderness'?renderWildernessAsciiMap():renderRoomAsciiMap();
+  }
+
+  function showAsciiMap(preference='auto'){
+    write(currentAsciiMap(preference),'system');
+  }
+
   function clockText() {
     const hour = Math.floor(state.minutes/60)%24;
     const minute = state.minutes%60;
@@ -794,6 +969,7 @@
 
   function updatePanels() {
     whereBadge.textContent = `Location: ${placeName()}`;
+    if(mapPanel) mapPanel.textContent=currentAsciiMap();
     timeBadge.textContent = `Time: ${clockText()}`;
     if (state.mode === 'wilderness') {
       lightBadge.textContent = daylight() ? 'Light: daylight' : 'Light: night';
@@ -821,9 +997,30 @@
       if(state.combat?.active){
         const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length;
         const ready=state.party.filter(pc=>!pc.dead&&Number(pc.hp)>0).map(combatLoadoutHtml).join('');
-        combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${Object.keys(state.combat.pcOrders||{}).length}/${livingParty().length}<br>${state.combat.awaitingMoveChoice?'<strong>Movement-order choice required.</strong>':'Type <strong>combat</strong> for full details.'}</p><div class="tiny"><strong>READY REFERENCE</strong>${ready||'<br>No living adventurers.'}<br><em>Type combat party for carried weapons, ammunition, and spellbooks.</em></div>`;
+        const progress=combatOrderProgress();
+        const nextStep=state.combat.awaitingMoveChoice
+          ? '<strong>NEXT: choose who moves first.</strong>'
+          : progress.complete
+            ? '<strong>ALL ORDERS READY — resolve the round.</strong>'
+            : `<strong>NEXT: give ${progress.total-progress.ordered} more order${progress.total-progress.ordered===1?'':'s'}.</strong>`;
+        const resolveButton=(!state.combat.awaitingMoveChoice && !state.combat.initiative)
+          ? `<button type="button" id="combatResolveButton" ${progress.complete?'':'disabled'}>RESOLVE ROUND</button>`
+          : '';
+        combatPanel.innerHTML=`<p><strong>Round ${state.combat.round}</strong><br>Hostiles present: ${foes}<br>Orders: ${progress.ordered}/${progress.total}<br>${nextStep}</p>${resolveButton}<div class="tiny"><strong>READY REFERENCE</strong>${ready||'<br>No living adventurers.'}<br><em>Type combat for full details; combat party shows carried weapons, ammunition, and spellbooks.</em></div>`;
+        const resolveBtn=document.getElementById('combatResolveButton');
+        if(resolveBtn) resolveBtn.addEventListener('click',()=>{ resolveCombatRound(); command.focus(); });
       }
       else combatPanel.innerHTML='<p>No combat in progress.</p>';
+    }
+    if(command){
+      if(state.combat?.active){
+        const progress=combatOrderProgress();
+        command.placeholder=state.combat.awaitingMoveChoice
+          ? 'Choose movement order…'
+          : progress.complete
+            ? 'All orders ready — type resolve round'
+            : 'Give a combat order…';
+      } else command.placeholder='What does the party do?';
     }
     const site = currentSite();
     if (site?.shopType) contextPanel.innerHTML = `<p><strong>Shop:</strong> ${esc(site.name)}<br>Type <strong>wares</strong>, or “buy rope”, “buy 4 torches”, “buy a sword for [name]”.</p>`;
@@ -1626,6 +1823,14 @@
     sling:{ammoId:'sling_stones30',perPack:30,label:'sling stone'}
   };
 
+  const MISSILE_RANGES = {
+    bow_short:[50,100,150],
+    bow_long:[70,140,210],
+    crossbow_light:[60,120,180],
+    crossbow_heavy:[80,160,240],
+    sling:[40,80,160]
+  };
+
   const THROWABLE_WEAPONS = new Set(['axe_hand','hammer_throwing','javelin','spear','trident','dagger','dagger_silver','bola','holy_water','burning_oil','thrown_rock']);
   const RANGE_ORDER = ['close','normal','far'];
 
@@ -1678,6 +1883,19 @@
     c.halfDisabledTriggered=Boolean(c.halfDisabledTriggered);
     c.initialMonsterCount=Math.max(1,Number(c.initialMonsterCount)||c.monsters.length||1);
     c.auditCounter=Number(c.auditCounter)||0;
+    c.distanceUnit=c.distanceUnit==='yd'?'yd':'ft';
+    c.encounterDistance=Math.max(0,Number(c.encounterDistance)||0);
+    c.positions=c.positions&&typeof c.positions==='object'?c.positions:{pcs:{},monsters:{}};
+    c.positions.pcs=c.positions.pcs&&typeof c.positions.pcs==='object'?c.positions.pcs:{};
+    c.positions.monsters=c.positions.monsters&&typeof c.positions.monsters==='object'?c.positions.monsters:{};
+    const fallbackDistance=c.encounterDistance || 60;
+    for(const pc of state.party){ if(!Number.isFinite(Number(c.positions.pcs[pc.name.toLowerCase()]))) c.positions.pcs[pc.name.toLowerCase()]=0; }
+    for(const m of c.monsters){ if(!Number.isFinite(Number(c.positions.monsters[m.id]))) c.positions.monsters[m.id]=fallbackDistance; }
+    for(const e of Object.values(c.engagements)){
+      const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName||'').toLowerCase());
+      const m=c.monsters.find(mon=>mon.id===e.monsterId);
+      if(pc&&m){ c.positions.pcs[pc.name.toLowerCase()]=c.positions.monsters[m.id]; }
+    }
   }
 
   function shadowRngFactory(seed){
@@ -1729,9 +1947,17 @@
     const key=monsterTypeKey(type); if(!key){ write('Test encounters currently support goblins, kobolds, orcs, skeletons, and wolves.','warning'); return; }
     count=Math.max(1,Math.min(24,Math.floor(Number(count)||1)));
     const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
-    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0};
-    addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}.`);
-    write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'}\nThis is an explicit combat-engine test encounter, not a keyed campaign encounter. Type “combat” at any time to see party weapons, ammunition, spells, foes, and current orders. Give orders, then type “resolve round”.`,'system');
+    const outdoor=state.mode==='wilderness';
+    const distanceRoll=outdoor ? rng(6)+rng(6)+rng(6)+rng(6) : rng(6)+rng(6);
+    const encounterDistance=distanceRoll*10;
+    const distanceUnit=outdoor?'yd':'ft';
+    const positions={pcs:{},monsters:{}};
+    for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
+    for(const m of monsters) positions.monsters[m.id]=encounterDistance;
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,encounterDistance,distanceUnit,positions};
+    addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.`);
+    write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at approximately ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.
+This is an explicit combat-engine test encounter, not a keyed campaign encounter. Test encounters begin hostile and intentionally bypass the normal encounter/reaction procedure. Distance is tracked from the start of the encounter; combatants must close using encounter movement before melee engagement. Type “combat” or “combat map” at any time to review the situation.`,'system');
     combatStatus(); updatePanels();
   }
 
@@ -1745,6 +1971,87 @@
   function clearAllPcEngagements(pc){
     if(!combatActive()) return;
     for(const key of Object.keys(state.combat.engagements)) if(key.startsWith(`${pc.name.toLowerCase()}|`)) delete state.combat.engagements[key];
+  }
+
+  function combatPcPosition(pc){
+    if(!combatActive()) return 0;
+    return Number(state.combat.positions?.pcs?.[pc.name.toLowerCase()])||0;
+  }
+  function combatMonsterPosition(monster){
+    if(!combatActive()) return 0;
+    return Number(state.combat.positions?.monsters?.[monster.id])||0;
+  }
+  function setCombatPcPosition(pc,value){
+    if(!combatActive()) return;
+    if(!state.combat.positions) state.combat.positions={pcs:{},monsters:{}};
+    state.combat.positions.pcs[pc.name.toLowerCase()]=Number(value)||0;
+  }
+  function setCombatMonsterPosition(monster,value){
+    if(!combatActive()) return;
+    if(!state.combat.positions) state.combat.positions={pcs:{},monsters:{}};
+    state.combat.positions.monsters[monster.id]=Number(value)||0;
+  }
+  function combatSeparation(pc,monster){ return Math.abs(combatPcPosition(pc)-combatMonsterPosition(monster)); }
+
+  function pcCarriedEncumbrance(pc){
+    let total=0;
+    for(const rec of pc?.inventory||[]) total+=(Number(rec.enc)||Number(SHOP_ITEMS[rec.itemId]?.enc)||0)*Math.max(1,Number(rec.qty)||1);
+    return total;
+  }
+  function pcEncounterSpeed(pc){
+    const enc=pcCarriedEncumbrance(pc);
+    if(enc<=400) return 40;
+    if(enc<=800) return 30;
+    if(enc<=1200) return 20;
+    if(enc<=1600) return 10;
+    if(enc<=2400) return 5;
+    return 0;
+  }
+
+  function movePcTowardMonster(pc,monster){
+    const start=combatPcPosition(pc), target=combatMonsterPosition(monster), gap=Math.abs(target-start), speed=pcEncounterSpeed(pc);
+    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal'); return true; }
+    if(speed<=0){ write(`${pc.name} is too encumbered to close the distance.`,'warning'); return false; }
+    const step=Math.min(speed,gap);
+    const next=start+(target>start?step:-step);
+    setCombatPcPosition(pc,next);
+    const remain=Math.abs(target-next);
+    if(remain<=0){ setEngagement(pc,monster,'normal'); write(`${pc.name} closes ${combatDistanceLabel(step)} and engages ${monster.name} at NORMAL melee distance.`,'system'); return true; }
+    write(`${pc.name} advances ${combatDistanceLabel(step)} toward ${monster.name}; ${combatDistanceLabel(remain)} remain.`,'system');
+    return false;
+  }
+
+  function moveMonsterTowardPc(monster,pc){
+    const start=combatMonsterPosition(monster), target=combatPcPosition(pc), gap=Math.abs(target-start), speed=Math.max(0,Number(monster.move)||0);
+    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal'); return true; }
+    const step=Math.min(speed,gap);
+    const next=start+(target>start?step:-step);
+    setCombatMonsterPosition(monster,next);
+    const remain=Math.abs(target-next);
+    if(remain<=0){ setEngagement(pc,monster,'normal'); write(`${monster.name} closes ${combatDistanceLabel(step)} and engages ${pc.name}.`,'system'); return true; }
+    write(`${monster.name} advances ${combatDistanceLabel(step)} toward ${pc.name}; ${combatDistanceLabel(remain)} remain.`,'system');
+    return false;
+  }
+
+  function movePcAwayFromThreat(pc,distance){
+    const engaged=engagementsForPc(pc);
+    const threat=engaged[0]?.monster || livingHostiles().sort((a,b)=>combatSeparation(pc,a)-combatSeparation(pc,b))[0];
+    const start=combatPcPosition(pc);
+    if(!threat){ setCombatPcPosition(pc,start-Math.max(0,distance)); return; }
+    const threatPos=combatMonsterPosition(threat);
+    const direction=start<=threatPos?-1:1;
+    setCombatPcPosition(pc,start+direction*Math.max(0,distance));
+  }
+
+  function missileRangeInfo(pc,monster){
+    const item=equippedWeaponItem(pc);
+    const ranges=item?.itemId?MISSILE_RANGES[item.itemId]:null;
+    const distance=Math.round(combatSeparation(pc,monster));
+    if(!ranges) return {band:'medium',distance,outOfRange:false};
+    if(distance<=ranges[0]) return {band:'short',distance,outOfRange:false,ranges};
+    if(distance<=ranges[1]) return {band:'medium',distance,outOfRange:false,ranges};
+    if(distance<=ranges[2]) return {band:'long',distance,outOfRange:false,ranges};
+    return {band:'long',distance,outOfRange:true,ranges};
   }
   function engagementsForPc(pc){
     if(!combatActive()) return [];
@@ -1815,7 +2122,7 @@
     const ammo=combatAmmoSummary(pc);
     const spell=combatSpellSummary(pc);
     const condition=pc.dead?'DEAD':Number(pc.hp)<=0?'DOWN':'';
-    return `${pc.name}${condition?` [${condition}]`:''} — ${pc.className||pc.role} ${pc.level||1}; HP ${pc.hp}/${pc.maxHp}; AC ${pc.ac}; THAC0 ${pc.thac0||19}\n  Equipped weapon: ${equipped}${ammo?` (${ammo})`:''}\n  Carried weapons: ${combatCarriedWeapons(pc)}${spell?`\n  ${spell}`:''}`;
+    return `${pc.name}${condition?` [${condition}]`:''} — ${pc.className||pc.role} ${pc.level||1}; HP ${pc.hp}/${pc.maxHp}; AC ${pc.ac}; THAC0 ${pc.thac0||19}; Move ${combatDistanceLabel(pcEncounterSpeed(pc))}/round\n  Equipped weapon: ${equipped}${ammo?` (${ammo})`:''}\n  Carried weapons: ${combatCarriedWeapons(pc)}${spell?`\n  ${spell}`:''}`;
   }
 
   function combatLoadoutHtml(pc){
@@ -1830,13 +2137,38 @@
     write(`PARTY COMBAT REFERENCE\n${state.party.map(combatLoadoutLine).join('\n\n')}\n\nCombat attacks currently use the equipped weapon. Carried alternatives are shown for reference; changing equipped weapons during a combat round is not yet implemented.`,'system');
   }
 
+  function combatOrderProgress(){
+    if(!combatActive()) return {ordered:0,total:0,complete:false};
+    const living=livingParty();
+    const ordered=living.filter(pc=>Boolean(state.combat.pcOrders?.[pc.name.toLowerCase()])).length;
+    return {ordered,total:living.length,complete:living.length>0 && ordered===living.length};
+  }
+
+  function combatNextStepText(){
+    if(!combatActive()) return '';
+    if(state.combat.awaitingMoveChoice) return 'NEXT STEP: choose movement order — “move us first” or “make them move first”.';
+    if(state.combat.initiative) return 'The round is currently resolving.';
+    const progress=combatOrderProgress();
+    if(progress.complete) return 'NEXT STEP: all living adventurers have orders. Type “resolve round” or tap RESOLVE ROUND.';
+    const missing=progress.total-progress.ordered;
+    return `NEXT STEP: give ${missing} more order${missing===1?'':'s'}. When all orders are ready, type “resolve round” or tap RESOLVE ROUND.`;
+  }
+
+  function announceCombatReady(){
+    if(!combatActive() || state.combat.awaitingMoveChoice || state.combat.initiative) return;
+    const progress=combatOrderProgress();
+    if(!progress.complete || state.combat.resolvePromptShownRound===state.combat.round) return;
+    state.combat.resolvePromptShownRound=state.combat.round;
+    write(`ALL ORDERS ISSUED — Round ${state.combat.round} is ready. Type “resolve round” or tap RESOLVE ROUND in the Combat panel.`,'system');
+  }
+
   function combatStatus(){
     if(!combatActive()){ write('No combat is in progress. For engine testing, try “encounter 4 goblins”.'); return; }
     const c=state.combat; const init=c.initiative ? `PC ${c.initiative.pc} / foes ${c.initiative.monster}${c.initiative.winner?` — ${c.initiative.winner==='pc'?'PCs':'foes'} won`:' — tied'}` : 'not rolled';
     const orders=state.party.map(pc=>{ const o=c.pcOrders[pc.name.toLowerCase()]; return `${pc.name}: ${pc.dead?'DEAD':o?combatOrderText(o):'no order'}`; }).join('\n');
     const engagements=Object.values(c.engagements).map(e=>`${e.pcName} ↔ ${state.combat.monsters.find(m=>m.id===e.monsterId)?.name||e.monsterId}: ${String(e.range).toUpperCase()}`).join('\n')||'none';
     const loadout=state.party.map(combatLoadoutLine).join('\n\n');
-    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\n\nPARTY READY REFERENCE\n${loadout}\n\nHOSTILES — OBSERVABLE CONDITION / EQUIPMENT\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}`,'system');
+    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\nEncounter scale: ${combatDistanceUnit()==='yd'?'outdoor yards':'indoor feet'}\n\n${renderCombatAsciiMap()}\n\nPARTY READY REFERENCE\n${loadout}\n\nHOSTILES — OBSERVABLE CONDITION / EQUIPMENT\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}\n\n${combatNextStepText()}`,'system');
   }
 
   function combatOrderText(o){
@@ -2154,7 +2486,7 @@
     if(!pc || pc.dead || pc.hp<=0){ write('That adventurer cannot act.','warning'); return false; }
     if(state.combat.initiative){ write('The round is already being resolved; orders are locked until it ends.','warning'); return false; }
     state.combat.pcOrders[pc.name.toLowerCase()]={...(state.combat.pcOrders[pc.name.toLowerCase()]||{}),...order};
-    write(`${pc.name}: ${combatOrderText(state.combat.pcOrders[pc.name.toLowerCase()])}.`,'system'); updatePanels(); return true;
+    write(`${pc.name}: ${combatOrderText(state.combat.pcOrders[pc.name.toLowerCase()])}.`,'system'); updatePanels(); announceCombatReady(); return true;
   }
 
   function combatTargetFromText(text){
@@ -2277,7 +2609,11 @@
   }
 
   function shiftEngagement(pc,monster,intent){
-    let e=getEngagement(pc,monster); if(!e){ setEngagement(pc,monster,'normal'); e=getEngagement(pc,monster); write(`${pc.name} and ${monster.name} close to NORMAL melee distance.`); return; }
+    let e=getEngagement(pc,monster);
+    if(!e){
+      if(combatSeparation(pc,monster)>0){ write(`${pc.name} is not yet in melee with ${monster.name}; close the encounter distance first.`,'warning'); return; }
+      setEngagement(pc,monster,'normal'); e=getEngagement(pc,monster); write(`${pc.name} and ${monster.name} establish NORMAL melee distance.`); return;
+    }
     const idx=RANGE_ORDER.indexOf(e.range); let next=idx;
     if(intent==='press') next=Math.max(0,idx-1); else if(intent==='open') next=Math.min(RANGE_ORDER.length-1,idx+1); else return;
     if(next!==idx){ e.range=RANGE_ORDER[next]; write(`${pc.name} ${intent==='press'?'presses inward':'opens the distance'} against ${monster.name}: ${e.range.toUpperCase()}.`); }
@@ -2297,28 +2633,58 @@
         pc.retreatingThisRound=false; pc.withdrewThisRound=false;
         const o=state.combat.pcOrders[pc.name.toLowerCase()]||{action:'hold'};
         if(o.action==='retreat'){
-          pc.retreatingThisRound=true; clearAllPcEngagements(pc); write(`${pc.name} retreats at encounter speed, giving up shield protection and exposing a +2 attack bonus to foes later this round.`,'system'); continue;
+          pc.retreatingThisRound=true;
+          const speed=pcEncounterSpeed(pc);
+          movePcAwayFromThreat(pc,speed);
+          clearAllPcEngagements(pc);
+          write(`${pc.name} retreats ${combatDistanceLabel(speed)} at encounter speed, giving up shield protection and exposing a +2 attack bonus to foes later this round.`,'system'); continue;
         }
         if(o.action==='withdraw'){
-          pc.withdrewThisRound=true; clearAllPcEngagements(pc); write(`${pc.name} makes a fighting withdrawal.`,'system'); continue;
+          pc.withdrewThisRound=true;
+          const speed=Math.floor(pcEncounterSpeed(pc)/2);
+          movePcAwayFromThreat(pc,speed);
+          clearAllPcEngagements(pc);
+          write(`${pc.name} makes a fighting withdrawal ${combatDistanceLabel(speed)}.`,'system'); continue;
         }
         const target=o.targetId?state.combat.monsters.find(m=>m.id===o.targetId):null;
-        if(target && monsterStillPresent(target) && (o.action==='melee' || o.rangeIntent)) shiftEngagement(pc,target,o.rangeIntent||'hold');
+        if(!target || !monsterStillPresent(target)) continue;
+        const engagement=getEngagement(pc,target);
+        if(engagement){
+          if(o.rangeIntent) shiftEngagement(pc,target,o.rangeIntent);
+          continue;
+        }
+        if(o.action==='melee') movePcTowardMonster(pc,target);
+        else if(o.rangeIntent) shiftEngagement(pc,target,o.rangeIntent);
       }
     } else {
       for(const monster of livingHostiles()){
         const o=state.combat.monsterOrders[monster.id]; if(!o)continue; const pc=findPc(o.targetName); if(!pc||pc.dead)continue;
         if(o.action==='melee'){
-          const wasWithdrawn=Boolean(pc.withdrewThisRound); if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal');
-          if(wasWithdrawn) freeAttackAgainstFollower(pc,monster);
+          const wasWithdrawn=Boolean(pc.withdrewThisRound);
+          const already=getEngagement(pc,monster);
+          const reached=already?true:moveMonsterTowardPc(monster,pc);
+          if(wasWithdrawn && reached) freeAttackAgainstFollower(pc,monster);
         }
       }
     }
+    updatePanels();
   }
 
   function missilePhase(side,eligibleIds=null){
     if(side==='pc'){
-      for(const pc of state.party){ const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()); const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='missile')continue; const target=state.combat.monsters.find(m=>m.id===o.targetId); pcWeaponAttack(pc,target,'missile',o.rangeBand||'medium',eligible,Boolean(eligibleIds)); }
+      for(const pc of state.party){
+        const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase());
+        const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='missile')continue;
+        const target=state.combat.monsters.find(m=>m.id===o.targetId); if(!target)continue;
+        const info=missileRangeInfo(pc,target);
+        if(info.outOfRange){
+          const item=equippedWeaponItem(pc);
+          write(`${pc.name}'s ${item?.name||'missile weapon'} cannot reach ${target.name} at ${combatDistanceLabel(info.distance)}.`,'warning');
+          continue;
+        }
+        write(`${pc.name}'s shot is at ${combatDistanceLabel(info.distance)} — ${info.band.toUpperCase()} range.`,'system');
+        pcWeaponAttack(pc,target,'missile',info.band,eligible,Boolean(eligibleIds));
+      }
     }
     // The initial RC test monsters use melee/natural attacks. Missile-armed monster
     // profiles can plug into this phase later without changing the round engine.
@@ -2413,7 +2779,7 @@
     decrementCombatEffects();
     if(finishCombatIfConcluded())return;
     const c=state.combat; write(`— END OF ROUND ${c.round} —`,'system'); c.round++; c.pcOrders={}; c.monsterOrders={}; c.initiative=null; c.moveOrder=null; c.awaitingMoveChoice=false; updatePanels();
-    write(`Round ${c.round}: give new orders, then “resolve round”.`,'system');
+    write(`Round ${c.round}: give each living adventurer an order. When all orders are set, the game will prompt you to resolve the round.`,'system');
   }
 
   function resolveCombatRound(){
@@ -2444,11 +2810,12 @@
   }
 
   function combatHelp(){
-    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, and spells\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve the round\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
+    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character closes by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — after orders are issued, roll initiative and resolve the round; the Combat panel will prompt you and enable a RESOLVE ROUND button\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
   }
 
   function handleCombatDirect(input,normalized){
     if(normalized==='combat' || normalized==='combat status') {combatStatus();return true;}
+    if(['combat map','position','combat position'].includes(normalized)){showAsciiMap('combat');return true;}
     if(['combat party','combat gear','combat equipment','combat loadout','party gear','party equipment','loadout','spells'].includes(normalized)) {combatPartyReference();return true;}
     if(normalized==='combat help'){combatHelp();return true;}
     let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(Number(m[1]),m[2]);return true;}
@@ -2797,13 +3164,17 @@
   function help() {
     write(`COMMANDS
 look — repeat the current description
+map / local map — redraw the current local mapping aid
+hex view — current wilderness hex plus one surrounding ring
+room view — current keyed room/site
+combat map / position — current combat bands, distances, and melee relationships
 create party — open the roster; add adventurers at any time, roll 3d6, enter your own scores, use the name generator, or quick-generate 1–12 with/without purchased equipment
 
 COMBAT
 combat help — full combat command list
 combat party — weapons, ammunition, spellbooks, and prepared spells
 encounter 4 goblins — explicit isolated engine test encounter
-combat — current round, party ready-reference, hostiles, orders, and melee ranges
+combat — current round, party ready-reference, hostiles, orders, encounter position, and melee ranges
 Aldric attacks goblin 1 / Corwin shoots goblin 2 / Elwyn casts sleep
 Aldric presses goblin 1 / opens from goblin 1 / withdraws / retreats
 auto orders — fill missing PC orders
@@ -3111,7 +3482,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       write('Use: matrix dagger / medium / hard / close','warning'); return;
     }
 
-    const noPartyAllowed = ['look','l','look around','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    const noPartyAllowed = ['look','l','look around','map','local map','hex view','wilderness map','room view','site map','combat map','position','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
       write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
       return;
@@ -3121,7 +3492,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     // During combat, natural-language orders must reach the combat parser instead of
     // being rejected by the exploration-command guard.
     if (combatActive()) {
-      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
+      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?','map','local map','hex view','wilderness map','room view','site map'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
         if(parseLocalGroupCombat(input)) return;
         const localCombatIntent=parseLocalIntent(input);
@@ -3139,6 +3510,9 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     if (directDirection) return move(directDirection);
     if (naturalDirection) return move(naturalDirection);
     if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
+    if (normalized === 'map' || normalized === 'local map') { showAsciiMap(); return; }
+    if (normalized === 'hex view' || normalized === 'wilderness map') { showAsciiMap('hex'); return; }
+    if (normalized === 'room view' || normalized === 'site map') { showAsciiMap('room'); return; }
     if (normalized === 'enter' || normalized === 'enter site' || normalized === 'enter town' || normalized === 'enter village' || normalized === 'enter building') return enterSite();
     if (normalized === 'leave' || normalized === 'exit' || normalized === 'return to wilderness') return leaveSite();
     if (normalized === 'camp' || normalized === 'make camp' || normalized === 'camp overnight') return camp();
@@ -3192,7 +3566,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds deterministic Rules Cyclopedia combat with RC RAW side-based initiative and an optional phase-based initiative procedure. Natural group combat language such as “the party moves in to attack the goblins” is parsed into individual combat orders before round resolution. In phase mode the initiative winner chooses which side moves first, then acts first in missile, magic, and melee. Core melee, missile fire, first-level Magic-User/Elf combat spells, morale, withdrawal/retreat, death at 0 HP, Close/Normal/Far engagement ranges, RAW/Matrix damage, and live weapon auditing are active. Explicit test encounters are available without altering the campaign map. Combat status now includes a party ready-reference for equipped/carried weapons, ammunition, spellbooks, and prepared-spell readiness. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics are hidden; hostile condition is conveyed descriptively, while observable armor, shields, body structure, and other physical protection are described in-world.','system');
+    write('This build adds a persistent LOCAL MAP referee aid. In the wilderness it shows the current six-mile hex and one surrounding ring; in keyed sites it shows the current room/site, visible exits, and useful visible features; in combat it shows encounter bands, distances, and Close/Normal/Far melee relationships without replacing the player’s own map. Explicit test combats now begin at RAW-style encounter distance (2d6×10 feet indoors, 4d6×10 yards in the wilderness), combatants close using encounter movement, and missile range bands are derived from actual separation for bows, crossbows, and slings. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics remain hidden.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -3204,6 +3578,8 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     }
     updatePanels(); refreshTokenUi();
   }
+
+  if(showMapButton) showMapButton.addEventListener('click',()=>{ showAsciiMap(); command.focus(); });
 
   document.getElementById('commandForm').addEventListener('submit', event => {
     event.preventDefault();
