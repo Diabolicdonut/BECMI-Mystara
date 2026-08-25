@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.14';
+  const APP_VERSION = '0.3.15';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -964,10 +964,72 @@
   }
 
 
+  function developerAuditKind(question){
+    const q=String(question||'').toLowerCase();
+    if(/morale|flee|fled|hold|break|nerve/.test(q)) return 'morale';
+    if(/initiative|who went first|move first/.test(q)) return 'initiative';
+    if(/save|saving throw|resist|resisted/.test(q)) return 'save';
+    if(/target|attack|attacked|hit|miss|why did .* choose/.test(q)) return 'attack';
+    if(/roll|dice|backend|engine|decision|rules transparency|developer/.test(q)) return 'general';
+    return null;
+  }
+
+  async function refereeAuditRowsFor(question,limit=30){
+    if(!state.rules?.developerMode) return [];
+    await journalWriteChain;
+    const all=await getCampaignJournalEntries(state.campaignId,{audience:'referee'});
+    if(!all.length) return [];
+    const kind=developerAuditKind(question);
+    let typed=[];
+    if(kind==='morale') typed=all.filter(row=>['morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
+    else if(kind==='initiative') typed=all.filter(row=>row?.meta?.type==='initiative');
+    else if(kind==='save') typed=all.filter(row=>row?.meta?.type==='monster_save');
+    else if(kind==='attack') typed=all.filter(row=>['monster_orders','monster_attack'].includes(row?.meta?.type));
+    else if(kind==='general') typed=all.filter(row=>['initiative','monster_orders','monster_attack','monster_save','morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
+
+    // For an exact mechanics question, prefer the latest coherent block of that
+    // mechanic rather than trusting text similarity alone. This makes phrases
+    // such as “how was the morale check resolved?” reliably retrieve the actual
+    // per-creature rolls even when the visible transcript used different words.
+    if(typed.length){
+      const anchor=typed[typed.length-1];
+      const anchorTs=Number(anchor.ts)||0;
+      const anchorReason=String(anchor?.meta?.reason||'');
+      const anchorRound=anchor?.meta?.round;
+      let block=typed.filter(row=>{
+        if(anchorReason && String(row?.meta?.reason||'')===anchorReason && Math.abs((Number(row.ts)||0)-anchorTs)<=10*60*1000) return true;
+        if(anchorRound!=null && row?.meta?.round===anchorRound && Math.abs((Number(row.ts)||0)-anchorTs)<=3*60*1000) return true;
+        return false;
+      });
+      if(!block.length) block=typed.slice(-Math.min(limit,typed.length));
+      return block.slice(-limit);
+    }
+
+    const semantic=await searchJournalEntries(question,'all',limit,{forAi:true,audience:'referee'});
+    return semantic;
+  }
+
+  async function developerAuditAnswer(question){
+    if(!state.rules?.developerMode || !developerAuditKind(question)) return false;
+    const rows=await refereeAuditRowsFor(question,40);
+    if(!rows.length){
+      renderTerminalEntry('REFEREE (DEVELOPER): No referee-side engine record exists for that event in this campaign. If the event occurred before Developer/engine logging was introduced, its exact hidden rolls cannot be reconstructed. This build does record future initiative, monster orders, attacks, saves, and per-monster morale checks.','ai');
+      return true;
+    }
+    const lines=rows.map(row=>`• ${row.text}`);
+    renderTerminalEntry(`REFEREE (DEVELOPER): Exact engine audit for the most recent matching event:
+${lines.join('\n')}`,'ai');
+    void refereeLog(`DEVELOPER AUDIT DISPLAYED — query: ${question}
+${lines.join('\n')}`,{type:'developer_audit',query:question});
+    return true;
+  }
+
   async function refereeContextFor(question){
     if(!state.rules?.developerMode) return 'Developer Mode is off; referee-side records are unavailable.';
+    const exact=await refereeAuditRowsFor(question,36);
+    if(exact.length) return exact.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,1000)).join('\n');
     const rows=await searchJournalEntries(question,'all',18,{forAi:true,audience:'referee'});
-    if(!rows.length) return 'No relevant referee-side engine records were found.';
+    if(!rows.length) return 'No relevant referee-side engine records were found. Developer logging is implemented, but this particular earlier event has no stored hidden record and must not be reconstructed or invented.';
     return rows.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,900)).join('\n');
   }
 
@@ -3971,7 +4033,7 @@ new game / clear`);
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
     const developerMode=Boolean(state.rules?.developerMode);
     const hiddenInfoRule=developerMode
-      ? '- DEVELOPER MODE IS ON. For explicit testing/rules-transparency questions, you MAY reveal exact hidden mechanics, rolls, target-selection logic, morale scores, AC/THAC0, saves, or other referee-side facts ONLY when they are supported by the REFEREE-SIDE ENGINE RECORDS below. Clearly identify them as developer/testing information. Do not invent missing hidden data.'
+      ? '- DEVELOPER MODE IS ON. For explicit testing/rules-transparency questions, you MUST reveal the exact hidden mechanics, rolls, target-selection logic, morale scores, AC/THAC0, saves, or other referee-side facts when they are present in the REFEREE-SIDE ENGINE RECORDS below. Quote or summarize the stored engine record precisely and clearly identify it as developer/testing information. Developer logging IS implemented in this build. If the requested older event has no stored engine record, say only that the exact record is unavailable for that event; do NOT claim that morale-roll logging, verbose combat logging, or rules transparency are unimplemented. Never invent missing hidden data.'
       : '- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.';
 
     return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n${hiddenInfoRule}
@@ -3984,7 +4046,7 @@ ${journalContext || 'No journal context retrieved.'}
 REFEREE-SIDE ENGINE RECORDS (available only in Developer Mode):
 ${developerMode ? (refereeContext || 'No relevant referee-side records retrieved.') : 'HIDDEN — Developer Mode is off.'}
 
-For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did.
+For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did. If exact MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly rather than saying the information is hidden or unavailable.
 
 PLAYER INPUT:
 ${playerInput}`;
@@ -4114,8 +4176,8 @@ ${playerInput}`;
     if (combatActive()) {
       const safeDuringCombat=['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
-        const developerQuestion=Boolean(state.rules?.developerMode) && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me)\b/.test(normalized) || normalized.endsWith('?'));
-        if(developerQuestion) return callReferee(input);
+        const developerQuestion=Boolean(state.rules?.developerMode) && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me|now tell me)\b/.test(normalized) || normalized.endsWith('?'));
+        if(developerQuestion){ if(await developerAuditAnswer(input)) return; return callReferee(input); }
         if(state.combat?.awaitingMoveChoice){
           if(parseMovementChoiceCommand(input)) return;
           write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning');
@@ -4179,8 +4241,15 @@ ${playerInput}`;
     if (normalized === 'clear') { terminal.innerHTML = ''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
     if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
-    if (normalized.startsWith('referee ')) return callReferee(input.slice(8));
-    if (normalized.startsWith('ask referee ')) return callReferee(input.slice(12));
+    if (normalized.startsWith('referee ')) { const q=input.slice(8); if(await developerAuditAnswer(q)) return; return callReferee(q); }
+    if (normalized.startsWith('ask referee ')) {
+      const q=input.slice(12);
+      if(await developerAuditAnswer(q)) return;
+      return callReferee(q);
+    }
+    if (state.rules?.developerMode && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me|now tell me)\b/.test(normalized) || normalized.endsWith('?'))) {
+      if(await developerAuditAnswer(input)) return;
+    }
 
     // Layer 2: fast local semantic parsing for common table-language instructions.
     const localIntent = parseLocalIntent(input);
@@ -4201,7 +4270,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build restores the recent visible transcript from the permanent campaign journal after a refresh and silently autosaves campaign/combat state after each command. Developer Mode and per-monster morale auditing remain available.','system');
+    write('This build restores the recent visible transcript after refresh, silently autosaves campaign/combat state, and gives Developer Mode a deterministic engine-audit path for exact hidden rolls and decisions. Per-monster morale auditing remains active.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
