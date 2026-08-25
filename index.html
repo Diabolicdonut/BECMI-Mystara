@@ -57,7 +57,6 @@
   .button-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
   .button-row button { padding:7px 9px; font-size:11px; }
   #gameToken { width:100%; }
-  #notes { width:100%; min-height:170px; padding:8px; }
   .connection-copy { overflow-wrap:anywhere; }
   .rule-state { font-size:11px; color:var(--dim); line-height:1.45; margin-top:7px; }
   .rule-state strong { color:var(--ink); }
@@ -91,8 +90,20 @@
   .map-window-panel { margin:0; min-height:280px; max-height:68dvh; padding:14px; border:1px solid var(--line); background:#050704; color:var(--ink); font:14px/1.42 Consolas,"Courier New",monospace; white-space:pre; overflow:auto; }
   .map-window-header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .map-window-header-row button { padding:6px 10px; font-size:12px; }
-  body.map-open { overflow:hidden; }
-  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } }
+  body.map-open, body.journal-open { overflow:hidden; }
+  .journal-window-modal { width:min(900px,100%); }
+  .journal-toolbar { display:grid; grid-template-columns:minmax(0,1fr) 150px auto auto; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); background:#0a0e09; }
+  .journal-toolbar input, .journal-toolbar select { width:100%; background:#050704; color:var(--ink); border:1px solid #53634a; padding:8px; font:inherit; }
+  .journal-body { padding:14px; }
+  .journal-results { min-height:300px; max-height:66dvh; overflow:auto; border:1px solid var(--line); background:#050704; padding:8px 12px; }
+  .journal-entry { padding:10px 0; border-bottom:1px solid #283123; }
+  .journal-entry:last-child { border-bottom:0; }
+  .journal-meta { color:var(--dim); font-size:10px; line-height:1.35; margin-bottom:4px; }
+  .journal-text { color:var(--ink); font-size:12px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .journal-text.command { color:var(--accent); }
+  .journal-text.ai { color:#c6d8f0; }
+  .journal-empty { color:var(--dim); padding:16px 4px; }
+  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } .journal-toolbar { grid-template-columns:1fr 1fr; } .journal-toolbar input { grid-column:1 / -1; } .journal-results { min-height:52dvh; max-height:68dvh; } }
   @media (max-width:800px) {
     html, body { min-height:100%; }
     body { display:block; }
@@ -144,19 +155,25 @@
       <section>
         <h2>LOCAL MAP</h2>
         <div class="button-row"><button type="button" id="showMapButton">OPEN LOCAL MAP</button></div>
-        <p class="map-note">Opens a dedicated local map window for the current hex, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
+        <p class="map-note">Opens a dedicated local map window for the current hex, settlement, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
+      </section>
+
+      <section>
+        <h2>CAMPAIGN JOURNAL</h2>
+        <div class="button-row"><button type="button" id="showJournalButton">OPEN JOURNAL</button></div>
+        <p id="journalStatus" class="map-note">Permanent searchable transcript is stored locally in this browser.</p>
       </section>
 
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look / map / combat map (opens map window)</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look / map / town map / combat map (opens map window)</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>journal / log Bargle</li><li>events (opens recent journal)</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
-        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The dedicated LOCAL MAP window shows only the current hex and one surrounding ring as a mapping aid; you still maintain the campaign map yourself.</p>
+        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The dedicated LOCAL MAP window shows only the current hex and one surrounding ring, or a compact list of known places when you are inside a settlement; you still maintain the campaign map yourself.</p>
       </section>
 
       <section>
@@ -198,11 +215,6 @@
         <div id="partyPanel"></div>
       </section>
 
-      <section>
-        <h2>PLAYER NOTES</h2>
-        <textarea id="notes" placeholder="Keep your own map notes here..."></textarea>
-        <p>Notes save automatically in this browser.</p>
-      </section>
     </aside>
   </main>
 
@@ -228,11 +240,45 @@
       <button type="button" id="autoMapButton">CURRENT</button>
       <button type="button" id="combatMapButton">COMBAT</button>
       <button type="button" id="roomMapButton">ROOM</button>
+      <button type="button" id="townMapButton">TOWN</button>
       <button type="button" id="hexMapButton">HEX</button>
     </div>
     <div class="map-window-body">
       <pre id="mapWindowPanel" class="map-window-panel">Map unavailable.</pre>
-      <p class="map-note">This window is an orientation and mapping aid, not a complete automap. Unseen rooms, secret exits, hidden creatures, and unrevealed wilderness information remain omitted.</p>
+      <p class="map-note">This window is a persistent local orientation and mapping aid, not a complete automap. It shows the current local hex cluster, known settlement locations, room geometry, or combat position. Unseen rooms, secret exits, hidden creatures, and unrevealed information remain omitted.</p>
+    </div>
+  </div>
+</div>
+
+<div id="journalWindow" class="modal-backdrop" aria-hidden="true">
+  <div class="modal journal-window-modal" role="dialog" aria-modal="true" aria-labelledby="journalWindowTitle">
+    <header>
+      <div class="map-window-header-row">
+        <h2 id="journalWindowTitle">CAMPAIGN JOURNAL</h2>
+        <button type="button" id="closeJournalButton">CLOSE</button>
+      </div>
+      <div class="subtitle">Permanent local transcript · searchable campaign memory · player-visible record</div>
+    </header>
+    <div class="journal-toolbar">
+      <input id="journalSearch" autocomplete="off" spellcheck="false" placeholder="Search people, places, events, dialogue…">
+      <select id="journalCategory" aria-label="Journal category">
+        <option value="all">ALL ENTRIES</option>
+        <option value="command">COMMANDS</option>
+        <option value="narrative">NARRATIVE</option>
+        <option value="ai">REFEREE</option>
+        <option value="system">SYSTEM</option>
+      </select>
+      <button type="button" id="journalSearchButton">SEARCH</button>
+      <button type="button" id="journalRecentButton">RECENT</button>
+    </div>
+    <div class="journal-body">
+      <div id="journalResults" class="journal-results"><div class="journal-empty">Journal is loading…</div></div>
+      <div class="button-row">
+        <button type="button" id="exportCampaignButton">EXPORT CAMPAIGN</button>
+        <button type="button" id="importCampaignButton">IMPORT CAMPAIGN</button>
+      </div>
+      <input id="importCampaignFile" type="file" accept="application/json,.json" hidden>
+      <p class="map-note">The journal keeps the complete player-facing transcript from v0.3.10 onward. Referee-only engine records may also be archived internally but are never exposed through player search or AI recall. Export includes the save and journal, but never the Cloudflare access code.</p>
     </div>
   </div>
 </div>
@@ -312,11 +358,10 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.8';
+  const APP_VERSION = '0.3.12';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
-    notes: 'knownWorldRefereeNotes',
     token: 'knownWorldRefereeGameToken'
   };
 
@@ -329,7 +374,6 @@
   const travelBadge = document.getElementById('travelBadge');
   const aiBadge = document.getElementById('aiBadge');
   const partyPanel = document.getElementById('partyPanel');
-  const notes = document.getElementById('notes');
   const gameToken = document.getElementById('gameToken');
   const saveTokenButton = document.getElementById('saveTokenButton');
   const testAiButton = document.getElementById('testAiButton');
@@ -346,12 +390,25 @@
   const contextPanel = document.getElementById('contextPanel');
   const showMapButton = document.getElementById('showMapButton');
   const mapWindow = document.getElementById('mapWindow');
+  const showJournalButton = document.getElementById('showJournalButton');
+  const journalStatus = document.getElementById('journalStatus');
+  const journalWindow = document.getElementById('journalWindow');
+  const closeJournalButton = document.getElementById('closeJournalButton');
+  const journalSearchInput = document.getElementById('journalSearch');
+  const journalCategory = document.getElementById('journalCategory');
+  const journalSearchButton = document.getElementById('journalSearchButton');
+  const journalRecentButton = document.getElementById('journalRecentButton');
+  const journalResults = document.getElementById('journalResults');
+  const exportCampaignButton = document.getElementById('exportCampaignButton');
+  const importCampaignButton = document.getElementById('importCampaignButton');
+  const importCampaignFile = document.getElementById('importCampaignFile');
   const mapWindowPanel = document.getElementById('mapWindowPanel');
   const mapWindowTitle = document.getElementById('mapWindowTitle');
   const closeMapButton = document.getElementById('closeMapButton');
   const autoMapButton = document.getElementById('autoMapButton');
   const combatMapButton = document.getElementById('combatMapButton');
   const roomMapButton = document.getElementById('roomMapButton');
+  const townMapButton = document.getElementById('townMapButton');
   const hexMapButton = document.getElementById('hexMapButton');
   let mapWindowPreference = 'auto';
   const partyCreator = document.getElementById('partyCreator');
@@ -590,33 +647,33 @@
 
   const sites = {
     market: {
-      name:'Penhaligon Market', outdoor:true, returnsToHex:true, aliases:['penhaligon','penhaligon market','market','town'], services:['directions'],
+      name:'Penhaligon Market', settlement:'penhaligon', outdoor:true, returnsToHex:true, aliases:['penhaligon','penhaligon market','market','town'], services:['directions'],
       desc:'Canvas awnings crowd a muddy square inside Penhaligon. The Brazen Shield stands to the north, a general outfitter to the east, a weaponsmith to the west, and the stable yard to the south. An armorer works just beyond the weaponsmith.',
       exits:{north:'brazen_shield',east:'general_store',west:'weaponsmith',south:'stable'},
       searchText:'Notices advertise caravan work, livestock, and rooms. Conversation repeatedly turns toward the road north and the village of Stallanford.'
     },
     brazen_shield: {
-      name:'The Brazen Shield', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['brazen shield','inn','tavern'], services:['rumors','lodging','food'],
+      name:'The Brazen Shield', settlement:'penhaligon', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['brazen shield','inn','tavern'], services:['rumors','lodging','food'],
       desc:'The Brazen Shield is a busy travelers’ inn facing the market. Teamsters, guards, and merchants crowd long tables beneath smoke-dark rafters. This prototype treats it primarily as a place to gather rumors.',
       exits:{}
     },
     general_store: {
-      name:'Penhaligon General Outfitter', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['general store','outfitter','supply shop','provisioner'], services:['resupply','provisions','general goods','shopping'], shopType:'general_store',
+      name:'Penhaligon General Outfitter', settlement:'penhaligon', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['general store','outfitter','supply shop','provisioner'], services:['resupply','provisions','general goods','shopping'], shopType:'general_store',
       desc:'Rope, sacks, lanterns, spikes, rations, waterskins, and other expedition gear fill a narrow shop off the market. Type “wares” to see the current stock, or buy things in ordinary language.',
       exits:{}
     },
     weaponsmith: {
-      name:'Penhaligon Weaponsmith', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['weaponsmith','weapon shop','smith'], services:['weapons','shopping'], shopType:'weaponsmith',
+      name:'Penhaligon Weaponsmith', settlement:'penhaligon', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['weaponsmith','weapon shop','smith'], services:['weapons','shopping'], shopType:'weaponsmith',
       desc:'Racks of practical arms line the walls: axes, swords, spears, bows, crossbows, and polearms. A doorway north leads to the neighboring armorer. Type “wares” to inspect the stock.',
       exits:{north:'armorer'}
     },
     armorer: {
-      name:'Penhaligon Armorer', outdoor:true, returnsToSite:'weaponsmith', localParent:'market', aliases:['armorer','armor shop'], services:['armor','shields','shopping'], shopType:'armorer',
+      name:'Penhaligon Armorer', settlement:'penhaligon', outdoor:true, returnsToSite:'weaponsmith', localParent:'market', aliases:['armorer','armor shop'], services:['armor','shields','shopping'], shopType:'armorer',
       desc:'Mail, shields, and fitted pieces of armor hang from pegs and wooden stands. Type “wares” to inspect what can be purchased.',
       exits:{}
     },
     stable: {
-      name:'Penhaligon Stable Yard', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['stable','stables','stable yard'], services:['mounts','horses','mules','shopping'], shopType:'stable',
+      name:'Penhaligon Stable Yard', settlement:'penhaligon', outdoor:true, returnsToSite:'market', localParent:'market', aliases:['stable','stables','stable yard'], services:['mounts','horses','mules','shopping'], shopType:'stable',
       desc:'The stable yard smells of hay, leather, and horse sweat. Riding animals and pack beasts can be purchased here. Type “wares” to see what is available.',
       exits:{}
     },
@@ -627,7 +684,7 @@
       searchText:'Behind the shrine you find recent boot prints descending southwest toward the Duke’s Road, with several older tracks leading west.'
     },
     stallanford: {
-      name:'Stallanford', outdoor:true, returnsToHex:true, aliases:['stallanford','village'], services:['resupply','provisions','lodging','rumors'],
+      name:'Stallanford', settlement:'stallanford', outdoor:true, returnsToHex:true, aliases:['stallanford','village'], services:['resupply','provisions','lodging','rumors'],
       desc:'Stallanford is a worried village of timber houses and stone foundations. Doors are barred earlier than usual, and armed villagers watch the northern approaches. The complete B11 village and adventure content has not yet been converted into this build.',
       exits:{},
       searchText:'Conversations in the village make one fact clear: something has disrupted the countryside nearby, and the local authorities are seeking capable help.'
@@ -663,8 +720,263 @@
     }
   };
 
+
+  const SETTLEMENTS = {
+    penhaligon:{
+      name:'Penhaligon',
+      type:'fortified town',
+      territory:'Karameikos',
+      population:'about 3,750',
+      scale:'small town',
+      leadership:'Not yet known to the party',
+      rootSite:'market',
+      initialKnown:['market','brazen_shield','general_store','weaponsmith','armorer','stable'],
+      publicFacts:[
+        'A walled settlement with a busy market serving travelers and caravans.',
+        "The Duke's Road leaves the eastern gate and runs north toward Stallanford."
+      ]
+    },
+    stallanford:{
+      name:'Stallanford',
+      type:'village',
+      territory:'Karameikos',
+      population:'about 1,000 including nearby farms',
+      scale:'large village / small town',
+      leadership:'Not yet known to the party',
+      rootSite:'stallanford',
+      initialKnown:['stallanford'],
+      publicFacts:[
+        'Timber houses and stone foundations cluster around the road and river crossing.',
+        'Armed villagers are visibly watching the northern approaches.'
+      ]
+    }
+  };
+
+  const JOURNAL_DB_NAME = 'KnownWorldRefereeJournal';
+  const JOURNAL_DB_VERSION = 1;
+  const JOURNAL_STORE = 'entries';
+  let journalDbPromise = null;
+  let journalWriteChain = Promise.resolve();
+  let journalBooting = true;
+
+  function newCampaignId(){
+    if(globalThis.crypto?.randomUUID) return crypto.randomUUID();
+    return `kwr-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`;
+  }
+
+  function openJournalDb(){
+    if(journalDbPromise) return journalDbPromise;
+    journalDbPromise = new Promise((resolve,reject)=>{
+      if(!('indexedDB' in window)){ reject(new Error('IndexedDB is not available in this browser.')); return; }
+      const request=indexedDB.open(JOURNAL_DB_NAME,JOURNAL_DB_VERSION);
+      request.onupgradeneeded=()=>{
+        const db=request.result;
+        let store;
+        if(!db.objectStoreNames.contains(JOURNAL_STORE)) store=db.createObjectStore(JOURNAL_STORE,{keyPath:'id',autoIncrement:true});
+        else store=request.transaction.objectStore(JOURNAL_STORE);
+        if(!store.indexNames.contains('campaignId')) store.createIndex('campaignId','campaignId',{unique:false});
+        if(!store.indexNames.contains('category')) store.createIndex('category','category',{unique:false});
+        if(!store.indexNames.contains('ts')) store.createIndex('ts','ts',{unique:false});
+      };
+      request.onsuccess=()=>{ try{ void navigator.storage?.persist?.(); }catch{} resolve(request.result); };
+      request.onerror=()=>reject(request.error || new Error('Could not open campaign journal.'));
+    });
+    journalDbPromise.catch(error=>{ console.warn('Journal unavailable:',error); });
+    return journalDbPromise;
+  }
+
+  function journalCategoryForClass(cls=''){
+    if(cls==='prompt') return 'command';
+    if(cls==='ai') return 'ai';
+    if(cls==='system' || cls==='warning' || cls==='error') return 'system';
+    return 'narrative';
+  }
+
+  function journalSnapshot(){
+    let location='Unknown';
+    try { location=placeName(); } catch {}
+    return {
+      campaignId:state?.campaignId || 'unassigned',
+      ts:Date.now(),
+      day:Number(state?.day)||1,
+      minutes:Number(state?.minutes)||0,
+      clock:(typeof clockText==='function'?clockText():''),
+      location,
+      mode:state?.mode || 'unknown'
+    };
+  }
+
+  function appendJournalEntry(text,category='narrative',audience='player',meta={}){
+    if(journalBooting || !String(text||'').trim()) return Promise.resolve();
+    const snap=journalSnapshot();
+    const entry={...snap,category,audience,text:String(text),searchText:`${snap.clock} ${snap.location} ${category} ${String(text)}`.toLowerCase(),meta};
+    journalWriteChain=journalWriteChain.then(async()=>{
+      const db=await openJournalDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction(JOURNAL_STORE,'readwrite');
+        tx.objectStore(JOURNAL_STORE).add(entry);
+        tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
+      });
+    }).catch(error=>{ console.warn('Journal write failed:',error); });
+    return journalWriteChain;
+  }
+
+  async function getCampaignJournalEntries(campaignId=state.campaignId,{audience='player'}={}){
+    try{
+      await journalWriteChain;
+      const db=await openJournalDb();
+      const rows=await new Promise((resolve,reject)=>{
+        const tx=db.transaction(JOURNAL_STORE,'readonly');
+        const req=tx.objectStore(JOURNAL_STORE).index('campaignId').getAll(IDBKeyRange.only(campaignId));
+        req.onsuccess=()=>resolve(req.result||[]); req.onerror=()=>reject(req.error);
+      });
+      return rows.filter(row=>!audience || row.audience===audience).sort((a,b)=>(a.ts||0)-(b.ts||0) || (a.id||0)-(b.id||0));
+    }catch(error){ console.warn('Journal read failed:',error); return []; }
+  }
+
+  function journalTerms(query){
+    const stop=new Set(['the','and','that','this','with','from','have','what','when','where','who','why','how','did','was','were','are','our','about','into','does','know','we','you','they','them','their','there','then','than','for','but','not','all','can','could','would','should','do','in','of','to','a','an','is','it','on','at','as']);
+    return String(query||'').toLowerCase().match(/[a-z0-9'_-]{2,}/g)?.filter(term=>!stop.has(term)) || [];
+  }
+
+  async function searchJournalEntries(query='',category='all',limit=200,{forAi=false}={}){
+    const rows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+    const q=String(query||'').trim().toLowerCase();
+    const terms=journalTerms(q);
+    let filtered=rows.filter(row=>category==='all' || row.category===category);
+    if(forAi) filtered=filtered.filter(row=>row.category!=='command' || String(row.text).trim().toLowerCase()!==`> ${q}`);
+    if(q){
+      filtered=filtered.map(row=>{
+        const hay=String(row.searchText||`${row.location||''} ${row.text||''}`).toLowerCase();
+        let score=hay.includes(q)?20:0;
+        for(const term of terms) if(hay.includes(term)) score+=term.length>=6?4:2;
+        if(row.category==='ai' || row.category==='narrative') score+=1;
+        return {row,score};
+      }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score || (b.row.ts||0)-(a.row.ts||0)).map(x=>x.row);
+    } else filtered=filtered.sort((a,b)=>(b.ts||0)-(a.ts||0) || (b.id||0)-(a.id||0));
+    return filtered.slice(0,limit);
+  }
+
+  function journalEntryMeta(entry){
+    const clock=entry.clock || `Day ${entry.day||'?'} `;
+    const location=entry.location || 'Unknown location';
+    const label={command:'COMMAND',narrative:'NARRATIVE',ai:'REFEREE',system:'SYSTEM'}[entry.category] || String(entry.category||'ENTRY').toUpperCase();
+    return `${clock} · ${location} · ${label}`;
+  }
+
+  function renderJournalResults(entries,query=''){
+    if(!journalResults) return;
+    journalResults.innerHTML='';
+    if(!entries.length){
+      const empty=document.createElement('div'); empty.className='journal-empty';
+      empty.textContent=query?`No player-visible journal entries match “${query}”.`:'No journal entries have been recorded for this campaign yet.';
+      journalResults.appendChild(empty); return;
+    }
+    for(const entry of entries){
+      const wrap=document.createElement('div'); wrap.className='journal-entry';
+      const meta=document.createElement('div'); meta.className='journal-meta'; meta.textContent=journalEntryMeta(entry);
+      const text=document.createElement('div'); text.className=`journal-text ${entry.category||''}`; text.textContent=entry.text;
+      wrap.append(meta,text); journalResults.appendChild(wrap);
+    }
+  }
+
+  async function refreshJournalStatus(){
+    if(!journalStatus) return;
+    const rows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+    journalStatus.textContent=`${rows.length.toLocaleString()} searchable player-visible entr${rows.length===1?'y':'ies'} stored locally for this campaign.`;
+  }
+
+  async function runJournalSearch(query=journalSearchInput?.value||'',category=journalCategory?.value||'all'){
+    const rows=await searchJournalEntries(query,category,200);
+    renderJournalResults(rows,query);
+    if(journalSearchInput) journalSearchInput.value=query;
+    await refreshJournalStatus();
+  }
+
+  async function openJournalWindow(query=''){
+    if(mapWindow?.classList.contains('open')) closeMapWindow();
+    if(journalWindow){ journalWindow.classList.add('open'); journalWindow.setAttribute('aria-hidden','false'); document.body.classList.add('journal-open'); }
+    if(journalSearchInput) journalSearchInput.value=query;
+    await runJournalSearch(query,journalCategory?.value||'all');
+    if(query && journalSearchInput) journalSearchInput.focus();
+  }
+
+  function closeJournalWindow(){
+    if(journalWindow){ journalWindow.classList.remove('open'); journalWindow.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('journal-open'); command?.focus();
+  }
+
+  async function journalContextFor(question){
+    const rows=await searchJournalEntries(question,'all',10,{forAi:true});
+    if(!rows.length) return 'No relevant player-visible campaign-journal entries were found.';
+    return rows.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,700)).join('\n');
+  }
+
+  async function deleteJournalCampaign(campaignId){
+    const db=await openJournalDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(JOURNAL_STORE,'readwrite');
+      const index=tx.objectStore(JOURNAL_STORE).index('campaignId');
+      const req=index.openKeyCursor(IDBKeyRange.only(campaignId));
+      req.onsuccess=()=>{ const cursor=req.result; if(cursor){ tx.objectStore(JOURNAL_STORE).delete(cursor.primaryKey); cursor.continue(); } };
+      tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
+    });
+  }
+
+  async function insertJournalEntries(entries){
+    if(!Array.isArray(entries) || !entries.length) return;
+    const db=await openJournalDb();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction(JOURNAL_STORE,'readwrite'); const store=tx.objectStore(JOURNAL_STORE);
+      for(const source of entries){ const entry={...source}; delete entry.id; store.add(entry); }
+      tx.oncomplete=()=>resolve(); tx.onerror=()=>reject(tx.error); tx.onabort=()=>reject(tx.error);
+    });
+  }
+
+  async function exportCampaign(){
+    const entries=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+    const payload={format:'known-world-referee-campaign',formatVersion:1,exportedAt:new Date().toISOString(),appVersion:APP_VERSION,state,journal:entries};
+    const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a');
+    a.href=url; a.download=`known-world-campaign-day-${state.day}-${state.campaignId.slice(0,8)}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+    write('Campaign export created: save state plus complete player-facing journal. The Cloudflare access code is not included.','system');
+  }
+
+  async function importCampaignFromFile(file){
+    if(!file) return;
+    try{
+      const payload=JSON.parse(await file.text());
+      if(payload?.format!=='known-world-referee-campaign' || !payload.state) throw new Error('Not a Known World Referee campaign export.');
+      const imported=migrateSave(payload.state);
+      if(!imported.campaignId) imported.campaignId=newCampaignId();
+      state=imported;
+      await deleteJournalCampaign(state.campaignId);
+      const entries=(payload.journal||[]).map(row=>({...row,campaignId:state.campaignId}));
+      await insertJournalEntries(entries);
+      localStorage.setItem(STORAGE.save,JSON.stringify(state));
+      terminal.innerHTML='';
+      write('Campaign imported successfully. The complete journal was restored with it.','system');
+      updatePanels(); look(); await refreshJournalStatus(); await runJournalSearch('', 'all');
+    }catch(error){ write(`Campaign import failed: ${error.message}`,'error'); }
+    finally { if(importCampaignFile) importCampaignFile.value=''; }
+  }
+
+  async function migrateLegacyJournal(){
+    const key=`knownWorldRefereeJournalMigration:${state.campaignId}`;
+    if(localStorage.getItem(key)) return;
+    try{
+      const rows=await getCampaignJournalEntries(state.campaignId,{audience:null});
+      if(!rows.length && Array.isArray(state.eventLog) && state.eventLog.length){
+        const legacy=state.eventLog.map(text=>({...journalSnapshot(),campaignId:state.campaignId,category:'legacy_engine',audience:'referee',text:String(text),searchText:String(text).toLowerCase(),meta:{legacy:true}}));
+        await insertJournalEntries(legacy);
+      }
+      localStorage.setItem(key,'1');
+    }catch(error){ console.warn('Legacy journal migration failed:',error); }
+  }
+
   const initialState = () => ({
     version:APP_VERSION,
+    campaignId:newCampaignId(),
     mode:'wilderness',
     hex:{q:0,r:0},
     location:null,
@@ -674,6 +986,7 @@
     travelUsed:0,
     previousHex:null,
     knownPlaces:['market','stallanford'],
+    knownSettlementPlaces:{penhaligon:['market','brazen_shield','general_store','weaponsmith','armorer','stable'],stallanford:['stallanford']},
     torchLit:false,
     torchMinutes:0,
     torches:0,
@@ -711,6 +1024,7 @@
     div.innerHTML = esc(text).replace(/\n/g,'<br>');
     terminal.appendChild(div);
     terminal.scrollTop = terminal.scrollHeight;
+    void appendJournalEntry(text,journalCategoryForClass(cls),'player',{cssClass:cls||''});
   }
 
   function hexKey(q,r) { return `${q},${r}`; }
@@ -775,11 +1089,46 @@
 
   function ensureKnowledgeState() {
     if (!Array.isArray(state.knownPlaces)) state.knownPlaces = ['market','stallanford'];
+    if (!state.knownSettlementPlaces || typeof state.knownSettlementPlaces !== 'object') state.knownSettlementPlaces = {};
+    for (const [settlementId,info] of Object.entries(SETTLEMENTS)) {
+      if (!Array.isArray(state.knownSettlementPlaces[settlementId])) state.knownSettlementPlaces[settlementId] = [...(info.initialKnown||[])];
+    }
+  }
+
+  function settlementForSite(siteId){
+    return siteId && sites[siteId]?.settlement ? sites[siteId].settlement : null;
+  }
+
+  function currentSettlementId(){
+    if(state.mode!=='site' || !state.location) return null;
+    return settlementForSite(state.location);
+  }
+
+  function learnLocalPlace(siteId, announce=false){
+    const settlementId=settlementForSite(siteId);
+    if(!settlementId || !SETTLEMENTS[settlementId]) return false;
+    ensureKnowledgeState();
+    const list=state.knownSettlementPlaces[settlementId];
+    if(list.includes(siteId)) return false;
+    list.push(siteId);
+    if(announce) addEvent(`Party learned of ${sites[siteId].name} in ${SETTLEMENTS[settlementId].name}.`);
+    return true;
+  }
+
+  function revealVisibleSettlementPlaces(){
+    const settlementId=currentSettlementId();
+    if(!settlementId) return;
+    learnLocalPlace(state.location,false);
+    const site=currentSite();
+    for(const destination of Object.values(site?.exits||{})){
+      if(settlementForSite(destination)===settlementId) learnLocalPlace(destination,false);
+    }
   }
 
   function learnPlace(siteId) {
     if (!siteId || !sites[siteId]) return;
     ensureKnowledgeState();
+    learnLocalPlace(siteId,false);
     if (!state.knownPlaces.includes(siteId)) {
       state.knownPlaces.push(siteId);
       addEvent(`Party learned the location of ${sites[siteId].name}.`);
@@ -827,38 +1176,89 @@
     return state.knownPlaces.includes(hex.site);
   }
 
-  function wildernessCell(q,r,label,isCurrent=false){
+  function wildernessHexData(q,r,label,isCurrent=false){
     const hex=getHex(q,r);
-    if(!hex) return `[${label} ---]`;
+    if(!hex) return {label,terrain:'---',marks:'',name:'Beyond local view'};
     const terrain=TERRAIN_MAP_CODE[hex.terrain]||String(hex.terrain||'?').slice(0,3).toUpperCase();
     const marks=`${Array.isArray(hex.roadDirs)&&hex.roadDirs.length?'=':''}${Array.isArray(hex.riverDirs)&&hex.riverDirs.length?'~':''}${knownSiteVisibleInHex(hex,isCurrent)?'*':''}`;
-    return `[${isCurrent?'@':label} ${terrain}${marks}]`;
+    return {label:isCurrent?'@':label,terrain,marks,name:hex.name||'Unknown country'};
+  }
+
+  function tinyHexLines(cell){
+    const left=String(cell.label||'?').slice(0,2).padEnd(2,' ');
+    const terrain=String(cell.terrain||'---').slice(0,3).padEnd(3,' ');
+    const marks=String(cell.marks||'').slice(0,4).padEnd(4,' ');
+    return [
+      '  _______  ',
+      ' /       \\ ',
+      `/ ${left} ${terrain}  \\`,
+      `\\  ${marks}   /`,
+      ' \\_______/ '
+    ];
+  }
+
+  function placeAscii(canvas,lines,x,y){
+    for(let dy=0;dy<lines.length;dy++){
+      const line=lines[dy];
+      for(let dx=0;dx<line.length;dx++){
+        const ch=line[dx];
+        if(ch===' ') continue;
+        const yy=y+dy,xx=x+dx;
+        if(canvas[yy] && xx>=0 && xx<canvas[yy].length) canvas[yy][xx]=ch;
+      }
+    }
   }
 
   function renderWildernessAsciiMap(){
     const q=state.hex.q,r=state.hex.r;
-    const n=wildernessCell(q,r-1,'N');
-    const ne=wildernessCell(q+1,r-1,'NE');
-    const se=wildernessCell(q+1,r,'SE');
-    const so=wildernessCell(q,r+1,'S');
-    const sw=wildernessCell(q-1,r+1,'SW');
-    const nw=wildernessCell(q-1,r,'NW');
-    const here=wildernessCell(q,r,'@',true);
+    const cells={
+      N:wildernessHexData(q,r-1,'N'), NE:wildernessHexData(q+1,r-1,'NE'), SE:wildernessHexData(q+1,r,'SE'),
+      S:wildernessHexData(q,r+1,'S'), SW:wildernessHexData(q-1,r+1,'SW'), NW:wildernessHexData(q-1,r,'NW'),
+      C:wildernessHexData(q,r,'@',true)
+    };
+    const canvas=Array.from({length:18},()=>Array(43).fill(' '));
+    const placements={N:[16,0],NW:[5,3],NE:[27,3],C:[16,6],SW:[5,9],SE:[27,9],S:[16,12]};
+    for(const [key,[x,y]] of Object.entries(placements)) placeAscii(canvas,tinyHexLines(cells[key]),x,y);
+    const cluster=canvas.map(row=>row.join('').replace(/\s+$/,'')).join('\n').replace(/\n+$/,'');
     const hex=currentHex();
-    const name=hex?.name||'Unknown country';
     const roads=roadDirections(hex);
     const waters=Array.isArray(hex?.riverDirs)?hex.riverDirs:[];
-    return `WILDERNESS LOCAL VIEW
+    const known=Object.entries(cells).filter(([key,cell])=>key!=='C' && cell.terrain!=='---').map(([key,cell])=>`  ${key}: ${cell.name}`).join('\n');
+    return `WILDERNESS LOCAL VIEW — 6-MILE HEXES\n\n${cluster}\n\n@ current · = road/trail · ~ water · * known site\nCurrent: ${hex?.name||'Unknown country'}\nFrom @: road ${roads.length?roads.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'} · water ${waters.length?waters.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'}${known?`\nAdjacent:\n${known}`:''}`;
+  }
 
-             ${n}
-      ${nw}       ${ne}
-             ${here}
-      ${sw}       ${se}
-             ${so}
+  function settlementPlaceSummary(siteId){
+    const site=sites[siteId];
+    if(!site) return '';
+    if(siteId==='market') return 'market square, notices, directions';
+    if(siteId==='brazen_shield') return 'inn, food, lodging, rumors';
+    if(siteId==='general_store') return 'expedition supplies and provisions';
+    if(siteId==='weaponsmith') return 'weapons and ammunition';
+    if(siteId==='armorer') return 'armor and shields';
+    if(siteId==='stable') return 'mounts and pack animals';
+    if(siteId==='stallanford') return 'village center; local services not yet fully keyed';
+    if(site.services?.length) return site.services.join(', ');
+    return 'known location';
+  }
 
-@ current · = road/trail · ~ water · * known site
-Current: ${name}
-From @: road ${roads.length?roads.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'} · water ${waters.length?waters.map(d=>HEX_DIRECTIONS[d]?.short||d).join('/'):'—'}`;
+  function renderSettlementAsciiMap(settlementId=currentSettlementId()){
+    if(!settlementId || !SETTLEMENTS[settlementId]) return 'SETTLEMENT VIEW\n\nThe party is not currently inside a keyed settlement.';
+    ensureKnowledgeState();
+    revealVisibleSettlementPlaces();
+    const info=SETTLEMENTS[settlementId];
+    const knownIds=(state.knownSettlementPlaces[settlementId]||[]).filter(id=>sites[id] && settlementForSite(id)===settlementId);
+    const lines=[`${info.name.toUpperCase()} — SETTLEMENT VIEW`,'',`Type: ${info.type}${info.scale?` (${info.scale})`:''}`,`Approx. population: ${info.population||'not yet established'}`,`Territory: ${info.territory}`,`Leadership: ${info.leadership}`,`Current: ${sites[state.location]?.name||info.name}`,'','KNOWN PLACES'];
+    if(!knownIds.length) lines.push('  none yet');
+    else for(const siteId of knownIds){
+      const here=siteId===state.location?'@':' ';
+      lines.push(`${here} ${sites[siteId].name} — ${settlementPlaceSummary(siteId)}`);
+    }
+    if(info.publicFacts?.length){
+      lines.push('','OBVIOUS / KNOWN');
+      for(const fact of info.publicFacts) lines.push(`- ${fact}`);
+    }
+    lines.push('','@ current location · new places are added as the party learns of them');
+    return lines.join('\n');
   }
 
   function renderMarketAsciiMap(){
@@ -972,15 +1372,18 @@ W: swollen wooden door · E: cellar`;
   function currentAsciiMap(preference='auto'){
     const pref=String(preference||'auto').toLowerCase();
     if(pref==='combat') return renderCombatAsciiMap();
+    if(pref==='town' || pref==='settlement') return renderSettlementAsciiMap();
     if(pref==='hex' || pref==='wilderness') return renderWildernessAsciiMap();
     if(pref==='room' || pref==='site') return state.mode==='site'?renderRoomAsciiMap():renderWildernessAsciiMap();
     if(state.combat?.active) return renderCombatAsciiMap();
+    if(currentSettlementId()) return renderSettlementAsciiMap();
     return state.mode==='wilderness'?renderWildernessAsciiMap():renderRoomAsciiMap();
   }
 
   function mapWindowHeading(preference='auto'){
     const pref=String(preference||'auto').toLowerCase();
     if(pref==='combat' || (pref==='auto' && state.combat?.active)) return 'COMBAT POSITION';
+    if(pref==='town' || pref==='settlement' || (pref==='auto' && currentSettlementId())) return 'SETTLEMENT VIEW';
     if(pref==='hex' || pref==='wilderness' || (pref==='auto' && state.mode==='wilderness')) return 'LOCAL HEX MAP';
     return 'LOCAL ROOM MAP';
   }
@@ -992,6 +1395,7 @@ W: swollen wooden door · E: cellar`;
   }
 
   function openMapWindow(preference='auto'){
+    if(journalWindow?.classList.contains('open')) closeJournalWindow();
     mapWindowPreference=String(preference||'auto').toLowerCase();
     refreshMapWindow();
     if(mapWindow){ mapWindow.classList.add('open'); mapWindow.setAttribute('aria-hidden','false'); document.body.classList.add('map-open'); }
@@ -1118,6 +1522,7 @@ W: swollen wooden door · E: cellar`;
   function addEvent(text) {
     state.eventLog.push(`[${clockText()}] ${text}`);
     if (state.eventLog.length > 100) state.eventLog.shift();
+    void appendJournalEntry(text,'engine','referee');
   }
 
   function advanceClock(minutes, reason) {
@@ -1203,6 +1608,7 @@ W: swollen wooden door · E: cellar`;
       return;
     }
 
+    revealVisibleSettlementPlaces();
     write(currentSite().desc);
     const exits = visibleSiteExits();
     if (exits.length) write(`Obvious ways: ${exits.join(', ')}.`, 'system');
@@ -1307,6 +1713,7 @@ W: swollen wooden door · E: cellar`;
       return false;
     }
     state.location = destination;
+    learnLocalPlace(destination,false);
     advanceExploration(10,`Party moved ${direction} to ${sites[destination].name}.`);
     look();
     return true;
@@ -1330,6 +1737,7 @@ W: swollen wooden door · E: cellar`;
     state.mode = 'site';
     state.location = hex.site;
     learnPlace(hex.site);
+    learnLocalPlace(hex.site,false);
     advanceExploration(10,`Party entered ${sites[hex.site].name}.`);
     look();
     return true;
@@ -2916,8 +3324,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function events() {
-    const recent = state.eventLog.slice(-18);
-    write(recent.length ? recent.join('\n') : 'No rules events have been recorded yet.','system');
+    if(journalCategory) journalCategory.value='all';
+    void openJournalWindow('');
   }
 
   function roll(expression) {
@@ -3177,8 +3585,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function save() {
     state.version = APP_VERSION;
+    if(!state.campaignId) state.campaignId=newCampaignId();
     localStorage.setItem(STORAGE.save,JSON.stringify(state));
-    write('Campaign state saved in this browser.','system');
+    write('Campaign state saved in this browser. The permanent journal is stored separately in IndexedDB.','system');
+    void refreshJournalStatus();
   }
 
   function normalizeMember(member) {
@@ -3193,7 +3603,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function migrateSave(loaded) {
     const base=initialState();
-    let merged={...base,...loaded,version:APP_VERSION};
+    let merged={...base,...loaded,version:APP_VERSION,campaignId:loaded.campaignId||base.campaignId};
     if (!(loaded.mode && loaded.hex)) {
       const oldLocations={penhaligon:{mode:'wilderness',hex:{q:0,r:0},location:null},market:{mode:'site',hex:{q:0,r:0},location:'market'},kingsroad:{mode:'wilderness',hex:{q:0,r:-1},location:null},shrine:{mode:'site',hex:{q:1,r:-2},location:'shrine'},ford:{mode:'wilderness',hex:{q:0,r:-2},location:null},oldroad:{mode:'wilderness',hex:{q:-1,r:-1},location:null},tollhouse:{mode:'site',hex:{q:-2,r:-1},location:'tollhouse'},cellar:{mode:'site',hex:{q:-2,r:-1},location:'cellar'},passage:{mode:'site',hex:{q:-2,r:-1},location:'passage'},cistern:{mode:'site',hex:{q:-2,r:-1},location:'cistern'},sealed:{mode:'site',hex:{q:-2,r:-1},location:'sealed'}};
       merged={...merged,...(oldLocations[loaded.location]||oldLocations.penhaligon),travelUsed:0};
@@ -3217,6 +3627,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
     try {
       state = migrateSave(JSON.parse(raw));
+      localStorage.setItem(STORAGE.save,JSON.stringify(state));
       write('Campaign state loaded.','system');
       updatePanels();
       look();
@@ -3226,8 +3637,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function newGame() {
-    if (!confirm('Start a new campaign and discard unsaved progress?')) return;
+    if (!confirm('Start a new campaign? The current save slot will be replaced. Export the current campaign first if you want an easy way to restore it; journal data remains in browser storage, but searches follow the active campaign.')) return;
     localStorage.removeItem(STORAGE.save);
+    journalBooting=true;
     state = initialState();
     terminal.innerHTML = '';
     boot(false);
@@ -3238,7 +3650,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     write(`COMMANDS
 look — repeat the current description
 map / local map — redraw the current local mapping aid
-hex view — current wilderness hex plus one surrounding ring
+journal / log — open the permanent searchable campaign journal
+log Bargle — open the journal and search for Bargle
+hex view — current wilderness hex plus one surrounding ring of actual hex-shaped cells
+town view — known locations and obvious facts in the current settlement
 room view — current keyed room/site
 combat map / position — current combat bands, distances, and melee relationships
 create party — open the roster; add adventurers at any time, roll 3d6, enter your own scores, use the name generator, or quick-generate 1–12 with/without purchased equipment
@@ -3432,7 +3847,7 @@ new game / clear`);
     }
   }
 
-  function buildRefereePrompt(playerInput, connectionTest=false) {
+  function buildRefereePrompt(playerInput, connectionTest=false, journalContext='') {
     if (connectionTest) return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
 
     const partySummary = state.party.map(member =>
@@ -3442,7 +3857,15 @@ new game / clear`);
 
     return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.
 - Never reveal the engine's Soft/Hard Matrix protection category or target-size category during ordinary play. Describe only observable facts such as worn armor, shields, scales, shell, exposed bone, hide, or other visible construction. Soft/Hard remains referee-side rules data.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
-Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}\n\nPLAYER INPUT:\n${playerInput}`;
+Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}
+
+RELEVANT PLAYER-VISIBLE CAMPAIGN JOURNAL:
+${journalContext || 'No journal context retrieved.'}
+
+For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. Never expose referee-only engine records.
+
+PLAYER INPUT:
+${playerInput}`;
   }
 
   function friendlyAiError(error, status) {
@@ -3474,10 +3897,11 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     if (!options.silent) write('The referee considers the situation…','system');
 
     try {
+      const journalContext = options.connectionTest ? '' : await journalContextFor(playerInput);
       const response = await fetch(WORKER_URL, {
         method:'POST',
         headers:{'Content-Type':'application/json','X-Game-Token':token},
-        body:JSON.stringify({input:buildRefereePrompt(playerInput,Boolean(options.connectionTest))})
+        body:JSON.stringify({input:buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext)})
       });
       let data = {};
       try { data = await response.json(); } catch { data = {}; }
@@ -3555,7 +3979,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       write('Use: matrix dagger / medium / hard / close','warning'); return;
     }
 
-    const noPartyAllowed = ['look','l','look around','map','local map','hex view','wilderness map','room view','site map','combat map','position','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    const noPartyAllowed = ['look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
       write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
       return;
@@ -3565,7 +3989,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     // During combat, natural-language orders must reach the combat parser instead of
     // being rejected by the exploration-command guard.
     if (combatActive()) {
-      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?','map','local map','hex view','wilderness map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
+      const safeDuringCombat=['party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
         if(state.combat?.awaitingMoveChoice){
           if(parseMovementChoiceCommand(input)) return;
@@ -3590,6 +4014,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
     if (normalized === 'map' || normalized === 'local map') { showAsciiMap(); return; }
     if (normalized === 'hex view' || normalized === 'wilderness map') { showAsciiMap('hex'); return; }
+    if (normalized === 'town view' || normalized === 'town map' || normalized === 'settlement view' || normalized === 'settlement map') { showAsciiMap('town'); return; }
     if (normalized === 'room view' || normalized === 'site map') { showAsciiMap('room'); return; }
     if (normalized === 'enter' || normalized === 'enter site' || normalized === 'enter town' || normalized === 'enter village' || normalized === 'enter building') return enterSite();
     if (normalized === 'leave' || normalized === 'exit' || normalized === 'return to wilderness') return leaveSite();
@@ -3614,7 +4039,9 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     if (normalized === 'party') return party();
     if (normalized === 'inventory' || normalized === 'supplies') return inventory();
     if (normalized === 'status') return status();
-    if (normalized === 'events' || normalized === 'log') return events();
+    if (normalized === 'journal' || normalized === 'log') { void openJournalWindow(''); return; }
+    if (normalized.startsWith('journal ') || normalized.startsWith('log ')) { const q=input.replace(/^(?:journal|log)\s+/i,'').trim(); void openJournalWindow(q); return; }
+    if (normalized === 'events') return events();
     if (normalized === 'save') return save();
     if (normalized === 'load') return load();
     if (normalized === 'new game' || normalized === 'restart') return newGame();
@@ -3641,10 +4068,10 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
   function boot(autoload=true) {
     if(autoload){
       const raw=localStorage.getItem(STORAGE.save);
-      if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
+      if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build moves the local mapping aid into a dedicated MAP window instead of printing diagrams into the log. The window shows the current local hex, room, or combat position using only visible information, while you maintain the real campaign/dungeon map yourself. Phase-based initiative movement choices also accept compact natural commands such as “us first” and “them first”. Explicit test combats use RAW-style encounter distance, encounter movement, and actual missile ranges. Enemy referee-side statistics remain hidden.','system');
+    write('This build adds a permanent searchable CAMPAIGN JOURNAL backed by IndexedDB. The visible transcript, commands, and referee replies are archived without the old 100-entry limit; hidden engine records are kept referee-side and never appear in player search. Journal questions can retrieve relevant prior history for the AI referee. The local map remains a dedicated window.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -3655,16 +4082,30 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       look();
     }
     updatePanels(); refreshTokenUi();
+    journalBooting=false;
+    void migrateLegacyJournal().then(refreshJournalStatus);
   }
+
+  if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow(''); });
+  if(closeJournalButton) closeJournalButton.addEventListener('click',closeJournalWindow);
+  if(journalSearchButton) journalSearchButton.addEventListener('click',()=>{ void runJournalSearch(); });
+  if(journalRecentButton) journalRecentButton.addEventListener('click',()=>{ if(journalSearchInput) journalSearchInput.value=''; if(journalCategory) journalCategory.value='all'; void runJournalSearch('','all'); });
+  if(journalSearchInput) journalSearchInput.addEventListener('keydown',event=>{ if(event.key==='Enter'){ event.preventDefault(); void runJournalSearch(); } });
+  if(journalCategory) journalCategory.addEventListener('change',()=>{ void runJournalSearch(); });
+  if(exportCampaignButton) exportCampaignButton.addEventListener('click',()=>{ void exportCampaign(); });
+  if(importCampaignButton) importCampaignButton.addEventListener('click',()=>importCampaignFile?.click());
+  if(importCampaignFile) importCampaignFile.addEventListener('change',()=>{ const file=importCampaignFile.files?.[0]; if(file && confirm('Import this campaign? The current save slot will be replaced.')) void importCampaignFromFile(file); });
+  if(journalWindow) journalWindow.addEventListener('click',event=>{ if(event.target===journalWindow) closeJournalWindow(); });
 
   if(showMapButton) showMapButton.addEventListener('click',()=>openMapWindow());
   if(closeMapButton) closeMapButton.addEventListener('click',closeMapWindow);
   if(autoMapButton) autoMapButton.addEventListener('click',()=>{ mapWindowPreference='auto'; refreshMapWindow(); });
   if(combatMapButton) combatMapButton.addEventListener('click',()=>{ mapWindowPreference='combat'; refreshMapWindow(); });
   if(roomMapButton) roomMapButton.addEventListener('click',()=>{ mapWindowPreference='room'; refreshMapWindow(); });
+  if(townMapButton) townMapButton.addEventListener('click',()=>{ mapWindowPreference='town'; refreshMapWindow(); });
   if(hexMapButton) hexMapButton.addEventListener('click',()=>{ mapWindowPreference='hex'; refreshMapWindow(); });
   if(mapWindow) mapWindow.addEventListener('click',event=>{ if(event.target===mapWindow) closeMapWindow(); });
-  document.addEventListener('keydown',event=>{ if(event.key==='Escape' && mapWindow?.classList.contains('open')) closeMapWindow(); });
+  document.addEventListener('keydown',event=>{ if(event.key==='Escape'){ if(journalWindow?.classList.contains('open')) closeJournalWindow(); else if(mapWindow?.classList.contains('open')) closeMapWindow(); } });
 
   document.getElementById('commandForm').addEventListener('submit', event => {
     event.preventDefault();
@@ -3726,8 +4167,6 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
   closeCreatorButton.addEventListener('click',closePartyCreator);
   partyCreator.addEventListener('click',event=>{ if(event.target===partyCreator) closePartyCreator(); });
 
-  notes.value = localStorage.getItem(STORAGE.notes) || '';
-  notes.addEventListener('input',()=>localStorage.setItem(STORAGE.notes,notes.value));
 
   boot();
 })();
