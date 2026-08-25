@@ -41,6 +41,14 @@
   aside section { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; }
   aside p, aside li { color:var(--dim); font-size:12px; line-height:1.45; }
   aside ul { padding-left:18px; margin:6px 0; }
+  aside details.sidebar-collapse { border-bottom:1px solid var(--line); padding-bottom:14px; margin-bottom:14px; }
+  aside details.sidebar-collapse > summary { cursor:pointer; color:var(--accent); font-size:14px; font-weight:bold; list-style:none; user-select:none; padding:2px 0 8px; }
+  aside details.sidebar-collapse > summary::-webkit-details-marker { display:none; }
+  aside details.sidebar-collapse > summary::after { content:'  [+]'; color:var(--dim); font-weight:normal; }
+  aside details.sidebar-collapse[open] > summary::after { content:'  [−]'; }
+  aside details.sidebar-collapse .collapse-body { padding-top:4px; }
+  aside details.sidebar-collapse h3 { margin:12px 0 6px; color:var(--accent); font-size:12px; }
+  .developer-on { color:var(--warn)!important; border-color:var(--warn)!important; }
   footer { position:fixed; left:0; right:0; bottom:0; z-index:60; border-top:1px solid var(--line); padding:8px 10px calc(8px + env(safe-area-inset-bottom)); background:#0b0f09; box-shadow:0 -8px 24px rgba(0,0,0,.55); }
   footer form { width:min(1180px,100%); margin:0 auto; }
   footer .tiny { display:none; }
@@ -102,6 +110,7 @@
   .journal-text { color:var(--ink); font-size:12px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
   .journal-text.command { color:var(--accent); }
   .journal-text.ai { color:#c6d8f0; }
+  .journal-text.engine { color:#efc071; }
   .journal-empty { color:var(--dim); padding:16px 4px; }
   @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } .journal-toolbar { grid-template-columns:1fr 1fr; } .journal-toolbar input { grid-column:1 / -1; } .journal-results { min-height:52dvh; max-height:68dvh; } }
   @media (max-width:800px) {
@@ -140,19 +149,6 @@
     <div id="terminal" role="log" aria-live="polite"></div>
     <aside>
       <section>
-        <h2>AI REFEREE</h2>
-        <p class="connection-copy">Backend: <strong>becmi-mystara.diabolicdonut.workers.dev</strong></p>
-        <label class="field-label" for="gameToken">Private GAME_TOKEN access code</label>
-        <input id="gameToken" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the shorter Cloudflare access code">
-        <div class="button-row">
-          <button type="button" id="saveTokenButton">SAVE CODE</button>
-          <button type="button" id="testAiButton">TEST AI</button>
-          <button type="button" id="forgetTokenButton">FORGET CODE</button>
-        </div>
-        <p id="aiHelp">The access code is saved only in this browser. Your OpenAI API key remains inside Cloudflare and is never placed in this page.</p>
-      </section>
-
-      <section>
         <h2>LOCAL MAP</h2>
         <div class="button-row"><button type="button" id="showMapButton">OPEN LOCAL MAP</button></div>
         <p class="map-note">Opens a dedicated local map window for the current hex, settlement, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
@@ -164,12 +160,14 @@
         <p id="journalStatus" class="map-note">Permanent searchable transcript is stored locally in this browser.</p>
       </section>
 
-      <section>
-        <h2>QUICK COMMANDS</h2>
-        <ul>
-          <li>look / map / town map / combat map (opens map window)</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>journal / log Bargle</li><li>events (opens recent journal)</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
-        </ul>
-      </section>
+      <details class="sidebar-collapse" id="quickCommandsDetails">
+        <summary>QUICK COMMANDS</summary>
+        <div class="collapse-body">
+          <ul>
+            <li>look / map / town map / combat map (opens map window)</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>journal / log Bargle</li><li>developer mode on / referee log</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          </ul>
+        </div>
+      </details>
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
@@ -184,20 +182,42 @@
         <p class="tiny">Characters may be rolled 3d6 in order, entered from dice rolled at the table, or generated as a complete party. Starting money is 3d6×10 gp per adventurer and is pooled into the expedition treasury after any automatically purchased starting gear.</p>
       </section>
 
-      <section>
-        <h2>RULES OPTIONS</h2>
-        <div id="weaponRuleState" class="rule-state"></div>
-        <div class="button-row">
-          <button type="button" id="rawWeaponsButton">RAW DAMAGE</button>
-          <button type="button" id="matrixWeaponsButton">CONTEXTUAL MATRIX</button>
-          <button type="button" id="auditWeaponsButton">WEAPON AUDIT: OFF</button>
+      <details class="sidebar-collapse" id="optionsDetails">
+        <summary>OPTIONS & DEVELOPER TOOLS</summary>
+        <div class="collapse-body">
+          <h3>RULES OPTIONS</h3>
+          <div id="weaponRuleState" class="rule-state"></div>
+          <div class="button-row">
+            <button type="button" id="rawWeaponsButton">RAW DAMAGE</button>
+            <button type="button" id="matrixWeaponsButton">CONTEXTUAL MATRIX</button>
+            <button type="button" id="auditWeaponsButton">WEAPON AUDIT: OFF</button>
+          </div>
+          <div class="button-row" style="margin-top:8px">
+            <button type="button" id="rawInitiativeButton">RAW INITIATIVE</button>
+            <button type="button" id="phasedInitiativeButton">PHASE-BASED INITIATIVE</button>
+          </div>
+          <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> records RAW and Matrix damage side-by-side while applying only the selected system. In <strong>Phase-Based Initiative</strong>, the initiative winner chooses movement order, then acts first in missile, magic, and melee.</p>
+
+          <h3>DEVELOPER / RULES TRANSPARENCY</h3>
+          <div id="developerRuleState" class="rule-state"></div>
+          <div class="button-row">
+            <button type="button" id="developerModeButton">DEVELOPER MODE: OFF</button>
+            <button type="button" id="openRefereeLogButton">OPEN REFEREE LOG</button>
+          </div>
+          <p class="tiny">Developer Mode is for rules testing. It allows the referee to answer questions from hidden engine records such as monster orders, morale rolls, saves, attack targets, and other referee-side decisions. It does not change the actual rules or rolls.</p>
+
+          <h3>AI REFEREE ACCESS</h3>
+          <p class="connection-copy">Backend: <strong>becmi-mystara.diabolicdonut.workers.dev</strong></p>
+          <label class="field-label" for="gameToken">Private GAME_TOKEN access code</label>
+          <input id="gameToken" type="password" autocomplete="off" spellcheck="false" placeholder="Enter the shorter Cloudflare access code">
+          <div class="button-row">
+            <button type="button" id="saveTokenButton">SAVE CODE</button>
+            <button type="button" id="testAiButton">TEST AI</button>
+            <button type="button" id="forgetTokenButton">FORGET CODE</button>
+          </div>
+          <p id="aiHelp">The access code is saved only in this browser. Your OpenAI API key remains inside Cloudflare and is never placed in this page.</p>
         </div>
-        <div class="button-row" style="margin-top:8px">
-          <button type="button" id="rawInitiativeButton">RAW INITIATIVE</button>
-          <button type="button" id="phasedInitiativeButton">PHASE-BASED INITIATIVE</button>
-        </div>
-        <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> now records RAW and Matrix damage side-by-side on successful weapon hits while applying only the selected system. In <strong>Phase-Based Initiative</strong>, the initiative winner chooses which side moves first; the initiative winner then acts first in missile, magic, and melee.</p>
-      </section>
+      </details>
 
       <section>
         <h2>COMBAT</h2>
@@ -267,6 +287,7 @@
         <option value="narrative">NARRATIVE</option>
         <option value="ai">REFEREE</option>
         <option value="system">SYSTEM</option>
+        <option value="engine">REFEREE ENGINE (DEV)</option>
       </select>
       <button type="button" id="journalSearchButton">SEARCH</button>
       <button type="button" id="journalRecentButton">RECENT</button>
@@ -278,7 +299,7 @@
         <button type="button" id="importCampaignButton">IMPORT CAMPAIGN</button>
       </div>
       <input id="importCampaignFile" type="file" accept="application/json,.json" hidden>
-      <p class="map-note">The journal keeps the complete player-facing transcript from v0.3.10 onward. Referee-only engine records may also be archived internally but are never exposed through player search or AI recall. Export includes the save and journal, but never the Cloudflare access code.</p>
+      <p class="map-note">The journal keeps the complete player-facing transcript from v0.3.10 onward. Referee-side engine records are also archived. They are visible in the REFEREE ENGINE filter only while Developer Mode is on, and may be supplied to the AI referee only for testing questions in that mode. Export includes both records and the save, but never the Cloudflare access code.</p>
     </div>
   </div>
 </div>
@@ -358,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.12';
+  const APP_VERSION = '0.3.13';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -382,6 +403,10 @@
   const createPartyButton = document.getElementById('createPartyButton');
   const weaponRuleState = document.getElementById('weaponRuleState');
   const rawWeaponsButton = document.getElementById('rawWeaponsButton');
+  const developerModeButton = document.getElementById('developerModeButton');
+  const developerRuleState = document.getElementById('developerRuleState');
+  const openRefereeLogButton = document.getElementById('openRefereeLogButton');
+  const optionsDetails = document.getElementById('optionsDetails');
   const matrixWeaponsButton = document.getElementById('matrixWeaponsButton');
   const auditWeaponsButton = document.getElementById('auditWeaponsButton');
   const rawInitiativeButton = document.getElementById('rawInitiativeButton');
@@ -821,6 +846,10 @@
     return journalWriteChain;
   }
 
+  function refereeLog(text,meta={}){
+    return appendJournalEntry(text,'engine','referee',{...meta,developerRecord:true});
+  }
+
   async function getCampaignJournalEntries(campaignId=state.campaignId,{audience='player'}={}){
     try{
       await journalWriteChain;
@@ -839,8 +868,8 @@
     return String(query||'').toLowerCase().match(/[a-z0-9'_-]{2,}/g)?.filter(term=>!stop.has(term)) || [];
   }
 
-  async function searchJournalEntries(query='',category='all',limit=200,{forAi=false}={}){
-    const rows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+  async function searchJournalEntries(query='',category='all',limit=200,{forAi=false,audience='player'}={}){
+    const rows=await getCampaignJournalEntries(state.campaignId,{audience});
     const q=String(query||'').trim().toLowerCase();
     const terms=journalTerms(q);
     let filtered=rows.filter(row=>category==='all' || row.category===category);
@@ -849,7 +878,10 @@
       filtered=filtered.map(row=>{
         const hay=String(row.searchText||`${row.location||''} ${row.text||''}`).toLowerCase();
         let score=hay.includes(q)?20:0;
-        for(const term of terms) if(hay.includes(term)) score+=term.length>=6?4:2;
+        for(const term of terms){
+          const singular=term.endsWith('s')&&term.length>3?term.slice(0,-1):term;
+          if(hay.includes(term) || hay.includes(singular)) score+=term.length>=6?4:2;
+        }
         if(row.category==='ai' || row.category==='narrative') score+=1;
         return {row,score};
       }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score || (b.row.ts||0)-(a.row.ts||0)).map(x=>x.row);
@@ -860,7 +892,7 @@
   function journalEntryMeta(entry){
     const clock=entry.clock || `Day ${entry.day||'?'} `;
     const location=entry.location || 'Unknown location';
-    const label={command:'COMMAND',narrative:'NARRATIVE',ai:'REFEREE',system:'SYSTEM'}[entry.category] || String(entry.category||'ENTRY').toUpperCase();
+    const label={command:'COMMAND',narrative:'NARRATIVE',ai:'REFEREE',system:'SYSTEM',engine:'REFEREE ENGINE'}[entry.category] || String(entry.category||'ENTRY').toUpperCase();
     return `${clock} · ${location} · ${label}`;
   }
 
@@ -882,23 +914,42 @@
 
   async function refreshJournalStatus(){
     if(!journalStatus) return;
-    const rows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
-    journalStatus.textContent=`${rows.length.toLocaleString()} searchable player-visible entr${rows.length===1?'y':'ies'} stored locally for this campaign.`;
+    const playerRows=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
+    if(state.rules?.developerMode){
+      const refereeRows=await getCampaignJournalEntries(state.campaignId,{audience:'referee'});
+      journalStatus.textContent=`${playerRows.length.toLocaleString()} player-visible + ${refereeRows.length.toLocaleString()} referee-side searchable entries stored locally for this campaign.`;
+    } else journalStatus.textContent=`${playerRows.length.toLocaleString()} searchable player-visible entr${playerRows.length===1?'y':'ies'} stored locally for this campaign.`;
   }
 
   async function runJournalSearch(query=journalSearchInput?.value||'',category=journalCategory?.value||'all'){
-    const rows=await searchJournalEntries(query,category,200);
+    const developer=Boolean(state.rules?.developerMode);
+    if(category==='engine' && !developer){
+      if(journalResults) journalResults.innerHTML='<div class="journal-empty">REFEREE ENGINE records are hidden during ordinary play. Enable Developer Mode in OPTIONS & DEVELOPER TOOLS to inspect them.</div>';
+      await refreshJournalStatus(); return;
+    }
+    const audience=category==='engine'?'referee':'player';
+    const rows=await searchJournalEntries(query,category,200,{audience});
     renderJournalResults(rows,query);
     if(journalSearchInput) journalSearchInput.value=query;
     await refreshJournalStatus();
   }
 
-  async function openJournalWindow(query=''){
+  async function openJournalWindow(query='',categoryOverride=null){
     if(mapWindow?.classList.contains('open')) closeMapWindow();
     if(journalWindow){ journalWindow.classList.add('open'); journalWindow.setAttribute('aria-hidden','false'); document.body.classList.add('journal-open'); }
+    if(categoryOverride && journalCategory) journalCategory.value=categoryOverride;
     if(journalSearchInput) journalSearchInput.value=query;
     await runJournalSearch(query,journalCategory?.value||'all');
     if(query && journalSearchInput) journalSearchInput.focus();
+  }
+
+  async function openRefereeLog(query=''){
+    if(!state.rules?.developerMode){
+      write('Referee-side engine records are hidden. Enable Developer Mode in OPTIONS & DEVELOPER TOOLS first.','warning');
+      if(optionsDetails) optionsDetails.open=true;
+      return;
+    }
+    await openJournalWindow(query,'engine');
   }
 
   function closeJournalWindow(){
@@ -910,6 +961,14 @@
     const rows=await searchJournalEntries(question,'all',10,{forAi:true});
     if(!rows.length) return 'No relevant player-visible campaign-journal entries were found.';
     return rows.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,700)).join('\n');
+  }
+
+
+  async function refereeContextFor(question){
+    if(!state.rules?.developerMode) return 'Developer Mode is off; referee-side records are unavailable.';
+    const rows=await searchJournalEntries(question,'all',18,{forAi:true,audience:'referee'});
+    if(!rows.length) return 'No relevant referee-side engine records were found.';
+    return rows.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,900)).join('\n');
   }
 
   async function deleteJournalCampaign(campaignId){
@@ -934,12 +993,12 @@
   }
 
   async function exportCampaign(){
-    const entries=await getCampaignJournalEntries(state.campaignId,{audience:'player'});
-    const payload={format:'known-world-referee-campaign',formatVersion:1,exportedAt:new Date().toISOString(),appVersion:APP_VERSION,state,journal:entries};
+    const entries=await getCampaignJournalEntries(state.campaignId,{audience:null});
+    const payload={format:'known-world-referee-campaign',formatVersion:2,exportedAt:new Date().toISOString(),appVersion:APP_VERSION,state,journal:entries};
     const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
     const url=URL.createObjectURL(blob); const a=document.createElement('a');
     a.href=url; a.download=`known-world-campaign-day-${state.day}-${state.campaignId.slice(0,8)}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000);
-    write('Campaign export created: save state plus complete player-facing journal. The Cloudflare access code is not included.','system');
+    write('Campaign export created: save state plus player-facing and referee-side journals. The Cloudflare access code is not included.','system');
   }
 
   async function importCampaignFromFile(file){
@@ -1002,7 +1061,7 @@
     campaignCreated:false,
     pendingMonsterXp:0,
     combat:null,
-    rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5},
+    rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5,developerMode:false},
     party:[]
   });
 
@@ -1450,7 +1509,7 @@ W: swollen wooden door · E: cellar`;
     partyPanel.innerHTML = state.party.length ? state.party.map(member =>
       `<p><strong>${esc(member.name)}${member.dead?' — DEAD':''}</strong><br>${esc(member.className || member.role)} ${member.level || 1} · HP ${member.hp}/${member.maxHp} · AC ${member.ac}${member.equippedWeapon ? `<br>Weapon: ${esc(member.equippedWeapon.name)}` : ''}${member.spellbook?.length?`<br>Spell: ${esc(member.memorizedSpell||member.spellbook[1]||'none')} (${member.spellReady?'ready':'spent'})`:''}</p>`
     ).join('') : '<p>No adventuring party yet.</p>';
-    const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5});
+    const rules = state.rules || (state.rules={weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5,developerMode:false});
     if(!rules.initiativeMode) rules.initiativeMode='RAW';
     rules.retainerXpShare=0.5; // Mentzer BECMI: NPC retainers count as half an XP share. Fixed campaign rule.
     weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Initiative:</strong> ${rules.initiativeMode==='PHASED'?'PHASE-BASED':'RC RAW SIDE-BASED'}<br><strong>Weapon Mastery:</strong> OFF (data preserved)<br><strong>Retainer XP:</strong> ½ share (Mentzer BECMI)`;
@@ -1459,6 +1518,9 @@ W: swollen wooden door · E: cellar`;
     rawInitiativeButton.disabled = rules.initiativeMode === 'RAW';
     phasedInitiativeButton.disabled = rules.initiativeMode === 'PHASED';
     auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
+    if(developerRuleState) developerRuleState.innerHTML=`<strong>Developer Mode:</strong> ${rules.developerMode?'ON — referee-side rules transparency enabled':'OFF — ordinary player information only'}`;
+    if(developerModeButton){ developerModeButton.textContent=rules.developerMode?'DEVELOPER MODE: ON':'DEVELOPER MODE: OFF'; developerModeButton.classList.toggle('developer-on',Boolean(rules.developerMode)); }
+    if(openRefereeLogButton) openRefereeLogButton.disabled=!rules.developerMode;
     if(combatPanel){
       if(state.combat?.active){
         const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length;
@@ -1494,6 +1556,16 @@ W: swollen wooden door · E: cellar`;
     else if (state.mode === 'site' && state.location === 'market') contextPanel.innerHTML = '<p><strong>Penhaligon:</strong> “let’s resupply”, “find a weaponsmith”, “we need a mule”, or move north/east/west/south.</p>';
     else contextPanel.innerHTML = '<p>Speak naturally. The command interpreter translates ordinary intent into deterministic game actions.</p>';
   }
+
+  function setDeveloperMode(enabled){
+    if(!state.rules) state.rules={};
+    state.rules.developerMode=Boolean(enabled);
+    localStorage.setItem(STORAGE.save,JSON.stringify(state));
+    updatePanels(); void refreshJournalStatus();
+    write(`Developer Mode ${state.rules.developerMode?'enabled':'disabled'}. ${state.rules.developerMode?'You may inspect the REFEREE ENGINE log and ask the referee to explain hidden rolls and decisions for testing.':'Referee-side engine records are hidden again; ordinary play information rules apply.'}`,'system');
+  }
+
+  function toggleDeveloperMode(){ setDeveloperMode(!state.rules?.developerMode); }
 
   function setAiStatus(kind, text) {
     aiBadge.className = 'badge';
@@ -2744,8 +2816,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(!combatActive()) return;
     const c=state.combat;
     if(!Array.isArray(c.monsterMoraleQueue)) c.monsterMoraleQueue=[];
-    c.monsterMoraleQueue.push({dueRound:c.round+1,reason:String(reason||'combat event'),monsterId:monsterId||null});
+    const event={dueRound:c.round+1,reason:String(reason||'combat event'),monsterId:monsterId||null};
+    c.monsterMoraleQueue.push(event);
     c.monsterMoralePending=true;
+    const scope=monsterId ? (c.monsters.find(m=>m.id===monsterId)?.name||monsterId) : 'each surviving hostile individually';
+    void refereeLog(`MORALE TRIGGER QUEUED — round ${c.round} event: ${event.reason}. Due in morale phase of round ${event.dueRound}. Scope: ${scope}.`,{type:'morale_trigger',round:c.round,dueRound:event.dueRound,monsterId:event.monsterId,reason:event.reason});
   }
 
   function damagePc(pc,amount,source){
@@ -2804,10 +2879,17 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const checkOne=(event,m)=>{
       if(!m || !monsterCanFight(m)) return true;
       const morale=Number(m.morale??7);
-      if(morale>=12){ write(`${m.name} shows no sign of breaking.`,'system'); return true; }
-      if(morale<=2){ write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false; }
-      const r1=rng(6),r2=rng(6),total=r1+r2;
-      if(total>morale){ write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false; }
+      if(morale>=12){
+        void refereeLog(`MORALE CHECK — ${m.name}: trigger “${event.reason}”; ML ${morale}. Morale 12 never checks: automatic HOLD.`,{type:'morale_check',round:c.round,monsterId:m.id,morale,reason:event.reason,result:'hold',automatic:true});
+        write(`${m.name} shows no sign of breaking.`,'system'); return true;
+      }
+      if(morale<=2){
+        void refereeLog(`MORALE CHECK — ${m.name}: trigger “${event.reason}”; ML ${morale}. Morale 2 automatically breaks: FLEE.`,{type:'morale_check',round:c.round,monsterId:m.id,morale,reason:event.reason,result:'flee',automatic:true});
+        write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false;
+      }
+      const r1=rng(6),r2=rng(6),total=r1+r2; const failed=total>morale;
+      void refereeLog(`MORALE CHECK — ${m.name}: trigger “${event.reason}”; 2d6 = ${r1}+${r2} = ${total} vs ML ${morale} → ${failed?'FAIL, FLEE':'PASS, HOLD'}.`,{type:'morale_check',round:c.round,monsterId:m.id,morale,reason:event.reason,dice:[r1,r2],total,result:failed?'flee':'hold'});
+      if(failed){ write(`${m.name} loses its nerve and flees.`,'system'); fleeMonster(m); return false; }
       write(`${m.name} steels itself and keeps fighting.`,'system'); return true;
     };
 
@@ -2817,20 +2899,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         checkOne(event,c.monsters.find(m=>m.id===event.monsterId));
         continue;
       }
-      // Group events (first death and half unable to act) use the RC's one
-      // morale roll for the remaining creatures. A mixed-morale group uses
-      // the lowest remaining morale score as the conservative referee rule.
-      const active=livingHostiles(); if(!active.length) break;
-      const morale=Math.min(...active.map(m=>Number(m.morale??7)));
-      if(morale>=12){ write(`The remaining foes show no sign of breaking.`,'system'); continue; }
-      if(morale<=2){ write(`The remaining foes break and flee.`,'system'); for(const m of active)fleeMonster(m); break; }
-      const r1=rng(6),r2=rng(6),total=r1+r2;
-      if(total>morale){
-        write(`The remaining foes lose their nerve and flee.`,'system');
-        for(const m of active) fleeMonster(m);
-        break;
-      }
-      write(`The remaining foes hold their ground.`,'system');
+      // Group circumstances affect the whole group, but each surviving monster
+      // makes its OWN morale check. Some can flee while others hold.
+      const active=livingHostiles().slice(); if(!active.length) break;
+      void refereeLog(`GROUP MORALE EVENT — “${event.reason}”. Individual morale checks are made for: ${active.map(m=>m.name).join(', ')}.`,{type:'morale_group_event',round:c.round,reason:event.reason,monsterIds:active.map(m=>m.id)});
+      for(const m of active) checkOne(event,m);
     }
     c.monsterMoralePending=c.monsterMoraleQueue.length>0;
   }
@@ -2887,6 +2960,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
     const weapon=monsterWeaponItem(monster);
     const attackName=monster.naturalDamage?'bite':(weapon?.name||'weapon');
+    void refereeLog(`ATTACK — ${monster.name} → ${pc.name} with ${attackName}: d20 ${result.d20}${result.mod?`${result.mod>0?' + ':' - '}${Math.abs(result.mod)}`:''} = ${result.total}; THAC0 ${monster.thac0||19} vs AC ${result.targetAc}, needs ${result.needed} → ${result.hit?'HIT':'MISS'}.`,{type:'monster_attack',round:state.combat?.round,monsterId:monster.id,target:pc.name,d20:result.d20,modifier:result.mod,total:result.total,thac0:monster.thac0||19,targetAc:result.targetAc,needed:result.needed,hit:result.hit});
     write(`${monster.name} attacks ${pc.name} with ${attackName} — ${result.hit?'HIT':'miss'}.`);
     if(!result.hit) return;
     let damage=0;
@@ -2901,6 +2975,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function monsterSavingThrow(monster,type='spells',modifier=0){
     const needed=type==='spells'?(monster.saveSpells||16):16; const d20=rng(20); const total=d20+modifier; const success=d20===20 || (d20!==1 && total>=needed);
+    void refereeLog(`SAVING THROW — ${monster.name}: ${type}; d20 ${d20}${modifier?`${modifier>0?' + ':' - '}${Math.abs(modifier)}`:''} = ${total}, needs ${needed} → ${success?'SUCCESS':'FAILURE'}.`,{type:'monster_save',round:state.combat?.round,monsterId:monster.id,saveType:type,d20,modifier,total,needed,success});
     return {d20,total,needed,success};
   }
 
@@ -3071,11 +3146,15 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function chooseMonsterOrders(){
     if(!combatActive()) return;
     const pcs=livingParty(); state.combat.monsterOrders={}; if(!pcs.length)return;
-    let i=0;
+    let i=0; const audit=[];
     for(const m of livingHostiles()){
-      let engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean); let target=engaged[0]||pcs[i++%pcs.length];
+      const engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean);
+      const target=engaged[0]||pcs[i++%pcs.length];
+      const reason=engaged.length?`already engaged with ${target.name}`:'round-robin target among living PCs';
       state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name};
+      audit.push(`${m.name}: MELEE ${target.name} (${reason})`);
     }
+    if(audit.length) void refereeLog(`ROUND ${state.combat.round} — MONSTER ORDERS\n${audit.join('\n')}`,{type:'monster_orders',round:state.combat.round,orders:{...state.combat.monsterOrders}});
   }
 
   function shiftEngagement(pc,monster,intent){
@@ -3260,6 +3339,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     chooseMonsterOrders();
     const pc=rng(6),monster=rng(6); let winner=null; if(pc>monster)winner='pc';else if(monster>pc)winner='monster';
     c.initiative={pc,monster,winner}; addEvent(`Combat round ${c.round} initiative: PCs ${pc}, foes ${monster}${winner?`; ${sideLabel(winner)} win`:'; tie'}.`);
+    void refereeLog(`INITIATIVE — round ${c.round}: PCs d6=${pc}; foes d6=${monster}; ${winner?`${sideLabel(winner)} win`:'TIE'}.`,{type:'initiative',round:c.round,pc,monster,winner});
     write(`INITIATIVE — PCs ${pc}; foes ${monster}. ${winner?`${sideLabel(winner)} win.`:'TIE — the round is simultaneous within phases.'}`,'system');
     if(!winner){ resolveTiedRound(); return; }
     if((state.rules.initiativeMode||'RAW')==='RAW'){
@@ -3847,22 +3927,29 @@ new game / clear`);
     }
   }
 
-  function buildRefereePrompt(playerInput, connectionTest=false, journalContext='') {
+  function buildRefereePrompt(playerInput, connectionTest=false, journalContext='', refereeContext='') {
     if (connectionTest) return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
 
     const partySummary = state.party.map(member =>
       `${member.name}${member.sex?` (${member.sex})`:''}, ${member.role}, HP ${member.hp}/${member.maxHp}, AC ${member.ac}`
     ).join('; ');
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
+    const developerMode=Boolean(state.rules?.developerMode);
+    const hiddenInfoRule=developerMode
+      ? '- DEVELOPER MODE IS ON. For explicit testing/rules-transparency questions, you MAY reveal exact hidden mechanics, rolls, target-selection logic, morale scores, AC/THAC0, saves, or other referee-side facts ONLY when they are supported by the REFEREE-SIDE ENGINE RECORDS below. Clearly identify them as developer/testing information. Do not invent missing hidden data.'
+      : '- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.';
 
-    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.
-- Never reveal the engine's Soft/Hard Matrix protection category or target-size category during ordinary play. Describe only observable facts such as worn armor, shields, scales, shell, exposed bone, hide, or other visible construction. Soft/Hard remains referee-side rules data.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
-Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI)\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}
+    return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n${hiddenInfoRule}
+- During ordinary play, never reveal the engine's Soft/Hard Matrix protection category or target-size category; describe observable protection instead. In Developer Mode, you may identify those categories only when directly asked for testing and only if supported by referee-side records/current engine context.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
+Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI); developer mode ${developerMode?'ON':'OFF'}\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}
 
 RELEVANT PLAYER-VISIBLE CAMPAIGN JOURNAL:
 ${journalContext || 'No journal context retrieved.'}
 
-For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. Never expose referee-only engine records.
+REFEREE-SIDE ENGINE RECORDS (available only in Developer Mode):
+${developerMode ? (refereeContext || 'No relevant referee-side records retrieved.') : 'HIDDEN — Developer Mode is off.'}
+
+For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did.
 
 PLAYER INPUT:
 ${playerInput}`;
@@ -3881,7 +3968,7 @@ ${playerInput}`;
     const token = getStoredToken();
     if (!token) {
       setAiStatus('off','access code needed');
-      write('Enter your Cloudflare GAME_TOKEN in the AI REFEREE panel, press SAVE CODE, and then try again.','warning');
+      write('Open OPTIONS & DEVELOPER TOOLS, enter your Cloudflare GAME_TOKEN under AI REFEREE ACCESS, press SAVE CODE, and then try again.','warning');
       gameToken.focus();
       return null;
     }
@@ -3898,10 +3985,11 @@ ${playerInput}`;
 
     try {
       const journalContext = options.connectionTest ? '' : await journalContextFor(playerInput);
+      const refereeContext = options.connectionTest || !state.rules?.developerMode ? '' : await refereeContextFor(playerInput);
       const response = await fetch(WORKER_URL, {
         method:'POST',
         headers:{'Content-Type':'application/json','X-Game-Token':token},
-        body:JSON.stringify({input:buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext)})
+        body:JSON.stringify({input:buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext,refereeContext)})
       });
       let data = {};
       try { data = await response.json(); } catch { data = {}; }
@@ -3979,7 +4067,7 @@ ${playerInput}`;
       write('Use: matrix dagger / medium / hard / close','warning'); return;
     }
 
-    const noPartyAllowed = ['look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
       write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
       return;
@@ -3989,8 +4077,10 @@ ${playerInput}`;
     // During combat, natural-language orders must reach the combat parser instead of
     // being rejected by the exploration-command guard.
     if (combatActive()) {
-      const safeDuringCombat=['party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
+      const safeDuringCombat=['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
+        const developerQuestion=Boolean(state.rules?.developerMode) && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me)\b/.test(normalized) || normalized.endsWith('?'));
+        if(developerQuestion) return callReferee(input);
         if(state.combat?.awaitingMoveChoice){
           if(parseMovementChoiceCommand(input)) return;
           write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning');
@@ -4039,8 +4129,13 @@ ${playerInput}`;
     if (normalized === 'party') return party();
     if (normalized === 'inventory' || normalized === 'supplies') return inventory();
     if (normalized === 'status') return status();
-    if (normalized === 'journal' || normalized === 'log') { void openJournalWindow(''); return; }
-    if (normalized.startsWith('journal ') || normalized.startsWith('log ')) { const q=input.replace(/^(?:journal|log)\s+/i,'').trim(); void openJournalWindow(q); return; }
+    if (normalized === 'journal' || normalized === 'log') { void openJournalWindow('','all'); return; }
+    if (normalized.startsWith('journal ') || normalized.startsWith('log ')) { const q=input.replace(/^(?:journal|log)\s+/i,'').trim(); void openJournalWindow(q,'all'); return; }
+    if (normalized === 'developer mode on' || normalized === 'dev mode on') return setDeveloperMode(true);
+    if (normalized === 'developer mode off' || normalized === 'dev mode off') return setDeveloperMode(false);
+    if (normalized === 'developer mode' || normalized === 'dev mode') return toggleDeveloperMode();
+    if (normalized === 'referee log' || normalized === 'developer log' || normalized === 'engine log') { void openRefereeLog(''); return; }
+    if (normalized.startsWith('referee log ') || normalized.startsWith('developer log ') || normalized.startsWith('engine log ')) { const q=input.replace(/^(?:referee|developer|engine)\s+log\s+/i,'').trim(); void openRefereeLog(q); return; }
     if (normalized === 'events') return events();
     if (normalized === 'save') return save();
     if (normalized === 'load') return load();
@@ -4071,7 +4166,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds a permanent searchable CAMPAIGN JOURNAL backed by IndexedDB. The visible transcript, commands, and referee replies are archived without the old 100-entry limit; hidden engine records are kept referee-side and never appear in player search. Journal questions can retrieve relevant prior history for the AI referee. The local map remains a dedicated window.','system');
+    write('This build adds per-monster morale checks, a persistent referee-side engine log, optional Developer Mode for rules transparency, and collapsible Options / Quick Commands panels. Hidden engine records remain invisible in ordinary play but can be inspected and queried while Developer Mode is enabled.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -4086,7 +4181,8 @@ ${playerInput}`;
     void migrateLegacyJournal().then(refreshJournalStatus);
   }
 
-  if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow(''); });
+  if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow('','all'); });
+  if(openRefereeLogButton) openRefereeLogButton.addEventListener('click',()=>{ void openRefereeLog(''); });
   if(closeJournalButton) closeJournalButton.addEventListener('click',closeJournalWindow);
   if(journalSearchButton) journalSearchButton.addEventListener('click',()=>{ void runJournalSearch(); });
   if(journalRecentButton) journalRecentButton.addEventListener('click',()=>{ if(journalSearchInput) journalSearchInput.value=''; if(journalCategory) journalCategory.value='all'; void runJournalSearch('','all'); });
@@ -4148,6 +4244,7 @@ ${playerInput}`;
   });
 
   createPartyButton.addEventListener('click',()=>openPartyCreator(false));
+  if(developerModeButton) developerModeButton.addEventListener('click',toggleDeveloperMode);
   rawWeaponsButton.addEventListener('click',()=>setWeaponMode('RAW'));
   matrixWeaponsButton.addEventListener('click',()=>setWeaponMode('MATRIX'));
   auditWeaponsButton.addEventListener('click',toggleWeaponAudit);
