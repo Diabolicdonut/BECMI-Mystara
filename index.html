@@ -84,7 +84,15 @@
   .shop-line { font-size:11px; color:var(--dim); margin:4px 0; }
   .map-panel { margin:8px 0 0; padding:10px; border:1px solid var(--line); background:#070a06; color:var(--ink); font:11px/1.35 Consolas,"Courier New",monospace; white-space:pre; overflow-x:auto; max-width:100%; }
   .map-note { color:var(--dim); font-size:10px; line-height:1.35; margin-top:7px; }
-  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } }
+  .map-window-modal { width:min(760px,100%); }
+  .map-window-toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:10px 14px; border-bottom:1px solid var(--line); background:#0a0e09; }
+  .map-window-toolbar button { padding:7px 9px; font-size:11px; }
+  .map-window-body { padding:14px; }
+  .map-window-panel { margin:0; min-height:280px; max-height:68dvh; padding:14px; border:1px solid var(--line); background:#050704; color:var(--ink); font:14px/1.42 Consolas,"Courier New",monospace; white-space:pre; overflow:auto; }
+  .map-window-header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .map-window-header-row button { padding:6px 10px; font-size:12px; }
+  body.map-open { overflow:hidden; }
+  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } }
   @media (max-width:800px) {
     html, body { min-height:100%; }
     body { display:block; }
@@ -135,21 +143,20 @@
 
       <section>
         <h2>LOCAL MAP</h2>
-        <pre id="mapPanel" class="map-panel">Map unavailable.</pre>
-        <div class="button-row"><button type="button" id="showMapButton">SHOW MAP IN LOG</button></div>
-        <p class="map-note">A limited referee aid for the current hex, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
+        <div class="button-row"><button type="button" id="showMapButton">OPEN LOCAL MAP</button></div>
+        <p class="map-note">Opens a dedicated local map window for the current hex, room, or combat position. It shows only local/visible information and is meant to help you maintain your own map.</p>
       </section>
 
       <section>
         <h2>QUICK COMMANDS</h2>
         <ul>
-          <li>look / map / combat map</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
+          <li>look / map / combat map (opens map window)</li><li>head toward Stallanford / shrine</li><li>follow the road / river</li><li>let's go resupply</li><li>n / ne / se / s / sw / nw (wilderness)</li><li>enter / leave</li><li>north / south / east / west / up / down (sites & dungeons)</li><li>camp</li><li>search</li><li>wait</li><li>light torch</li><li>create party (manual, entered scores, or quick generation)</li><li>rumors</li><li>wares / buy rope / buy 4 torches</li><li>party / inventory / funds</li><li>weapon mode raw / matrix</li><li>initiative mode raw / phases</li><li>encounter 4 goblins / combat / combat party / combat help</li><li>Aldric attacks goblin 1 / Elwyn casts sleep</li><li>resolve round</li><li>weapon dagger</li><li>status</li><li>events</li><li>save / load</li><li>roll 2d6</li><li>referee [question]</li>
         </ul>
       </section>
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
-        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The LOCAL MAP shows only the current hex and one surrounding ring as a mapping aid; you still maintain the campaign map yourself.</p>
+        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The dedicated LOCAL MAP window shows only the current hex and one surrounding ring as a mapping aid; you still maintain the campaign map yourself.</p>
       </section>
 
       <section>
@@ -206,6 +213,28 @@
     </form>
     <div class="tiny">Rules and campaign state remain local and deterministic. The AI supplies bounded referee conversation and narration; it cannot directly change hit points, inventory, location, dice, or saved state.</div>
   </footer>
+</div>
+
+<div id="mapWindow" class="modal-backdrop" aria-hidden="true">
+  <div class="modal map-window-modal" role="dialog" aria-modal="true" aria-labelledby="mapWindowTitle">
+    <header>
+      <div class="map-window-header-row">
+        <h2 id="mapWindowTitle">LOCAL MAP</h2>
+        <button type="button" id="closeMapButton">CLOSE</button>
+      </div>
+      <div class="subtitle">Local referee aid · visible information only · maintain your own campaign map</div>
+    </header>
+    <div class="map-window-toolbar">
+      <button type="button" id="autoMapButton">CURRENT</button>
+      <button type="button" id="combatMapButton">COMBAT</button>
+      <button type="button" id="roomMapButton">ROOM</button>
+      <button type="button" id="hexMapButton">HEX</button>
+    </div>
+    <div class="map-window-body">
+      <pre id="mapWindowPanel" class="map-window-panel">Map unavailable.</pre>
+      <p class="map-note">This window is an orientation and mapping aid, not a complete automap. Unseen rooms, secret exits, hidden creatures, and unrevealed wilderness information remain omitted.</p>
+    </div>
+  </div>
 </div>
 
 <div id="partyCreator" class="modal-backdrop" aria-hidden="true">
@@ -283,7 +312,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.7';
+  const APP_VERSION = '0.3.8';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -315,8 +344,16 @@
   const phasedInitiativeButton = document.getElementById('phasedInitiativeButton');
   const combatPanel = document.getElementById('combatPanel');
   const contextPanel = document.getElementById('contextPanel');
-  const mapPanel = document.getElementById('mapPanel');
   const showMapButton = document.getElementById('showMapButton');
+  const mapWindow = document.getElementById('mapWindow');
+  const mapWindowPanel = document.getElementById('mapWindowPanel');
+  const mapWindowTitle = document.getElementById('mapWindowTitle');
+  const closeMapButton = document.getElementById('closeMapButton');
+  const autoMapButton = document.getElementById('autoMapButton');
+  const combatMapButton = document.getElementById('combatMapButton');
+  const roomMapButton = document.getElementById('roomMapButton');
+  const hexMapButton = document.getElementById('hexMapButton');
+  let mapWindowPreference = 'auto';
   const partyCreator = document.getElementById('partyCreator');
   const rollAbilitiesButton = document.getElementById('rollAbilitiesButton');
   const enterAbilitiesButton = document.getElementById('enterAbilitiesButton');
@@ -941,8 +978,33 @@ W: swollen wooden door · E: cellar`;
     return state.mode==='wilderness'?renderWildernessAsciiMap():renderRoomAsciiMap();
   }
 
+  function mapWindowHeading(preference='auto'){
+    const pref=String(preference||'auto').toLowerCase();
+    if(pref==='combat' || (pref==='auto' && state.combat?.active)) return 'COMBAT POSITION';
+    if(pref==='hex' || pref==='wilderness' || (pref==='auto' && state.mode==='wilderness')) return 'LOCAL HEX MAP';
+    return 'LOCAL ROOM MAP';
+  }
+
+  function refreshMapWindow(){
+    if(!mapWindowPanel) return;
+    mapWindowPanel.textContent=currentAsciiMap(mapWindowPreference);
+    if(mapWindowTitle) mapWindowTitle.textContent=mapWindowHeading(mapWindowPreference);
+  }
+
+  function openMapWindow(preference='auto'){
+    mapWindowPreference=String(preference||'auto').toLowerCase();
+    refreshMapWindow();
+    if(mapWindow){ mapWindow.classList.add('open'); mapWindow.setAttribute('aria-hidden','false'); document.body.classList.add('map-open'); }
+  }
+
+  function closeMapWindow(){
+    if(mapWindow){ mapWindow.classList.remove('open'); mapWindow.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('map-open');
+    command?.focus();
+  }
+
   function showAsciiMap(preference='auto'){
-    write(currentAsciiMap(preference),'system');
+    openMapWindow(preference);
   }
 
   function clockText() {
@@ -969,7 +1031,7 @@ W: swollen wooden door · E: cellar`;
 
   function updatePanels() {
     whereBadge.textContent = `Location: ${placeName()}`;
-    if(mapPanel) mapPanel.textContent=currentAsciiMap();
+    if(mapWindow?.classList.contains('open')) refreshMapWindow();
     timeBadge.textContent = `Time: ${clockText()}`;
     if (state.mode === 'wilderness') {
       lightBadge.textContent = daylight() ? 'Light: daylight' : 'Light: night';
@@ -999,7 +1061,7 @@ W: swollen wooden door · E: cellar`;
         const ready=state.party.filter(pc=>!pc.dead&&Number(pc.hp)>0).map(combatLoadoutHtml).join('');
         const progress=combatOrderProgress();
         const nextStep=state.combat.awaitingMoveChoice
-          ? '<strong>NEXT: choose who moves first.</strong>'
+          ? '<strong>NEXT: choose movement order — US FIRST or THEM FIRST.</strong>'
           : progress.complete
             ? '<strong>ALL ORDERS READY — resolve the round.</strong>'
             : `<strong>NEXT: give ${progress.total-progress.ordered} more order${progress.total-progress.ordered===1?'':'s'}.</strong>`;
@@ -1016,7 +1078,7 @@ W: swollen wooden door · E: cellar`;
       if(state.combat?.active){
         const progress=combatOrderProgress();
         command.placeholder=state.combat.awaitingMoveChoice
-          ? 'Choose movement order…'
+          ? 'Movement choice: us first / them first'
           : progress.complete
             ? 'All orders ready — type resolve round'
             : 'Give a combat order…';
@@ -2813,7 +2875,18 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character closes by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — shift one melee band inward during movement\nAldric opens from goblin 1 — shift one band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nauto orders — fill reasonable orders for PCs who have none\nresolve round — after orders are issued, roll initiative and resolve the round; the Combat panel will prompt you and enable a RESOLVE ROUND button\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nRAW mode: initiative winner completes Morale → Movement → Missile → Magic → Hand-to-Hand, then the losing side does the same.\nPHASED mode: initiative winner chooses which side moves first; then initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase.`,'system');
   }
 
+  function parseMovementChoiceCommand(text){
+    if(!combatActive() || !state.combat?.awaitingMoveChoice) return false;
+    const n=String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
+    const pcFirst = ['move us first','us first','we move first','we go first','party first','pcs first','characters first','our side first'].includes(n) || /\b(us|we|party|pcs|characters|our side)\b.*\b(first|before them)\b/.test(n);
+    const foeFirst = ['make them move first','them first','they move first','they go first','foes first','monsters first','enemy first','enemies first','let them move first'].includes(n) || /\b(them|they|foes|monsters|enemy|enemies|their side)\b.*\b(first|before us)\b/.test(n);
+    if(pcFirst){ chooseMovementOrder(state.combat.initiative?.winner==='pc'?'winner':'loser'); return true; }
+    if(foeFirst){ chooseMovementOrder(state.combat.initiative?.winner==='monster'?'winner':'loser'); return true; }
+    return false;
+  }
+
   function handleCombatDirect(input,normalized){
+    if(parseMovementChoiceCommand(normalized)) return true;
     if(normalized==='combat' || normalized==='combat status') {combatStatus();return true;}
     if(['combat map','position','combat position'].includes(normalized)){showAsciiMap('combat');return true;}
     if(['combat party','combat gear','combat equipment','combat loadout','party gear','party equipment','loadout','spells'].includes(normalized)) {combatPartyReference();return true;}
@@ -2822,8 +2895,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(1,m[1]);return true;}
     if(normalized==='resolve round' || normalized==='resolve combat round' || normalized==='roll initiative'){resolveCombatRound();return true;}
     if(normalized==='auto orders' || normalized==='automatic orders'){autoPcOrders();return true;}
-    if(['move us first','we move first','pcs move first','party moves first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='pc'?'winner':'loser');return true;}
-    if(['make them move first','they move first','foes move first','monsters move first','enemy moves first','enemies move first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='monster'?'winner':'loser');return true;}
+    if(['move us first','us first','we move first','we go first','pcs move first','party moves first','party first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='pc'?'winner':'loser');return true;}
+    if(['make them move first','them first','they move first','they go first','foes move first','monsters move first','enemy moves first','enemies move first','foes first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='monster'?'winner':'loser');return true;}
     if(normalized==='initiative mode raw' || normalized==='initiative raw'){setInitiativeMode('RAW');return true;}
     if(normalized==='initiative mode phases' || normalized==='initiative mode phased' || normalized==='phase based initiative' || normalized==='phase-based initiative'){setInitiativeMode('PHASED');return true;}
     if(/^(memorize|prepare)\s+/i.test(input.trim())){prepareSpellCommand(input);return true;}
@@ -3492,8 +3565,13 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     // During combat, natural-language orders must reach the combat parser instead of
     // being rejected by the exploration-command guard.
     if (combatActive()) {
-      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?','map','local map','hex view','wilderness map','room view','site map'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
+      const safeDuringCombat=['party','inventory','supplies','status','events','log','save','help','?','map','local map','hex view','wilderness map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
+        if(state.combat?.awaitingMoveChoice){
+          if(parseMovementChoiceCommand(input)) return;
+          write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning');
+          return;
+        }
         if(parseLocalGroupCombat(input)) return;
         const localCombatIntent=parseLocalIntent(input);
         if(localCombatIntent && ['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(String(localCombatIntent.kind||'').toUpperCase()) && await executeIntent(localCombatIntent,input)) return;
@@ -3566,7 +3644,7 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds a persistent LOCAL MAP referee aid. In the wilderness it shows the current six-mile hex and one surrounding ring; in keyed sites it shows the current room/site, visible exits, and useful visible features; in combat it shows encounter bands, distances, and Close/Normal/Far melee relationships without replacing the player’s own map. Explicit test combats now begin at RAW-style encounter distance (2d6×10 feet indoors, 4d6×10 yards in the wilderness), combatants close using encounter movement, and missile range bands are derived from actual separation for bows, crossbows, and slings. Enemy AC, HP, THAC0, morale, saving throws, Matrix size/protection categories, and other referee-side statistics remain hidden.','system');
+    write('This build moves the local mapping aid into a dedicated MAP window instead of printing diagrams into the log. The window shows the current local hex, room, or combat position using only visible information, while you maintain the real campaign/dungeon map yourself. Phase-based initiative movement choices also accept compact natural commands such as “us first” and “them first”. Explicit test combats use RAW-style encounter distance, encounter movement, and actual missile ranges. Enemy referee-side statistics remain hidden.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -3579,7 +3657,14 @@ Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'o
     updatePanels(); refreshTokenUi();
   }
 
-  if(showMapButton) showMapButton.addEventListener('click',()=>{ showAsciiMap(); command.focus(); });
+  if(showMapButton) showMapButton.addEventListener('click',()=>openMapWindow());
+  if(closeMapButton) closeMapButton.addEventListener('click',closeMapWindow);
+  if(autoMapButton) autoMapButton.addEventListener('click',()=>{ mapWindowPreference='auto'; refreshMapWindow(); });
+  if(combatMapButton) combatMapButton.addEventListener('click',()=>{ mapWindowPreference='combat'; refreshMapWindow(); });
+  if(roomMapButton) roomMapButton.addEventListener('click',()=>{ mapWindowPreference='room'; refreshMapWindow(); });
+  if(hexMapButton) hexMapButton.addEventListener('click',()=>{ mapWindowPreference='hex'; refreshMapWindow(); });
+  if(mapWindow) mapWindow.addEventListener('click',event=>{ if(event.target===mapWindow) closeMapWindow(); });
+  document.addEventListener('keydown',event=>{ if(event.key==='Escape' && mapWindow?.classList.contains('open')) closeMapWindow(); });
 
   document.getElementById('commandForm').addEventListener('submit', event => {
     event.preventDefault();
