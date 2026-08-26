@@ -204,7 +204,7 @@
             <button type="button" id="developerModeButton">DEVELOPER MODE: OFF</button>
             <button type="button" id="openRefereeLogButton">OPEN REFEREE LOG</button>
           </div>
-          <p class="tiny">Developer Mode is for rules testing. It exposes hidden engine records for rule-affecting determinations such as encounter-distance dice/procedure, initiative, monster orders, morale rolls, saves, attack targets, and other referee-side decisions. It does not change the actual rules or rolls.</p>
+          <p class="tiny">Developer Mode is full referee/testing transparency. It lets the referee answer any informational question and exposes loaded behind-the-screen state as well as hidden engine records: monster statistics, current HP, morale, saves, target logic, hidden exits/keyed data, encounter-distance procedure, initiative, attacks, and other referee-side decisions. It does not change the actual rules or rolls.</p>
 
           <h3>AI REFEREE ACCESS</h3>
           <p class="connection-copy">Backend: <strong>becmi-mystara.diabolicdonut.workers.dev</strong></p>
@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.17';
+  const APP_VERSION = '0.3.19';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1061,7 +1061,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   async function refereeContextFor(question){
     if(!state.rules?.developerMode) return 'Developer Mode is off; referee-side records are unavailable.';
-    const exact=await refereeAuditRowsFor(question,36);
+    const exact=isDeveloperAuditQuestion(question) ? await refereeAuditRowsFor(question,36) : [];
     if(exact.length) return exact.map(row=>`[${row.clock || `Day ${row.day}`} · ${row.location}] ${row.text}`.slice(0,1000)).join('\n');
     const rows=await searchJournalEntries(question,'all',18,{forAi:true,audience:'referee'});
     if(!rows.length) return 'No relevant referee-side engine records were found. Developer logging is implemented, but this particular earlier event has no stored hidden record and must not be reconstructed or invented.';
@@ -1640,7 +1640,7 @@ W: swollen wooden door · E: cellar`;
     rawInitiativeButton.disabled = rules.initiativeMode === 'RAW';
     phasedInitiativeButton.disabled = rules.initiativeMode === 'PHASED';
     auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
-    if(developerRuleState) developerRuleState.innerHTML=`<strong>Developer Mode:</strong> ${rules.developerMode?'ON — referee-side rules transparency enabled':'OFF — ordinary player information only'}`;
+    if(developerRuleState) developerRuleState.innerHTML=`<strong>Developer Mode:</strong> ${rules.developerMode?'ON — full referee / behind-the-screen transparency':'OFF — ordinary player information only'}`;
     if(developerModeButton){ developerModeButton.textContent=rules.developerMode?'DEVELOPER MODE: ON':'DEVELOPER MODE: OFF'; developerModeButton.classList.toggle('developer-on',Boolean(rules.developerMode)); }
     if(openRefereeLogButton) openRefereeLogButton.disabled=!rules.developerMode;
     if(combatPanel){
@@ -1684,7 +1684,7 @@ W: swollen wooden door · E: cellar`;
     state.rules.developerMode=Boolean(enabled);
     localStorage.setItem(STORAGE.save,JSON.stringify(state));
     updatePanels(); void refreshJournalStatus();
-    write(`Developer Mode ${state.rules.developerMode?'enabled':'disabled'}. ${state.rules.developerMode?'You may inspect the REFEREE ENGINE log and ask the referee to explain hidden rolls and decisions for testing.':'Referee-side engine records are hidden again; ordinary play information rules apply.'}`,'system');
+    write(`Developer Mode ${state.rules.developerMode?'enabled':'disabled'}. ${state.rules.developerMode?'Full referee transparency is enabled: you may ask any question, inspect behind-the-screen current state through the referee, and inspect the REFEREE ENGINE log.':'Referee-side engine records and hidden current-state data are concealed again; ordinary player-information rules apply.'}`,'system');
   }
 
   function toggleDeveloperMode(){ setDeveloperMode(!state.rules?.developerMode); }
@@ -2304,6 +2304,58 @@ W: swollen wooden door · E: cellar`;
       rows.push(`${size.toUpperCase()} / ${protection.toUpperCase()}: Band 1 (Close melee / Short range) ${m.close} · Band 2 (Normal melee / Medium range) ${m.normal} · Band 3 (Far melee / Long range) ${m.far}`);
     }
     write(`${name}\nRAW damage: ${w.rawDamage}\nWorkbook profile: size ${w.size}; power ${w.power}; range ${w.rangeProfile}; consistency ${w.consistency}\n${w.description}\n\nCONTEXTUAL DAMAGE\n${rows.join('\n')}`);
+  }
+
+
+  function matrixWeaponMentions(input) {
+    const words=new Set(weaponQueryTokens(input));
+    if(!words.size) return [];
+    const matches=Object.keys(RC_WEAPON_MATRIX).filter(name=>{
+      const nameTokens=weaponQueryTokens(name);
+      return nameTokens.length && nameTokens.every(t=>words.has(t));
+    });
+    // Prefer the most specific named weapon when one mention contains another.
+    // Example: “long bow” should resolve to Bow, Long rather than every bow.
+    const maxTokens=matches.reduce((m,name)=>Math.max(m,weaponQueryTokens(name).length),0);
+    return matches.filter(name=>weaponQueryTokens(name).length===maxTokens);
+  }
+
+  function explainWeaponMatrix(queryOrInput,{natural=false}={}) {
+    let matches=natural ? matrixWeaponMentions(queryOrInput) : findMatrixWeapons(queryOrInput);
+    if(!matches.length && natural){
+      const cleaned=String(queryOrInput||'').toLowerCase()
+        .replace(/\b(?:can|could|would|you|please|explain|show|tell|me|about|how|does|do|the|a|an|matrix|contextual|weapon|profile|work|works|of|for)\b/g,' ')
+        .replace(/\s+/g,' ').trim();
+      if(cleaned) matches=findMatrixWeapons(cleaned);
+    }
+    if(!matches.length){
+      write('I could not identify which (RC) matrix weapon you mean. Try “weapon dagger” or “explain dagger matrix”.','warning');
+      return true;
+    }
+    if(matches.length>1){
+      write(`That could mean: ${matches.map(n=>n.replace(' (RC)','')).join(', ')}. Be more specific.`,'warning');
+      return true;
+    }
+    const name=matches[0], w=RC_WEAPON_MATRIX[name];
+    const rows=[];
+    for(const size of ['small','medium','large']) for(const protection of ['soft','hard']){
+      const m=w.matrix[size][protection];
+      rows.push(`${size.toUpperCase()} / ${protection.toUpperCase()}: Close ${m.close} · Normal ${m.normal} · Far ${m.far}`);
+    }
+    write(`${name.replace(' (RC)','')} — CONTEXTUAL MATRIX\n`+
+      `RAW damage: ${w.rawDamage}\n`+
+      `Workbook profile: size ${w.size}; power ${w.power}; range ${w.rangeProfile}; consistency ${w.consistency}\n`+
+      `${w.description}\n\n`+
+      `HOW TO READ IT\n`+
+      `Choose the target's size (Small / Medium / Large), the target's hidden protection class (Soft / Hard), and the current weapon band. For melee, the three bands are Close / Normal / Far. The resulting cell is the weapon's base contextual damage. The player normally sees the target's observable armor or body, while the engine chooses Soft or Hard behind the screen.\n\n`+
+      `DAMAGE CELLS\n${rows.join('\n')}`);
+    return true;
+  }
+
+  function isNaturalMatrixQuestion(input){
+    const q=String(input||'').toLowerCase();
+    if(!/\b(?:matrix|contextual)\b/.test(q)) return false;
+    return /\b(?:explain|show|tell|how|what|why|profile|work|works|weapon)\b/.test(q) || matrixWeaponMentions(input).length>0;
   }
 
   function matrixDamage(query,size,protection,range,magicBonus=0) {
@@ -3930,7 +3982,8 @@ GENERAL
 party / inventory / status / events
 roll 2d6
 save / load
-referee [question]
+referee [question] — ask a rules or game-state question at any time, including during combat
+developer mode on — full referee/testing transparency, including hidden current-state data
 new game / clear`);
   }
 
@@ -4075,6 +4128,87 @@ new game / clear`);
     }
   }
 
+  function isInformationRequest(input){
+    const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    if(!q) return false;
+    if(/[?]\s*$/.test(q)) return true;
+    if(/^(?:who|what|when|where|why|how|which|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|may|might|has|have|had)\b/.test(q)) return true;
+    if(/^(?:please\s+)?(?:explain|describe|tell me|show me|give me|remind me|walk me through|clarify|identify|compare|summarize|list)\b/.test(q)) return true;
+    if(/^(?:rules?|rule question|question|referee question)\s*[:\-]/.test(q)) return true;
+    return false;
+  }
+
+  function isRulesInformationRequest(input){
+    const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    if(!q) return false;
+    const topic=/\b(?:becmi|becm|mentzer|rules cyclopedia|cyclopedia|matrix|weapon mastery|initiative|morale|reaction rolls?|surprise|encounter distance|evasion|pursuit|saving throws?|thac0|armor class|hit rolls?|damage|movement|encumbrance|missile fire|melee|combat rules?|spellcasting|retainers?|hirelings?|experience|xp|turn undead|cover|withdrawal|retreat|range bands?)\b/.test(q);
+    if(!topic) return false;
+    if(isInformationRequest(q)) return true;
+    return /\b(?:rule|rules|procedure|mechanic|mechanics|table|chart|explanation|explain|work|works|usage|use)\b/.test(q) || /^(?:morale|initiative|surprise|reaction rolls?|saving throws?|encounter distance|evasion|pursuit|weapon mastery|matrix|encumbrance|missile fire|melee|retainers?|hirelings?)$/.test(q);
+  }
+
+  function isDeveloperAuditQuestion(input){
+    const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    if(!q) return false;
+    if(/\b(?:last|latest|recent|current|this|that|those|these)\b.*\b(?:roll|check|attack|save|initiative|distance|decision|target|morale|flee|fled)\b/.test(q)) return true;
+    if(/^(?:why|how)\s+did\b/.test(q)) return true;
+    if(/^(?:what|which)\s+(?:was|were|did)\b/.test(q)) return true;
+    if(/^(?:what|which)\b.*\b(?:roll|dice|check|result|target|decision)\b.*\b(?:did|was|were|made|make|got|used|chose|failed|passed)\b/.test(q)) return true;
+    if(/^(?:what|which|who)\b.*\b(?:failed|passed|fled|held|hit|missed|saved|resisted)\b.*\b(?:morale|check|save|attack|initiative)?\b/.test(q)) return true;
+    if(/\b(?:what|show|tell me|explain)\b.*\b(?:exact|actual)\b.*\b(?:roll|dice|check|result|decision|target)\b/.test(q)) return true;
+    if(/\b(?:backend|engine|developer log|referee log|audit trail|behind the screen)\b/.test(q)) return true;
+    return false;
+  }
+
+  function rulesImplementationContext(question=''){
+    const lines=[
+      'Rules basis: Frank Mentzer BECMI is a primary authority; the 1991 Rules Cyclopedia is a consolidated/expanded reference. When they conflict, identify the conflict rather than silently assuming the Cyclopedia supersedes Mentzer.',
+      `Current weapon damage mode: ${state.rules?.weaponDamageMode||'RAW'}. Weapon audit: ${state.rules?.weaponAudit?'ON':'OFF'}.`,
+      `Current initiative mode: ${state.rules?.initiativeMode||'RAW'}. RAW is side initiative; PHASED is the explicit house/alternative phase-based mode.`,
+      'Retainer XP rule for this game: adventuring retainers count as 1/2 share; ordinary hirelings/mercenaries/specialists normally do not receive adventuring XP unless they have effectively become retainers.',
+      'Monster morale policy in this build: morale events can apply to a group, but each affected monster makes its own morale check so some may flee while others hold.',
+      'Combat position uses exact encounter distance until melee engagement; Close/Normal/Far is the finer melee relationship after combatants engage.'
+    ];
+    try{
+      const matches=matrixWeaponMentions(String(question||'')).slice(0,3);
+      for(const key of matches){ const w=RC_WEAPON_MATRIX[key]; if(w) lines.push(`Relevant contextual weapon profile ${key}: ${JSON.stringify(w)}`); }
+    }catch{}
+    return lines.join('\n');
+  }
+
+  function developerCurrentStateContext(){
+    if(!state.rules?.developerMode) return 'HIDDEN — Developer Mode is off.';
+    let local=null;
+    if(state.mode==='site'){
+      const site=currentSite();
+      const destinations={};
+      for(const [dir,id] of Object.entries(site?.exits||{})) destinations[dir]={id,definition:sites[id]||null};
+      if(site?.secret) destinations[`SECRET:${site.secret.direction}`]={id:site.secret.destination,definition:sites[site.secret.destination]||null,discovered:hasSecret(state.location)};
+      local={mode:'site',siteId:state.location,siteDefinition:site,destinations,settlement:currentSettlementId()?SETTLEMENTS[currentSettlementId()]||null:null};
+    } else {
+      const neighbors={};
+      for(const [dir,v] of Object.entries(HEX_DIRECTIONS)){
+        const q=state.hex.q+v.q, r=state.hex.r+v.r;
+        neighbors[dir]={q,r,definition:getHex(q,r)};
+      }
+      local={mode:'wilderness',q:state.hex.q,r:state.hex.r,currentHex:currentHex(),neighbors};
+    }
+    const combat=state.combat?.active ? {
+      ...state.combat,
+      monsterProfiles:Object.fromEntries((state.combat.monsters||[]).map(m=>[m.id||m.name,COMBAT_MONSTERS[m.type]||null]))
+    } : null;
+    const payload={
+      rules:state.rules,day:state.day,minute:state.minute,turn:state.turn,
+      local,party:state.party,partyInventory:state.partyInventory,mounts:state.mounts,
+      treasuryCp:state.treasuryCp,torches:state.torches,rations:state.rations,
+      knownPlaces:state.knownPlaces,knownSettlementPlaces:state.knownSettlementPlaces,
+      discoveredSecrets:state.discoveredSecrets,combat
+    };
+    let text='';
+    try{text=JSON.stringify(payload,null,2);}catch{text=String(payload);}
+    return text.length>45000 ? text.slice(0,45000)+'\n[developer context truncated after 45,000 characters]' : text;
+  }
+
   function buildRefereePrompt(playerInput, connectionTest=false, journalContext='', refereeContext='') {
     if (connectionTest) return 'This is a connection test for Known World Referee. Reply with exactly one sentence: The referee is listening.';
 
@@ -4084,11 +4218,11 @@ new game / clear`);
     const recentEvents = state.eventLog.slice(-6).join(' | ') || 'None.';
     const developerMode=Boolean(state.rules?.developerMode);
     const hiddenInfoRule=developerMode
-      ? '- DEVELOPER MODE IS ON. For explicit testing/rules-transparency questions, you MUST reveal the exact hidden mechanics, rolls, target-selection logic, morale scores, AC/THAC0, saves, or other referee-side facts when they are present in the REFEREE-SIDE ENGINE RECORDS below. Quote or summarize the stored engine record precisely and clearly identify it as developer/testing information. Developer logging IS implemented in this build. If the requested older event has no stored engine record, say only that the exact record is unavailable for that event; do NOT claim that morale-roll logging, verbose combat logging, or rules transparency are unimplemented. Never invent missing hidden data.'
-      : '- Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.';
+      ? '- DEVELOPER MODE IS ON. This is full referee/testing transparency. Answer ANY informational question the tester asks, including rules questions and behind-the-screen questions. You MAY reveal exact monster HP, AC, THAC0, Hit Dice, morale, saves, XP, Soft/Hard and size classifications, hidden exits, undiscovered keyed information, encounter-generation details, target-selection logic, AI/monster orders, and exact stored rolls whenever those facts are present in DEVELOPER CURRENT STATE or REFEREE-SIDE ENGINE RECORDS below. Do not refuse merely because information would normally be secret from players. If a requested fact is genuinely absent from the supplied engine data, say that it is not present; never invent it.'
+      : '- Ordinary player-information rules apply. Never reveal, estimate, or hint at hidden enemy numeric statistics such as hit points, Armor Class, THAC0, Hit Dice, morale scores, saving throw targets, XP values, hidden exits, or exact mechanical thresholds. Describe enemy condition only with the observable wording supplied below.';
 
     return `You are the bounded Dungeon Master voice for a text-based BECM D&D browser prototype set in northern Karameikos. Speak like a clear, restrained tabletop referee from the 1980s, not like a novelist.\n\nIMPORTANT LIMITS:\n- The JavaScript rules engine is authoritative.\n- Wilderness movement uses a six-direction, six-mile hex crawl: north, northeast, southeast, south, southwest, northwest.\n- Do not alter or claim to alter location, time, hit points, armor class, inventory, treasure, dice results, secret doors, encounter placement, travel allowance, or saved state.\n${hiddenInfoRule}
-- During ordinary play, never reveal the engine's Soft/Hard Matrix protection category or target-size category; describe observable protection instead. In Developer Mode, you may identify those categories only when directly asked for testing and only if supported by referee-side records/current engine context.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not in the visible context.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Keep the response to 2–5 short paragraphs.\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
+- RULES QUESTIONS ARE ALWAYS ALLOWED, INCLUDING DURING COMBAT. Treat them as informational questions, not combat orders. Answer using the game's stated Mentzer BECMI + Rules Cyclopedia basis and the RULES IMPLEMENTATION CONTEXT below. Distinguish published-rule knowledge from this prototype's implemented/house behavior when they differ. If you are uncertain about an exact published rule, say so rather than inventing a citation or number.\n- During ordinary play, never reveal the engine's Soft/Hard Matrix protection category or target-size category; describe observable protection instead. In Developer Mode, full referee transparency applies as described above.\n- Do not invent an exit, monster, NPC, treasure, clue, spell effect, or successful action that is not supplied by the game context. Developer Mode permits revealing loaded hidden data; it does not permit fabricating missing keyed data.\n- If the requested action maps to a supported command, tell the player the exact command to enter.\n- If the action is reasonable but not implemented, say that the current prototype cannot resolve it yet, then describe what procedure would be needed.\n- Answer the question directly. Do not claim you cannot answer merely because combat is active.\n- Keep the response concise unless the tester asks for detail.\n\nRULES IMPLEMENTATION CONTEXT:\n${rulesImplementationContext(playerInput)}\n\nVISIBLE GAME STATE:\n${locationContext()}\nTime: ${clockText()}\nLight: ${state.mode === 'wilderness' || currentSite()?.outdoor ? (daylight() ? 'daylight' : 'night') : state.torchLit ? `torch with ${state.torchMinutes} minutes remaining` : 'none'}\nParty: ${partySummary}\nSupplies: ${state.torches} torches, ${state.rations} person-days of rations, treasury ${formatMoney(state.treasuryCp)}
 Weapon rule: ${state.rules.weaponDamageMode}; audit ${state.rules.weaponAudit?'on':'off'}; initiative ${state.rules.initiativeMode||'RAW'}; retainer XP share 0.5 (Mentzer BECMI); developer mode ${developerMode?'ON':'OFF'}\nCombat state: ${state.combat?.active ? JSON.stringify({round:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),visibleProtection:monsterProtectionDescription(m),asleep:m.sleeping,charmed:m.charmed})),orders:state.combat.pcOrders,engagements:state.combat.engagements}) : 'none'}\nRecent engine events: ${recentEvents}
 
 RELEVANT PLAYER-VISIBLE CAMPAIGN JOURNAL:
@@ -4097,7 +4231,10 @@ ${journalContext || 'No journal context retrieved.'}
 REFEREE-SIDE ENGINE RECORDS (available only in Developer Mode):
 ${developerMode ? (refereeContext || 'No relevant referee-side records retrieved.') : 'HIDDEN — Developer Mode is off.'}
 
-For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did. If exact ENCOUNTER DISTANCE, MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly rather than saying the information is hidden or unavailable.
+DEVELOPER CURRENT STATE / BEHIND-THE-SCREEN DATA:
+${developerMode ? developerCurrentStateContext() : 'HIDDEN — Developer Mode is off.'}
+
+For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records or hidden current-state data. When Developer Mode is ON, answer any informational question from the full developer context above, including hidden DM/referee facts. For questions about what the engine actually did, prefer exact REFEREE-SIDE ENGINE RECORDS. If exact ENCOUNTER DISTANCE, MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly. If the question asks how a rule works generally, answer the rule rather than substituting an unrelated prior audit record.
 
 PLAYER INPUT:
 ${playerInput}`;
@@ -4218,7 +4355,18 @@ ${playerInput}`;
     if (normalized.startsWith('matrix ')) {
       const parts=input.slice(7).split('/').map(s=>s.trim());
       if(parts.length===4) return matrixDamage(parts[0],parts[1],parts[2],parts[3]);
+      const shorthand=input.slice(7).trim();
+      if(shorthand && !shorthand.includes('/')) return explainWeaponMatrix(shorthand);
       write('Use: matrix dagger / medium / hard / close','warning'); return;
+    }
+    // Matrix-reference questions have a deterministic local answer.
+    if(isNaturalMatrixQuestion(input)) return explainWeaponMatrix(input,{natural:true});
+
+    // Informational questions are never combat orders. Route them before the
+    // party/combat guards so rules and referee questions work at any time.
+    if(isInformationRequest(input) || isRulesInformationRequest(input)){
+      if(state.rules?.developerMode && isDeveloperAuditQuestion(input) && await developerAuditAnswer(input)) return;
+      return callReferee(input);
     }
 
     const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
@@ -4233,8 +4381,6 @@ ${playerInput}`;
     if (combatActive()) {
       const safeDuringCombat=['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
       if(!safeDuringCombat){
-        const developerQuestion=Boolean(state.rules?.developerMode) && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me|now tell me)\b/.test(normalized) || normalized.endsWith('?'));
-        if(developerQuestion){ if(await developerAuditAnswer(input)) return; return callReferee(input); }
         if(state.combat?.awaitingMoveChoice){
           if(parseMovementChoiceCommand(input)) return;
           write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning');
@@ -4249,7 +4395,8 @@ ${playerInput}`;
           if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(combatKind) && await executeIntent(aiCombatIntent,input)) return;
           if(combatKind==='REFEREE') return callReferee(input);
         }
-        write('Combat is in progress. I could not turn that into legal combat orders. Try phrasing what the party or a named adventurer does, or type “combat help”.','warning');
+        if(state.rules?.developerMode) return callReferee(input);
+        write('Combat is in progress. I could not turn that into legal combat orders. Questions are always allowed; for an action, try phrasing what the party or a named adventurer does, or type “combat help”.','warning');
         return;
       }
     }
@@ -4296,14 +4443,11 @@ ${playerInput}`;
     if (normalized === 'clear') { terminal.innerHTML = ''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
     if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
-    if (normalized.startsWith('referee ')) { const q=input.slice(8); if(await developerAuditAnswer(q)) return; return callReferee(q); }
+    if (normalized.startsWith('referee ')) { const q=input.slice(8); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
     if (normalized.startsWith('ask referee ')) {
       const q=input.slice(12);
-      if(await developerAuditAnswer(q)) return;
+      if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return;
       return callReferee(q);
-    }
-    if (state.rules?.developerMode && (/^(?:why|how|what|did|was|were|is|are|which|who|explain|show me|now tell me)\b/.test(normalized) || normalized.endsWith('?'))) {
-      if(await developerAuditAnswer(input)) return;
     }
 
     // Layer 2: fast local semantic parsing for common table-language instructions.
@@ -4325,7 +4469,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build restores the recent visible transcript after refresh, silently autosaves campaign/combat state, and gives Developer Mode a deterministic engine-audit path for exact hidden rolls and decisions. Encounter-distance generation now records its complete dice/procedure trace; per-monster morale auditing remains active.','system');
+    write('This build keeps the persistent transcript/autosave and adds robust referee Q&A: rules questions are always allowed even during combat, while Developer Mode provides full behind-the-screen referee transparency.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
