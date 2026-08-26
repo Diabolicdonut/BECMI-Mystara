@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.16';
+  const APP_VERSION = '0.3.17';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -4196,6 +4196,12 @@ ${playerInput}`;
     const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
+    // Campaign lifecycle commands must remain available regardless of the current
+    // encounter/combat state. In particular, NEW GAME already has its own
+    // destructive-action confirmation and must never be mistaken for a combat order.
+    if (normalized === 'new game' || normalized === 'restart') return newGame();
+    if (normalized === 'load') return load();
+
     if (handleCombatDirect(input,normalized)) return;
 
     if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
@@ -4286,8 +4292,6 @@ ${playerInput}`;
     if (normalized.startsWith('referee log ') || normalized.startsWith('developer log ') || normalized.startsWith('engine log ')) { const q=input.replace(/^(?:referee|developer|engine)\s+log\s+/i,'').trim(); void openRefereeLog(q); return; }
     if (normalized === 'events') return events();
     if (normalized === 'save') return save();
-    if (normalized === 'load') return load();
-    if (normalized === 'new game' || normalized === 'restart') return newGame();
     if (normalized === 'help' || normalized === '?') return help();
     if (normalized === 'clear') { terminal.innerHTML = ''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
