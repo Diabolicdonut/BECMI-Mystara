@@ -204,7 +204,7 @@
             <button type="button" id="developerModeButton">DEVELOPER MODE: OFF</button>
             <button type="button" id="openRefereeLogButton">OPEN REFEREE LOG</button>
           </div>
-          <p class="tiny">Developer Mode is for rules testing. It allows the referee to answer questions from hidden engine records such as monster orders, morale rolls, saves, attack targets, and other referee-side decisions. It does not change the actual rules or rolls.</p>
+          <p class="tiny">Developer Mode is for rules testing. It exposes hidden engine records for rule-affecting determinations such as encounter-distance dice/procedure, initiative, monster orders, morale rolls, saves, attack targets, and other referee-side decisions. It does not change the actual rules or rolls.</p>
 
           <h3>AI REFEREE ACCESS</h3>
           <p class="connection-copy">Backend: <strong>becmi-mystara.diabolicdonut.workers.dev</strong></p>
@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.15';
+  const APP_VERSION = '0.3.16';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -966,6 +966,10 @@
 
   function developerAuditKind(question){
     const q=String(question||'').toLowerCase();
+    // Encounter distance is its own auditable rules procedure. Catch natural
+    // phrasings such as “how did you determine 130 yds?” before the generic
+    // dice/decision buckets.
+    if(/encounter\s+distance|how\s+far|distance.*(?:encounter|start|began)|(?:determin|decid|got|came up with).*\b(?:yds?|yards?|feet|ft)\b|\b(?:yds?|yards?|feet|ft)\b.*(?:determin|decid|roll)/.test(q)) return 'distance';
     if(/morale|flee|fled|hold|break|nerve/.test(q)) return 'morale';
     if(/initiative|who went first|move first/.test(q)) return 'initiative';
     if(/save|saving throw|resist|resisted/.test(q)) return 'save';
@@ -981,11 +985,12 @@
     if(!all.length) return [];
     const kind=developerAuditKind(question);
     let typed=[];
-    if(kind==='morale') typed=all.filter(row=>['morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
+    if(kind==='distance') typed=all.filter(row=>row?.meta?.type==='encounter_distance');
+    else if(kind==='morale') typed=all.filter(row=>['morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
     else if(kind==='initiative') typed=all.filter(row=>row?.meta?.type==='initiative');
     else if(kind==='save') typed=all.filter(row=>row?.meta?.type==='monster_save');
     else if(kind==='attack') typed=all.filter(row=>['monster_orders','monster_attack'].includes(row?.meta?.type));
-    else if(kind==='general') typed=all.filter(row=>['initiative','monster_orders','monster_attack','monster_save','morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
+    else if(kind==='general') typed=all.filter(row=>['encounter_distance','initiative','monster_orders','monster_attack','monster_save','morale_trigger','morale_group_event','morale_check'].includes(row?.meta?.type));
 
     // For an exact mechanics question, prefer the latest coherent block of that
     // mechanic rather than trusting text similarity alone. This makes phrases
@@ -1009,11 +1014,41 @@
     return semantic;
   }
 
+  function currentEncounterDistanceAudit(){
+    const c=state?.combat;
+    if(!c?.active || !Number.isFinite(Number(c.encounterDistance))) return null;
+    const unit=c.distanceUnit==='yd'?'yd':'ft';
+    const trace=c.encounterDistanceTrace;
+    if(trace?.rolls?.length){
+      const diceLabel=trace.dice || `${trace.rolls.length}d6`;
+      return `ENCOUNTER DISTANCE — current ${c.source==='test'?'test ':''}encounter. ${trace.context||''}${trace.context?' ':''}Procedure: ${diceLabel} × ${trace.multiplier||10} ${unit}. Rolls: ${trace.rolls.join('+')} = ${trace.sum}; × ${trace.multiplier||10} = ${c.encounterDistance} ${unit}.`;
+    }
+    if(c.source==='test'){
+      const outdoor=unit==='yd';
+      const diceLabel=outdoor?'4d6':'2d6';
+      const sum=Number(c.encounterDistance)/10;
+      return `ENCOUNTER DISTANCE — current test encounter began at ${c.encounterDistance} ${unit}. This encounter was created by an older build that did not preserve the individual distance dice. The test-encounter procedure in that build was ${diceLabel} × 10 ${unit}, so the dice total was ${sum}. The exact individual d6 faces cannot be reconstructed from the total.`;
+    }
+    return `ENCOUNTER DISTANCE — current encounter is ${c.encounterDistance} ${unit}. No generation trace was stored for this older encounter, so the engine can report the recorded result but cannot truthfully reconstruct the missing dice or circumstance.`;
+  }
+
   async function developerAuditAnswer(question){
     if(!state.rules?.developerMode || !developerAuditKind(question)) return false;
+    const kind=developerAuditKind(question);
     const rows=await refereeAuditRowsFor(question,40);
     if(!rows.length){
-      renderTerminalEntry('REFEREE (DEVELOPER): No referee-side engine record exists for that event in this campaign. If the event occurred before Developer/engine logging was introduced, its exact hidden rolls cannot be reconstructed. This build does record future initiative, monster orders, attacks, saves, and per-monster morale checks.','ai');
+      // Even when an older combat predates the detailed referee trace, the
+      // current combat state still lets us explain the deterministic procedure
+      // without inventing missing individual dice.
+      if(kind==='distance'){
+        const fallback=currentEncounterDistanceAudit();
+        if(fallback){
+          renderTerminalEntry(`REFEREE (DEVELOPER): ${fallback}`,'ai');
+          void refereeLog(`DEVELOPER DISTANCE AUDIT — ${fallback}`,{type:'developer_audit',auditKind:'distance',query:question,reconstructedFromCurrentState:true});
+          return true;
+        }
+      }
+      renderTerminalEntry('REFEREE (DEVELOPER): No referee-side engine record exists for that event in this campaign. If the event occurred before Developer/engine logging was introduced, its exact hidden rolls cannot be reconstructed. This build records future encounter-distance generation, initiative, monster orders, attacks, saves, and per-monster morale checks.','ai');
       return true;
     }
     const lines=rows.map(row=>`• ${row.text}`);
@@ -2577,13 +2612,29 @@ W: swollen wooden door · E: cellar`;
     count=Math.max(1,Math.min(24,Math.floor(Number(count)||1)));
     const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
     const outdoor=state.mode==='wilderness';
-    const distanceRoll=outdoor ? rng(6)+rng(6)+rng(6)+rng(6) : rng(6)+rng(6);
+    // Preserve the entire encounter-distance determination, not just the final
+    // number. Developer Mode can therefore answer exactly where a distance
+    // came from without reconstructing hidden RNG after the fact.
+    const distanceDice=outdoor ? [rng(6),rng(6),rng(6),rng(6)] : [rng(6),rng(6)];
+    const distanceRoll=distanceDice.reduce((a,b)=>a+b,0);
     const encounterDistance=distanceRoll*10;
     const distanceUnit=outdoor?'yd':'ft';
+    const encounterDistanceTrace={
+      procedure:outdoor?'wilderness test encounter distance':'dungeon/site test encounter distance',
+      context:outdoor?'Wilderness encounter distance when no circumstance fixes a nearer distance.':'Dungeon/site wandering-encounter distance used by the test harness.',
+      dice:outdoor?'4d6':'2d6',
+      rolls:distanceDice.slice(),
+      sum:distanceRoll,
+      multiplier:10,
+      result:encounterDistance,
+      unit:distanceUnit
+    };
     const positions={pcs:{},monsters:{}};
     for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=encounterDistance;
-    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,encounterDistance,distanceUnit,positions};
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    void refereeLog(`ENCOUNTER DISTANCE — ${outdoor?'wilderness':'dungeon/site'} test encounter: ${encounterDistanceTrace.dice} = ${distanceDice.join('+')} = ${distanceRoll}; ×10 = ${encounterDistance} ${distanceUnit}. ${encounterDistanceTrace.context}`,
+      {type:'encounter_distance',source:'test',context:outdoor?'wilderness':'dungeon',dice:encounterDistanceTrace.dice,rolls:distanceDice.slice(),sum:distanceRoll,multiplier:10,result:encounterDistance,unit:distanceUnit,procedure:encounterDistanceTrace.procedure});
     addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.`);
     write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at approximately ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.
 This is an explicit combat-engine test encounter, not a keyed campaign encounter. Test encounters begin hostile and intentionally bypass the normal encounter/reaction procedure. Distance is tracked from the start of the encounter; combatants must close using encounter movement before melee engagement. Type “combat” or “combat map” at any time to review the situation.`,'system');
@@ -4046,7 +4097,7 @@ ${journalContext || 'No journal context retrieved.'}
 REFEREE-SIDE ENGINE RECORDS (available only in Developer Mode):
 ${developerMode ? (refereeContext || 'No relevant referee-side records retrieved.') : 'HIDDEN — Developer Mode is off.'}
 
-For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did. If exact MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly rather than saying the information is hidden or unavailable.
+For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records. When Developer Mode is ON and the player explicitly asks a testing/rules question, use the referee-side records to explain what the engine actually did. If exact ENCOUNTER DISTANCE, MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly rather than saying the information is hidden or unavailable.
 
 PLAYER INPUT:
 ${playerInput}`;
@@ -4270,7 +4321,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build restores the recent visible transcript after refresh, silently autosaves campaign/combat state, and gives Developer Mode a deterministic engine-audit path for exact hidden rolls and decisions. Per-monster morale auditing remains active.','system');
+    write('This build restores the recent visible transcript after refresh, silently autosaves campaign/combat state, and gives Developer Mode a deterministic engine-audit path for exact hidden rolls and decisions. Encounter-distance generation now records its complete dice/procedure trace; per-monster morale auditing remains active.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
