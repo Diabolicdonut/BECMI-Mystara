@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.23';
+  const APP_VERSION = '0.3.24';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1203,6 +1203,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       localParser:'not tried',
       aiParser:'not tried',
       aiIntent:null,
+      aiRepair:'not tried',
       execution:'not attempted',
       detail:null,
       createdAt:Date.now()
@@ -1215,7 +1216,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     Object.assign(trace,patch);
   }
 
-  function parserTraceSummary(){
+  function parserTraceSummary(maxChars=2600){
     const t=state.lastParserTrace;
     if(!t || !t.input) return 'No parser trace is available for a previous natural-language command in this campaign.';
     const out={
@@ -1225,10 +1226,46 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       localParser:t.localParser,
       aiParser:t.aiParser,
       aiIntent:t.aiIntent,
+      aiRepair:t.aiRepair,
       execution:t.execution,
       detail:t.detail
     };
-    return safeTraceValue(out,6500);
+    return safeTraceValue(out,Math.max(600,Number(maxChars)||2600));
+  }
+
+  const AI_PROMPT_SOFT_LIMIT=5200;
+  const AI_PROMPT_RETRY_LIMIT=2400;
+
+  function boundedAiPrompt(text,maxChars=AI_PROMPT_SOFT_LIMIT){
+    const raw=String(text||'');
+    const max=Math.max(800,Number(maxChars)||AI_PROMPT_SOFT_LIMIT);
+    if(raw.length<=max) return raw;
+    const marker='\n\n[context compacted to fit Worker request limit]\n\n';
+    const available=Math.max(200,max-marker.length);
+    const head=Math.floor(available*0.58), tail=available-head;
+    return raw.slice(0,head)+marker+raw.slice(-tail);
+  }
+
+  async function workerRequest(prompt,token,retryPrompt=null){
+    const send=async text=>{
+      const response=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Game-Token':token},body:JSON.stringify({input:text})});
+      let data={}; try{data=await response.json();}catch{}
+      return {response,data};
+    };
+    const firstPrompt=boundedAiPrompt(prompt,AI_PROMPT_SOFT_LIMIT);
+    let result=await send(firstPrompt);
+    if(result.response.status===413){
+      setAiStatus('off','retrying compact request…');
+      const compactSource=retryPrompt==null?prompt:retryPrompt;
+      const compactPrompt=boundedAiPrompt(compactSource,AI_PROMPT_RETRY_LIMIT);
+      result=await send(compactPrompt);
+      result.retried=true;
+      result.promptLength=compactPrompt.length;
+      return result;
+    }
+    result.retried=false;
+    result.promptLength=firstPrompt.length;
+    return result;
   }
 
   function isParserDiagnosticQuestion(input){
@@ -1241,7 +1278,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
 
   function buildParserDiagnosticPrompt(question){
-    return `You are the parser/debugging referee for Known World Referee. Explain exactly what happened to the most recent natural-language command using ONLY the diagnostic trace below. Do not guess about events that are absent from the trace. Distinguish: (1) what the player's English meant, (2) what the local parser did, (3) what the AI intent parser returned, and (4) whether the deterministic engine accepted or rejected it. If the command is now representable by the current combat schema, say so. Be concise and practical.\n\nCURRENT COMBAT INTENT MODEL:\n- movement is independent from attack: approach, hold, withdraw, retreat.\n- action is independent: none, melee, missile, spell.\n- movementMode may be together or individual.\n- random targeting is a selector over any eligible foe set.\n- relative party phrases resolve contextually (party, everyone, rest, remaining characters, everyone else, named exclusions).\n\nLAST PARSER TRACE:\n${parserTraceSummary()}\n\nQUESTION:\n${question}`;
+    return `You are the parser/debugging referee for Known World Referee. Explain exactly what happened to the most recent natural-language command using ONLY the diagnostic trace below. Do not guess about events that are absent from the trace. Distinguish: (1) what the player's English meant, (2) what the local parser did, (3) what the AI intent parser returned, and (4) whether the deterministic engine accepted or rejected it. If the command is now representable by the current combat schema, say so. Be concise and practical.\n\nCURRENT COMBAT INTENT MODEL:\n- movement is independent from attack: approach, hold, withdraw, retreat.\n- action is independent: none, melee, missile, spell.\n- movementMode may be together or individual.\n- random targeting is a selector over any eligible foe set.\n- relative party phrases resolve contextually (party, everyone, rest, remaining characters, everyone else, named exclusions).\n\nLAST PARSER TRACE:\n${parserTraceSummary(2200)}\n\nQUESTION:\n${question}`;
   }
 
   function rng(max) {
@@ -4653,6 +4690,37 @@ new game / clear`);
     try { return JSON.parse(cleaned.slice(first,last+1)); } catch { return null; }
   }
 
+  function compactIntentInterpreterPrompt(playerInput){
+    const combat=state.combat?.active?{
+      round:state.combat.round,
+      foes:livingHostiles().map(m=>m.name),
+      pcs:livingParty().map(p=>({name:p.name,preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}))
+    }:null;
+    return `Return ONE raw JSON object only. Interpret the player's command for a deterministic BECMI engine. During combat use COMBAT_PLAN whenever the request can be represented. Each order may contain actor,movement,movementTarget,movementMode,action,target,spell,rangeIntent,rangeBand,targetSelection. movement=approach|hold|withdraw|retreat; action=none|melee|missile|spell; movementMode=together|individual. Movement and action are independent. Relative party phrases such as rest, remaining characters, everyone else are valid actor expressions. Random/whichever is a complete random target selector. A spellcaster may hold and cast while the remaining party approaches a foe group together. Use REFEREE only for an action genuinely outside this model. Combat=${JSON.stringify(combat)}. Player=${playerInput}`;
+  }
+
+  function combatRepairPrompt(playerInput,previousIntent){
+    const combat={round:state.combat?.round||null,foes:livingHostiles().map(m=>m.name),pcs:livingParty().map(p=>({name:p.name,preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}))};
+    return `You are a second-pass combat INTENT PARSER, not a narrator. The first pass did not yield an executable combat plan. Re-evaluate the player's ordinary English and return ONE raw JSON object only. Prefer COMBAT_PLAN whenever every requested action fits this schema. orders:[{actor,movement,movementTarget,movementMode,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement=approach|hold|withdraw|retreat. action=none|melee|missile|spell. movement and action are independent. movementMode=together when actors stay together/keep formation/move at the same pace. Relative actor phrases (rest, remaining characters, everyone else, party) are valid. Random/whichever means targetSelection=random over the described eligible foe set. Area spells such as Sleep can name a foe group without choosing an individual. Example pattern: one named caster holds and casts a prepared spell on a foe group; the rest approach that foe group together with action=none. Do not hard-code any example names or monsters. Return REFEREE only if some requested behavior truly cannot fit the schema. Combat=${JSON.stringify(combat)}. FirstPass=${safeTraceValue(previousIntent,700)}. Player=${playerInput}`;
+  }
+
+  async function repairCombatIntentWithAi(playerInput,previousIntent){
+    const token=getStoredToken();
+    if(!token || aiBusy) return null;
+    aiBusy=true; enterButton.disabled=true; testAiButton.disabled=true; setAiStatus('off','repairing combat intent…');
+    try{
+      const req=await workerRequest(combatRepairPrompt(playerInput,previousIntent),token,compactIntentInterpreterPrompt(playerInput));
+      const {response,data}=req;
+      if(!response.ok){ patchParserTrace(playerInput,{aiRepair:`HTTP ${response.status}`,detail:safeTraceValue(data.error||data.text||'Worker error',700)}); return null; }
+      const intent=extractJsonObject(data.text);
+      if(!intent || typeof intent.kind!=='string'){ patchParserTrace(playerInput,{aiRepair:'invalid JSON/intent'}); return null; }
+      patchParserTrace(playerInput,{aiRepair:safeTraceValue(intent,1800)});
+      setAiStatus('good','connected');
+      return intent;
+    }catch(error){ console.error('Combat intent repair failed',error); patchParserTrace(playerInput,{aiRepair:'request failed',detail:safeTraceValue(error?.message||error,700)}); return null; }
+    finally{ aiBusy=false; enterButton.disabled=false; testAiButton.disabled=false; }
+  }
+
   async function interpretWithAi(playerInput) {
     const token = getStoredToken();
     if (!token || aiBusy) return null;
@@ -4661,13 +4729,8 @@ new game / clear`);
     testAiButton.disabled = true;
     setAiStatus('off','interpreting…');
     try {
-      const response = await fetch(WORKER_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-Game-Token':token},
-        body:JSON.stringify({input:intentInterpreterPrompt(playerInput)})
-      });
-      let data = {};
-      try { data = await response.json(); } catch { data = {}; }
+      const req=await workerRequest(intentInterpreterPrompt(playerInput),token,compactIntentInterpreterPrompt(playerInput));
+      const {response,data}=req;
       if (!response.ok) { patchParserTrace(playerInput,{aiParser:`HTTP ${response.status}`,detail:safeTraceValue(data.error||data.text||'Worker error',800)}); return null; }
       const intent = extractJsonObject(data.text);
       if (!intent || typeof intent.kind !== 'string') { patchParserTrace(playerInput,{aiParser:'invalid JSON/intent',detail:safeTraceValue(data.text||'No parser text',1200)}); return null; }
@@ -4870,6 +4933,10 @@ ${playerInput}`;
     return error?.message || 'The AI referee request failed.';
   }
 
+  function compactParserDiagnosticPrompt(question){
+    return `Explain this parser failure concisely using only this trace. State what the player meant, what parser/repair returned, and why the engine accepted or rejected it. Do not invent facts. Schema: movement approach|hold|withdraw|retreat; action none|melee|missile|spell; movementMode together|individual; relative party actors and random target selectors are supported. TRACE=${parserTraceSummary(1200)} QUESTION=${String(question||'').slice(0,500)}`;
+  }
+
   async function callParserDiagnosticReferee(question){
     const token=getStoredToken();
     if(!token){ write('AI referee access code is required for parser diagnostics.','warning'); return null; }
@@ -4877,18 +4944,29 @@ ${playerInput}`;
     aiBusy=true; enterButton.disabled=true; testAiButton.disabled=true; setAiStatus('off','diagnosing parser…');
     write('The referee checks the parser trace…','system');
     try{
-      const response=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Game-Token':token},body:JSON.stringify({input:buildParserDiagnosticPrompt(question)})});
-      let data={}; try{data=await response.json();}catch{}
+      const req=await workerRequest(buildParserDiagnosticPrompt(question),token,compactParserDiagnosticPrompt(question));
+      const {response,data}=req;
       if(!response.ok){ const error=new Error(data.error||`Worker returned HTTP ${response.status}.`); error.status=response.status; throw error; }
       const text=typeof data.text==='string'?data.text.trim():'';
       if(!text) throw new Error('The Worker returned no parser-diagnostic text.');
       setAiStatus('good','connected'); write(`REFEREE (PARSER): ${text}`,'ai'); return text;
-    }catch(error){ const message=friendlyAiError(error,error.status||0); setAiStatus('bad','connection error'); write(message,'error'); console.error(error); return null; }
+    }catch(error){
+      if((error.status||0)===413){ write(`PARSER TRACE (local): ${parserTraceSummary(1500)}`,'system'); setAiStatus('bad','diagnostic request too large'); return null; }
+      const message=friendlyAiError(error,error.status||0); setAiStatus('bad','connection error'); write(message,'error'); console.error(error); return null;
+    }
     finally{ aiBusy=false; enterButton.disabled=false; testAiButton.disabled=false; command.focus(); }
   }
 
   function buildParserFallbackPrompt(playerInput){
-    return `You are the bounded referee for a deterministic BECMI browser game. The player issued a combat action that the intent layer handed to referee judgment instead of an executable COMBAT_PLAN. Explain the action plainly. If it can be represented by the CURRENT COMBAT INTENT MODEL below, give the semantic decomposition the parser should have produced; do not narrate that the action happened and do not alter state. If it truly requires an unimplemented procedure, say exactly what is missing.\n\nCURRENT COMBAT INTENT MODEL:\nmovement: approach | hold | withdraw | retreat\naction: none | melee | missile | spell\nmovementMode: together | individual\nrandom targeting: semantic selector over any eligible foe set\nrelative party actors: whole party, rest/remaining/everyone else, named exclusions\nmelee rangeIntent: press | hold | open, only for shared Close/Normal/Far melee state\n\nCURRENT VISIBLE COMBAT:\n${state.combat?.active?JSON.stringify({round:state.combat.round,pcs:livingParty().map(p=>p.name),foes:livingHostiles().map(m=>m.name)}):'none'}\n\nPARSER TRACE:\n${parserTraceSummary()}\n\nPLAYER ACTION:\n${playerInput}`;
+    return `You are the bounded referee for a deterministic BECMI browser game. The player issued a combat action that the intent layer handed to referee judgment instead of an executable COMBAT_PLAN. Explain the action plainly. If it can be represented by the CURRENT COMBAT INTENT MODEL below, give the semantic decomposition the parser should have produced; do not narrate that the action happened and do not alter state. If it truly requires an unimplemented procedure, say exactly what is missing.\n\nCURRENT COMBAT INTENT MODEL:\nmovement: approach | hold | withdraw | retreat\naction: none | melee | missile | spell\nmovementMode: together | individual\nrandom targeting: semantic selector over any eligible foe set\nrelative party actors: whole party, rest/remaining/everyone else, named exclusions\nmelee rangeIntent: press | hold | open, only for shared Close/Normal/Far melee state\n\nCURRENT VISIBLE COMBAT:\n${state.combat?.active?JSON.stringify({round:state.combat.round,pcs:livingParty().map(p=>p.name),foes:livingHostiles().map(m=>m.name)}):'none'}\n\nPARSER TRACE:\n${parserTraceSummary(1800)}\n\nPLAYER ACTION:\n${playerInput}`;
+  }
+
+  function buildUltraCompactRefereePrompt(playerInput,options={}){
+    if(options.connectionTest) return 'Connection test. Reply exactly: The referee is listening.';
+    if(options.parserFallback) return `Combat parser fallback. Explain briefly whether this action fits the schema and give the intended decomposition; do not narrate execution. Schema movement=approach|hold|withdraw|retreat; action=none|melee|missile|spell; movementMode=together|individual; relative party actors and random targets supported. Trace=${parserTraceSummary(900)} Action=${String(playerInput||'').slice(0,700)}`;
+    const combat=state.combat?.active?{round:state.combat.round,foes:livingHostiles().map(m=>m.name),orders:state.combat.pcOrders}:null;
+    const party=livingParty().map(p=>({name:p.name,role:p.role,hp:`${p.hp}/${p.maxHp}`,ac:p.ac,spell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}));
+    return `You are the bounded referee for a deterministic Mentzer BECMI browser game. JavaScript owns state and dice; answer only the player's question and do not invent missing facts. DeveloperMode=${Boolean(state.rules?.developerMode)}. Rules=${JSON.stringify(state.rules)}. Location=${safeTraceValue(locationContext(),500)}. Party=${JSON.stringify(party)}. Combat=${safeTraceValue(combat,800)}. Question=${String(playerInput||'').slice(0,900)}`;
   }
 
   async function callReferee(playerInput, options={}) {
@@ -4914,13 +4992,8 @@ ${playerInput}`;
       const journalContext = options.connectionTest || options.parserFallback ? '' : await journalContextFor(playerInput);
       const refereeContext = options.connectionTest || options.parserFallback || !state.rules?.developerMode ? '' : await refereeContextFor(playerInput);
       const requestPrompt=options.parserFallback?buildParserFallbackPrompt(playerInput):buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext,refereeContext);
-      const response = await fetch(WORKER_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json','X-Game-Token':token},
-        body:JSON.stringify({input:requestPrompt})
-      });
-      let data = {};
-      try { data = await response.json(); } catch { data = {}; }
+      const req=await workerRequest(requestPrompt,token,buildUltraCompactRefereePrompt(playerInput,options));
+      const {response,data}=req;
       if (!response.ok) {
         const error = new Error(data.error || `Worker returned HTTP ${response.status}.`);
         error.status = response.status;
@@ -5044,7 +5117,16 @@ ${playerInput}`;
           const combatKind=String(aiCombatIntent.kind||'').toUpperCase();
           if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(combatKind) && await executeIntent(aiCombatIntent,input)) return;
           if(combatKind==='REFEREE'){
-            patchParserTrace(input,{execution:'AI classified action as REFEREE rather than executable combat plan'});
+            patchParserTrace(input,{execution:'First AI pass classified action as REFEREE; attempting structured combat repair.'});
+            const repaired=await repairCombatIntentWithAi(input,aiCombatIntent);
+            if(repaired){
+              const repairedKind=String(repaired.kind||'').toUpperCase();
+              if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(repairedKind) && await executeIntent(repaired,input)){
+                patchParserTrace(input,{execution:'Structured combat repair produced an executable intent.'});
+                return;
+              }
+              if(repairedKind==='REFEREE') patchParserTrace(input,{execution:'Both AI passes classified the action as referee judgment.'});
+            }
             return callReferee(input,{parserFallback:true});
           }
         }
@@ -5123,7 +5205,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build keeps the persistent transcript/autosave and adds semantic combat movement, parser diagnostics, and compact Developer Mode referee debugging.','system');
+    write('This build keeps the persistent transcript/autosave and adds semantic combat movement, two-pass intent repair, parser diagnostics, and hard-capped AI requests with automatic compact retry.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
