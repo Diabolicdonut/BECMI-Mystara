@@ -385,7 +385,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.30';
+  const APP_VERSION = '0.3.31';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1171,6 +1171,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     lastParserTrace:null,
     lastActionParserTrace:null,
     lastProblemParserTrace:null,
+    combatHistory:[],
     discourse:{
       lastActionInput:null,
       lastPlan:null,
@@ -2861,6 +2862,20 @@ W: swollen wooden door · E: cellar`;
     return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
   }
 
+  function archiveCombatEncounterRoster(combat){
+    if(!combat || !Array.isArray(combat.monsters)) return;
+    if(!Array.isArray(state.combatHistory)) state.combatHistory=[];
+    const entry={
+      id:`enc-${state.campaignId}-${Date.now()}-${state.combatHistory.length+1}`,
+      source:combat.source||'combat',day:state.day,minute:state.minutes,roundStarted:Number(combat.round)||1,
+      encounterDistance:Number(combat.encounterDistance)||0,distanceUnit:combat.distanceUnit||combatDistanceUnit(),
+      monsters:combat.monsters.map(m=>({id:m.id,name:m.name,type:m.type,initialHp:Number(m.maxHp)||Number(m.hp)||0,currentHp:Number(m.hp)||0,dead:Boolean(m.dead),fled:Boolean(m.fled),sleeping:Boolean(m.sleeping),charmed:Boolean(m.charmed),ac:m.ac,thac0:m.thac0,hd:m.hd,morale:m.morale,saveSpells:m.saveSpells,xp:m.xp,size:m.size,protection:m.protection}))
+    };
+    state.combatHistory.push(entry);
+    state.combatHistory=state.combatHistory.slice(-20);
+    void refereeLog(`ENCOUNTER ROSTER — ${entry.monsters.map(m=>`${m.name}: initial HP ${m.initialHp}, AC ${m.ac}, THAC0 ${m.thac0}, HD ${m.hd}`).join('; ')}.`,{type:'encounter_roster',encounterId:entry.id,monsters:entry.monsters});
+  }
+
   function startTestEncounter(count,type){
     if(combatActive()){ write('A combat is already in progress.','warning'); return; }
     if(!livingParty().length){ write('There is no living adventurer available to fight.','warning'); return; }
@@ -2889,6 +2904,7 @@ W: swollen wooden door · E: cellar`;
     for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=encounterDistance;
     state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    archiveCombatEncounterRoster(state.combat);
     void refereeLog(`ENCOUNTER DISTANCE — ${outdoor?'wilderness':'dungeon/site'} test encounter: ${encounterDistanceTrace.dice} = ${distanceDice.join('+')} = ${distanceRoll}; ×10 = ${encounterDistance} ${distanceUnit}. ${encounterDistanceTrace.context}`,
       {type:'encounter_distance',source:'test',context:outdoor?'wilderness':'dungeon',dice:encounterDistanceTrace.dice,rolls:distanceDice.slice(),sum:distanceRoll,multiplier:10,result:encounterDistance,unit:distanceUnit,procedure:encounterDistanceTrace.procedure});
     addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.`);
@@ -3360,8 +3376,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function damageMonster(monster,amount,source){
     if(monster.dead) return;
+    const hpBefore=Math.max(0,Number(monster.hp)||0), originalHp=Math.max(0,Number(monster.maxHp)||hpBefore);
     amount=Math.max(0,Math.floor(Number(amount)||0)); monster.hp=Math.max(0,monster.hp-amount);
     const c=state.combat;
+    if(amount>0) void refereeLog(`DAMAGE — ${monster.name}: ${hpBefore}/${originalHp} HP before; ${amount} damage from ${source||'combat'}; ${monster.hp}/${originalHp} HP after.`,{type:'damage',round:c?.round||null,monsterId:monster.id,name:monster.name,source:source||'combat',damage:amount,hpBefore,hpAfter:monster.hp,initialHp:originalHp});
     if(amount>0 && !monster.moraleFirstHit){ monster.moraleFirstHit=true; queueMonsterMorale(`${monster.name} was first hit`,monster.id); }
     if(amount>0 && monster.hp>0 && monster.hp<=Math.max(1,Math.floor(monster.maxHp/4)) && !monster.moraleQuarterHp){ monster.moraleQuarterHp=true; queueMonsterMorale(`${monster.name} was reduced to one-quarter hit points or less`,monster.id); }
     if(monster.hp<=0){
@@ -4294,6 +4312,68 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     void refereeLog(`MELEE CONTACT CHECK — round ${c.round}: ${rec.attacker} → ${rec.target}; encounter separation ${Math.round(rec.separation)} ${rec.unit}; ${rec.allowed?'CONTACT, attack eligible':'NOT IN CONTACT, attack blocked'}.`,{type:'melee_contact_check',...rec});
   }
 
+  function combatantRecordFromQuestion(input){
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+    if(!q) return null;
+    const current=(state.combat?.monsters||[]).map(m=>({source:'current',record:{
+      id:m.id,name:m.name,type:m.type,initialHp:Number(m.maxHp)||0,currentHp:Number(m.hp)||0,dead:Boolean(m.dead),fled:Boolean(m.fled),sleeping:Boolean(m.sleeping),charmed:Boolean(m.charmed),
+      ac:m.ac,thac0:m.thac0,hd:m.hd,morale:m.morale,saveSpells:m.saveSpells,xp:m.xp,size:m.size,protection:m.protection
+    }}));
+    const archived=[];
+    const history=Array.isArray(state.combatHistory)?state.combatHistory:[];
+    for(let hi=history.length-1;hi>=0;hi--){
+      const encounter=history[hi];
+      for(const rec of (encounter?.monsters||[])) archived.push({source:'archive',record:{...rec},encounter});
+    }
+    const normalized=x=>String(x||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+    const nq=normalized(q);
+    for(const item of [...current,...archived]){
+      const name=normalized(item.record.name), id=normalized(item.record.id);
+      if((name && (` ${nq} `).includes(` ${name} `)) || (id && (` ${nq} `).includes(` ${id} `))) return item;
+    }
+    return null;
+  }
+
+  function developerQueryFacts(question){
+    if(!state.rules?.developerMode) return null;
+    const item=combatantRecordFromQuestion(question);
+    if(!item) return null;
+    const r=item.record;
+    return {authority:'deterministic engine state',source:item.source,combatant:{
+      name:r.name,id:r.id,type:r.type,initialHp:r.initialHp,currentHp:r.currentHp,dead:Boolean(r.dead),fled:Boolean(r.fled),sleeping:Boolean(r.sleeping),charmed:Boolean(r.charmed),
+      ac:r.ac,thac0:r.thac0,hd:r.hd,morale:r.morale,saveSpells:r.saveSpells,xp:r.xp,size:r.size,protection:r.protection
+    }};
+  }
+
+  function developerCombatantStateAnswer(input){
+    if(!state.rules?.developerMode) return null;
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+    const item=combatantRecordFromQuestion(q);
+    if(!item) return null;
+    const r=item.record;
+    const asksHp=/\b(?:hp|hit points?|health)\b/.test(q);
+    const asksOriginal=/\b(?:original|originally|initial|initially|start|started|starting|begin|began|before (?:the )?(?:fight|combat|encounter))\b/.test(q);
+    if(asksHp){
+      if(asksOriginal) return `${r.name} began the encounter with ${r.initialHp} HP. ${item.source==='current'?`Its current stored HP is ${r.currentHp}/${r.initialHp}${r.dead?' and it is dead':''}${r.fled?' and it has fled':''}.`:'That value comes from the archived encounter roster.'}`;
+      const asksHistoricalMoment=/\b(?:before|after|when|prior to|following|round|attack|spell|missile|damage|hit|was struck|was hit)\b/.test(q);
+      if(asksHistoricalMoment) return null;
+      return `${r.name} has ${r.currentHp}/${r.initialHp} HP in the stored engine record${r.dead?' and is dead':''}${r.fled?' and has fled':''}.`;
+    }
+    if(/\b(?:ac|armor class)\b/.test(q)) return `${r.name}'s stored Armor Class is ${r.ac}.`;
+    if(/\bthac0\b/.test(q)) return `${r.name}'s stored THAC0 is ${r.thac0}.`;
+    if(/\b(?:hit dice|hd)\b/.test(q)) return `${r.name}'s stored Hit Dice are ${r.hd}.`;
+    if(/\bmorale\b/.test(q)) return `${r.name}'s stored morale score is ${r.morale}.`;
+    if(/\b(?:xp|experience)\b/.test(q)) return `${r.name}'s stored XP value is ${r.xp}.`;
+    return null;
+  }
+
+  function answerDeveloperCombatantStateQuestion(input){
+    const answer=developerCombatantStateAnswer(input);
+    if(!answer) return false;
+    if(testHarnessIsolationDepth===0) renderTerminalEntry(`REFEREE (ENGINE): ${answer}`,'ai');
+    return true;
+  }
+
   function isMeleeDistanceQuestion(input){
     const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
     if(!q) return false;
@@ -4931,6 +5011,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     merged.partyInventory=Array.isArray(loaded.partyInventory)?loaded.partyInventory:[];
     merged.mounts=Array.isArray(loaded.mounts)?loaded.mounts:[];
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
+    merged.combatHistory=Array.isArray(loaded.combatHistory)?loaded.combatHistory:[];
     merged.pendingClarification=loaded.pendingClarification&&typeof loaded.pendingClarification==='object'?loaded.pendingClarification:null;
     merged.discourse={...base.discourse,...(loaded.discourse&&typeof loaded.discourse==='object'?loaded.discourse:{})};
     merged.discourse.recentEntities=Array.isArray(merged.discourse.recentEntities)?merged.discourse.recentEntities.slice(-12):[];
@@ -5658,6 +5739,7 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
     if(/^(?:what|which)\b.*\b(?:roll|dice|check|result|target|decision)\b.*\b(?:did|was|were|made|make|got|used|chose|failed|passed)\b/.test(q)) return true;
     if(/^(?:what|which|who)\b.*\b(?:failed|passed|fled|held|hit|missed|saved|resisted)\b.*\b(?:morale|check|save|attack|initiative)?\b/.test(q)) return true;
     if(/\b(?:what|show|tell me|explain)\b.*\b(?:exact|actual)\b.*\b(?:roll|dice|check|result|decision|target)\b/.test(q)) return true;
+    if(/\b(?:hp|hit points?|health)\b/.test(q) && /\b(?:before|after|when|prior to|following|round|attack|spell|missile|damage|hit)\b/.test(q)) return true;
     if(/\b(?:backend|engine|developer log|referee log|audit trail|behind the screen)\b/.test(q)) return true;
     return false;
   }
@@ -5742,6 +5824,9 @@ ${developerMode ? developerCurrentStateContext() : 'HIDDEN — Developer Mode is
 
 For questions about earlier campaign events, people, places, dialogue, rumors, possessions, or prior decisions, use the campaign-journal excerpts above as the historical record. Do not claim a remembered fact that is not supported there or by the current visible state. When Developer Mode is OFF, never expose referee-only engine records or hidden current-state data. When Developer Mode is ON, answer any informational question from the full developer context above, including hidden DM/referee facts. For questions about what the engine actually did, prefer exact REFEREE-SIDE ENGINE RECORDS. If exact ENCOUNTER DISTANCE, MORALE CHECK, INITIATIVE, ATTACK, MONSTER ORDERS, or SAVING THROW records are present, answer from those records directly. If the question asks how a rule works generally, answer the rule rather than substituting an unrelated prior audit record.
 
+DEVELOPER QUERY FACTS — query-relevant authoritative state (kept adjacent to the question so prompt compaction cannot discard it):
+${developerMode ? (safeTraceValue(developerQueryFacts(playerInput),1200) || 'No specific combatant/entity fact bundle matched this question.') : 'HIDDEN — Developer Mode is off.'}
+
 PLAYER INPUT:
 ${playerInput}`;
   }
@@ -5793,10 +5878,11 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(options.parserFallback) return `Universal parser fallback. Explain the intended ACTION_PLAN from this trace; do not narrate execution or invent state. Ontology spans combat/travel/exploration/social/commerce/inventory/meta. Trace=${parserTraceSummary(800)} Action=${String(playerInput||'').slice(0,500)}`;
     const combat=state.combat?.active?{round:state.combat.round,foes:livingHostiles().map(m=>m.name),orders:state.combat.pcOrders}:null;
     const party=livingParty().map(p=>({name:p.name,role:p.role,hp:`${p.hp}/${p.maxHp}`,ac:p.ac,spell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}));
-    return `You are the bounded referee for a deterministic Mentzer BECMI browser game. JavaScript owns state and dice; answer only the player's question and do not invent missing facts. DeveloperMode=${Boolean(state.rules?.developerMode)}. Rules=${JSON.stringify(state.rules)}. Location=${safeTraceValue(locationContext(),500)}. Party=${JSON.stringify(party)}. Combat=${safeTraceValue(combat,800)}. Question=${String(playerInput||'').slice(0,900)}`;
+    return `You are the bounded referee for a deterministic Mentzer BECMI browser game. JavaScript owns state and dice; answer only the player's question and do not invent missing facts. DeveloperMode=${Boolean(state.rules?.developerMode)}. Rules=${JSON.stringify(state.rules)}. Location=${safeTraceValue(locationContext(),420)}. Party=${JSON.stringify(party)}. Combat=${safeTraceValue(combat,600)}. QueryFacts=${safeTraceValue(developerQueryFacts(playerInput),700)}. Question=${String(playerInput||'').slice(0,700)}`;
   }
 
   async function callReferee(playerInput, options={}) {
+    if(!options.connectionTest && !options.parserFallback && !options.semanticPlan && answerDeveloperCombatantStateQuestion(playerInput)) return 'Answered from deterministic developer state.';
     const token = getStoredToken();
     if (!token) {
       setAiStatus('off','access code needed');
@@ -5911,8 +5997,9 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(isParserDiagnosticQuestion(input)) return callParserDiagnosticReferee(input);
     if(isRepeatPreviousActionInput(input)) return repeatPreviousActionPlan(input);
 
-    // Deterministic engine-mechanics questions should be answerable from the
-    // authoritative state even if the AI referee is unavailable or returns no prose.
+    // Deterministic engine/developer questions should be answerable directly from
+    // authoritative state even if AI context is compacted, unavailable, or stale.
+    if(answerDeveloperCombatantStateQuestion(input)) return;
     if(answerMeleeDistanceQuestion(input)) return;
 
     // Informational questions/table talk are routed to the referee before action parsing.
@@ -5978,8 +6065,8 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if (normalized === 'clear') { terminal.innerHTML=''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
     if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
-    if (normalized.startsWith('referee ')) { const q=input.slice(8); if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
-    if (normalized.startsWith('ask referee ')) { const q=input.slice(12); if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
+    if (normalized.startsWith('referee ')) { const q=input.slice(8); if(answerDeveloperCombatantStateQuestion(q)) return; if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
+    if (normalized.startsWith('ask referee ')) { const q=input.slice(12); if(answerDeveloperCombatantStateQuestion(q)) return; if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
 
     // Universal semantic pipeline. Natural language reaches the AI FIRST when an
     // access token exists. Local regex parsers are compatibility/offline fallback,
@@ -6337,6 +6424,28 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         beginParserTrace('hello','universal');
         patchParserTrace('hello',{execution:'routed to referee'});
         harnessAssert(state.lastProblemParserTrace?.input===failed,'A greeting overwrote the last failed-action diagnostic trace');
+      }},
+      {name:'Developer can recover original HP for a dead combatant',run:async()=>{
+        installHarnessFixture();
+        const m=state.combat.monsters.find(x=>x.name==='Skeleton 2');
+        m.maxHp=5; m.hp=0; m.dead=true;
+        const q='how many hp did skeleton 2 have originally?';
+        const answer=developerCombatantStateAnswer(q);
+        harnessAssert(answer && /began the encounter with 5 HP/i.test(answer),`Original HP was not recovered from dead combatant state: ${answer}`);
+        const facts=developerQueryFacts(q);
+        harnessAssert(facts?.combatant?.name==='Skeleton 2' && facts.combatant.initialHp===5 && facts.combatant.dead===true,'Query facts omitted the defeated combatant');
+        const compact=boundedAiPrompt(buildRefereePrompt(q,false,'',''),AI_PROMPT_SOFT_LIMIT);
+        harnessAssert(/DEVELOPER QUERY FACTS/.test(compact) && /Skeleton 2/.test(compact) && /initialHp/.test(compact),'Prompt compaction discarded query-relevant defeated-combatant facts');
+        state.lastParserTrace=null; state.lastActionParserTrace=null; state.lastProblemParserTrace=null;
+        await handle(q);
+        harnessAssert(state.lastParserTrace===null && state.lastActionParserTrace===null,'Exact developer-state question fell through into the semantic parser instead of being answered directly from engine state');
+      }},
+      {name:'Original combatant HP survives into encounter archive',run:()=>{
+        installHarnessFixture();
+        state.combat=null;
+        state.combatHistory=[{id:'old-encounter',source:'test',monsters:[{id:'wolf-2',name:'Wolf 2',type:'wolf',initialHp:7,currentHp:0,dead:true,fled:false,ac:7,thac0:19,hd:2,morale:6,saveSpells:16,xp:25,size:'Medium',protection:'Soft'}]}];
+        const answer=developerCombatantStateAnswer('what was wolf 2 original hp?');
+        harnessAssert(answer && /7 HP/.test(answer) && /archived encounter roster/i.test(answer),'Archived encounter did not retain original monster HP');
       }},
       {name:'Clarification state preserves the original instruction',run:()=>{
         installHarnessFixture();
