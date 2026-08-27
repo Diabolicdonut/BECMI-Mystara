@@ -209,6 +209,10 @@
             <button type="button" id="runAiParserTestsButton">RUN AI PARSER SMOKE TESTS</button>
             <button type="button" id="copyTestReportButton">COPY TEST REPORT</button>
           </div>
+          <div class="button-row" style="margin-top:8px">
+            <button type="button" id="exportDebugButton" hidden>EXPORT DEBUG SESSION</button>
+          </div>
+          <p class="tiny" id="debugExportHelp" hidden><strong>Debug Export:</strong> creates one JSON file containing the complete campaign/session journal, referee-only engine records, current full state, combat geometry and orders, parser/discourse traces, AI request/response diagnostics, runtime errors, and regression reports. It deliberately excludes the GAME_TOKEN and other credentials. Upload this file when reporting a difficult bug.</p>
           <p class="tiny"><strong>Regression Harness:</strong> RUN SELF-TESTS checks deterministic parser helpers, semantic-plan normalization, entity/group resolution, transactional combat plans, group movement, and melee-distance invariants without calling AI or changing the campaign. AI PARSER SMOKE TESTS are optional and use the configured referee connection to test several natural-language interpretations across combat, travel, social, and inventory play. The harness is also exposed as <code>window.KnownWorldTestHarness</code> for future browser/CI automation.</p>
           <p class="tiny">Developer Mode is full referee/testing transparency. It lets the referee answer any informational question and exposes loaded behind-the-screen state as well as hidden engine records: monster statistics, current HP, morale, saves, target logic, hidden exits/keyed data, encounter-distance procedure, initiative, attacks, and other referee-side decisions. It does not change the actual rules or rolls.</p>
 
@@ -385,7 +389,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.32';
+  const APP_VERSION = '0.3.33';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -415,6 +419,8 @@
   const runSelfTestsButton = document.getElementById('runSelfTestsButton');
   const runAiParserTestsButton = document.getElementById('runAiParserTestsButton');
   const copyTestReportButton = document.getElementById('copyTestReportButton');
+  const exportDebugButton = document.getElementById('exportDebugButton');
+  const debugExportHelp = document.getElementById('debugExportHelp');
   const optionsDetails = document.getElementById('optionsDetails');
   const matrixWeaponsButton = document.getElementById('matrixWeaponsButton');
   const auditWeaponsButton = document.getElementById('auditWeaponsButton');
@@ -1108,6 +1114,118 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     write('Campaign export created: save state plus player-facing and referee-side journals. The Cloudflare access code is not included.','system');
   }
 
+  function debugRedact(value){
+    const token=getStoredToken();
+    const seen=new WeakSet();
+    const cleanseString=text=>{
+      let out=String(text??'');
+      if(token) out=out.split(token).join('[REDACTED_GAME_TOKEN]');
+      return out;
+    };
+    const walk=(input,key='')=>{
+      if(String(key||'')!=='tokenPresent' && /(?:token|api[_ -]?key|password|secret|authorization)/i.test(String(key||''))) return '[REDACTED_CREDENTIAL]';
+      if(input==null || typeof input==='number' || typeof input==='boolean') return input;
+      if(typeof input==='string') return cleanseString(input);
+      if(typeof input==='function') return `[function ${input.name||'anonymous'}]`;
+      if(typeof input!=='object') return cleanseString(input);
+      if(seen.has(input)) return '[circular reference]';
+      seen.add(input);
+      if(Array.isArray(input)) return input.map(v=>walk(v,''));
+      const out={};
+      for(const [k,v] of Object.entries(input)) out[k]=walk(v,k);
+      return out;
+    };
+    return walk(value);
+  }
+
+  function renderedTerminalSnapshot(){
+    return Array.from(terminal?.children||[]).map((node,index)=>({index,className:node.className||'',text:node.textContent||''}));
+  }
+
+  function debugDerivedSnapshot(){
+    let site=null, locationText='', mapText='', melees=[];
+    try{site=currentSite()?debugClone(currentSite()):null;}catch{}
+    try{locationText=locationContext();}catch(error){locationText=`[locationContext error: ${error?.message||error}]`;}
+    try{mapText=state.combat?.active?renderCombatAsciiMap():'';}catch(error){mapText=`[combat map error: ${error?.message||error}]`;}
+    try{melees=state.combat?.active?debugClone(meleeGroups()):[];}catch{}
+    return {
+      clock:(typeof clockText==='function'?clockText():null),
+      place:(typeof placeName==='function'?placeName():null),
+      locationContext:locationText,
+      currentSite:site,
+      combatAsciiMap:mapText,
+      meleeGroups:melees,
+      combatOrderProgress:state.combat?.active&&typeof combatOrderProgress==='function'?debugClone(combatOrderProgress()):null,
+      parserDiscourse:typeof discourseContextForParser==='function'?debugClone(discourseContextForParser()):null,
+      capabilityRegistry:typeof UNIVERSAL_CAPABILITIES!=='undefined'?debugClone(UNIVERSAL_CAPABILITIES):null
+    };
+  }
+
+  async function buildDebugExportPayload(){
+    await journalWriteChain;
+    const allJournal=await getCampaignJournalEntries(state.campaignId,{audience:null});
+    const playerJournal=allJournal.filter(row=>row.audience==='player');
+    const refereeJournal=allJournal.filter(row=>row.audience==='referee');
+    const transcriptText=allJournal.map(row=>{
+      const who=row.audience==='referee'?'REFEREE-HIDDEN':(row.category==='command'?'PLAYER':'GAME');
+      return `[${row.clock||`Day ${row.day}`} | ${row.location||'Unknown'} | ${who} | ${row.category||'unknown'}] ${row.text||''}`;
+    }).join('\n');
+    const payload={
+      format:'known-world-referee-debug-session',
+      formatVersion:1,
+      warning:'Contains full referee/engine information and hidden campaign state. Do not share publicly. Credentials are deliberately excluded.',
+      exportedAt:new Date().toISOString(),
+      app:{version:APP_VERSION,workerOrigin:new URL(WORKER_URL).origin},
+      runtime:{
+        page:{protocol:location.protocol,origin:location.origin||null,pathname:location.pathname||null},
+        browser:{userAgent:navigator.userAgent,language:navigator.language,viewport:{width:window.innerWidth,height:window.innerHeight},devicePixelRatio:window.devicePixelRatio},
+        aiStatus:aiBadge?.textContent||null,
+        tokenPresent:Boolean(getStoredToken()),
+        online:navigator.onLine
+      },
+      campaign:{
+        campaignId:state.campaignId,
+        fullState:debugClone(state),
+        persistedSaveRaw:localStorage.getItem(STORAGE.save)||null,
+        derived:debugDerivedSnapshot()
+      },
+      transcript:{
+        completeJournal:debugClone(allJournal),
+        playerVisibleJournal:debugClone(playerJournal),
+        refereeHiddenJournal:debugClone(refereeJournal),
+        formatted:transcriptText,
+        currentlyRenderedTerminal:renderedTerminalSnapshot()
+      },
+      diagnostics:{
+        parser:{last:debugClone(state.lastParserTrace),lastAction:debugClone(state.lastActionParserTrace),lastProblem:debugClone(state.lastProblemParserTrace),history:debugClone(debugRuntimeTrace.filter(row=>String(row.kind).startsWith('parser_trace')))},
+        workerRequests:debugClone(debugRuntimeTrace.filter(row=>row.kind==='worker_request'||row.kind==='worker_request_error')),
+        runtimeTrace:debugClone(debugRuntimeTrace),
+        runtimeErrors:debugClone(debugRuntimeErrors),
+        tests:debugClone(combinedTestReport())
+      }
+    };
+    return debugRedact(payload);
+  }
+
+  async function exportDebugSession(){
+    if(!state.rules?.developerMode){
+      write('Debug-session export is available only while Developer Mode is enabled.','warning');
+      return;
+    }
+    try{
+      const payload=await buildDebugExportPayload();
+      const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob); const a=document.createElement('a');
+      const cid=String(state.campaignId||'campaign').slice(0,8);
+      a.href=url; a.download=`known-world-debug-v${APP_VERSION}-day-${state.day}-${cid}.json`;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1500);
+      write('Developer debug export created. It includes the complete session transcript, hidden referee/engine records, full current state, combat/parser diagnostics, AI request/response traces, runtime errors, and test reports. Credentials are excluded.','system');
+    }catch(error){
+      pushDebugError('debug_export_failed',{message:error?.message||String(error),stack:error?.stack||null});
+      write(`Debug export failed: ${error?.message||error}`,'error');
+    }
+  }
+
   async function importCampaignFromFile(file){
     if(!file) return;
     try{
@@ -1196,6 +1314,30 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   let lastSelfTestReport = null;
   let lastAiParserTestReport = null;
 
+  // Session-scoped diagnostics intentionally live outside campaign state. They are
+  // exported only from Developer Mode and are never persisted into ordinary saves.
+  // Authentication credentials are never recorded.
+  const debugRuntimeTrace=[];
+  const debugRuntimeErrors=[];
+  function debugClone(value){
+    try{return JSON.parse(JSON.stringify(value));}catch{return String(value);}
+  }
+  function pushDebugRuntime(kind,data={}){
+    debugRuntimeTrace.push({ts:Date.now(),iso:new Date().toISOString(),kind:String(kind||'event'),...debugClone(data)});
+    if(debugRuntimeTrace.length>500) debugRuntimeTrace.splice(0,debugRuntimeTrace.length-500);
+  }
+  function pushDebugError(kind,data={}){
+    debugRuntimeErrors.push({ts:Date.now(),iso:new Date().toISOString(),kind:String(kind||'error'),...debugClone(data)});
+    if(debugRuntimeErrors.length>200) debugRuntimeErrors.splice(0,debugRuntimeErrors.length-200);
+  }
+  window.addEventListener('error',event=>{
+    pushDebugError('window_error',{message:event.message||'',source:event.filename||'',line:event.lineno||null,column:event.colno||null,stack:event.error?.stack||null});
+  });
+  window.addEventListener('unhandledrejection',event=>{
+    const reason=event.reason;
+    pushDebugError('unhandled_rejection',{message:reason?.message||String(reason||''),stack:reason?.stack||null});
+  });
+
   function clearPendingClarification(){
     state.pendingClarification=null;
   }
@@ -1275,6 +1417,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       detail:null,
       createdAt:Date.now()
     };
+    pushDebugRuntime('parser_trace_begin',{trace:state.lastParserTrace});
   }
 
   function patchParserTrace(input,patch={}){
@@ -1285,6 +1428,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const combined=`${trace.validation||''} ${trace.execution||''} ${trace.detail||''}`.toLowerCase();
     const problem=trace.actionLike && /(?:reject|fail|no executable|classified.*referee|fallback|could not|partial|clarif|unsupported|repair)/.test(combined);
     if(problem) state.lastProblemParserTrace=JSON.parse(JSON.stringify(trace));
+    pushDebugRuntime('parser_trace_update',{trace});
   }
 
   function parserTraceSummary(maxChars=3000){
@@ -1322,9 +1466,16 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   async function workerRequest(prompt,token,retryPrompt=null){
     const send=async text=>{
-      const response=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Game-Token':token},body:JSON.stringify({input:text})});
-      let data={}; try{data=await response.json();}catch{}
-      return {response,data};
+      const started=Date.now();
+      try{
+        const response=await fetch(WORKER_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Game-Token':token},body:JSON.stringify({input:text})});
+        let data={}; try{data=await response.json();}catch{}
+        pushDebugRuntime('worker_request',{prompt:String(text||''),promptLength:String(text||'').length,status:response.status,ok:response.ok,durationMs:Date.now()-started,response:debugClone(data)});
+        return {response,data};
+      }catch(error){
+        pushDebugError('worker_request_error',{prompt:String(text||''),promptLength:String(text||'').length,durationMs:Date.now()-started,message:error?.message||String(error),stack:error?.stack||null});
+        throw error;
+      }
     };
     const firstPrompt=boundedAiPrompt(prompt,AI_PROMPT_SOFT_LIMIT);
     let result=await send(firstPrompt);
@@ -1837,6 +1988,8 @@ W: swollen wooden door · E: cellar`;
     }
     if(developerModeButton){ developerModeButton.textContent=rules.developerMode?'DEVELOPER MODE: ON':'DEVELOPER MODE: OFF'; developerModeButton.classList.toggle('developer-on',Boolean(rules.developerMode)); }
     if(openRefereeLogButton) openRefereeLogButton.disabled=!rules.developerMode;
+    if(exportDebugButton) exportDebugButton.hidden=!rules.developerMode;
+    if(debugExportHelp) debugExportHelp.hidden=!rules.developerMode;
     if(combatPanel){
       if(state.combat?.active){
         const foes=state.combat.monsters.filter(m=>!m.dead&&!m.fled).length;
@@ -6823,6 +6976,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     runCore:options=>runCoreSelfTests(options||{}),
     runAiParser:options=>runAiParserSmokeTests(options||{}),
     getReport:()=>combinedTestReport(),
+    getDebugPayload:()=>buildDebugExportPayload(),
     parseCompoundCombat:text=>parseDeterministicCompoundCombatPlan(text),
     inspectCompoundCombat:text=>{ const saved=harnessClone(state); try{ installHarnessFixture(); return {actorPattern:deterministicCombatActorPattern(),segments:deterministicCombatClauseSegments(text),plan:parseDeterministicCompoundCombatPlan(text)}; } finally { state=saved; normalizeCombatState(); updatePanels(); } },
     validatePlan:plan=>validateActionPlan(plan)
@@ -6834,7 +6988,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build uses the regression/specification harness around the Universal Action Plan and deterministic engine. Failed action plans now preserve their partial interpretation and ask targeted referee clarification instead of returning a generic parser failure.','system');
+    write('This build uses the regression/specification harness around the Universal Action Plan and deterministic engine. Developer Mode includes a full debug-session export containing transcript, hidden engine state, parser/AI diagnostics, and referee records; credentials are excluded.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -6922,6 +7076,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   createPartyButton.addEventListener('click',()=>openPartyCreator(false));
   if(developerModeButton) developerModeButton.addEventListener('click',toggleDeveloperMode);
+  if(exportDebugButton) exportDebugButton.addEventListener('click',()=>{ void exportDebugSession(); });
   rawWeaponsButton.addEventListener('click',()=>setWeaponMode('RAW'));
   matrixWeaponsButton.addEventListener('click',()=>setWeaponMode('MATRIX'));
   auditWeaponsButton.addEventListener('click',toggleWeaponAudit);
