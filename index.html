@@ -385,7 +385,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.31';
+  const APP_VERSION = '0.3.32';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1176,6 +1176,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       lastActionInput:null,
       lastPlan:null,
       lastSuccessfulPlan:null,
+      lastSuccessfulInput:null,
       lastFailedPlan:null,
       lastAddressee:null,
       lastTopic:null,
@@ -1199,10 +1200,15 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     state.pendingClarification=null;
   }
 
-  function rememberPendingClarification(originalInput,question){
+  function rememberPendingClarification(originalInput,question,context=null){
+    let compactContext=null;
+    if(context!=null){
+      try{ compactContext=JSON.parse(JSON.stringify(context)); }catch{ compactContext=String(context); }
+    }
     state.pendingClarification={
       originalInput:String(originalInput||'').trim(),
       question:String(question||'').trim(),
+      understoodContext:compactContext,
       combat:Boolean(state.combat?.active),
       combatRound:state.combat?.active?Number(state.combat.round)||1:null,
       createdAt:Date.now()
@@ -1213,7 +1219,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const p=state.pendingClarification;
     if(!p || typeof p!=='object' || !p.originalInput || !p.question) return 'none';
     if(p.combat && (!state.combat?.active || Number(state.combat.round)!==Number(p.combatRound))){ clearPendingClarification(); return 'none'; }
-    return JSON.stringify({originalInstruction:p.originalInput,questionAsked:p.question});
+    return JSON.stringify({originalInstruction:p.originalInput,questionAsked:p.question,understoodContext:p.understoodContext||null});
   }
 
   function safeTraceValue(value,max=3200){
@@ -3753,9 +3759,23 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return /^(?:the |our )?(?:party|group|company|adventurers?|characters?|party members?|group members?)$/.test(a) || /^(?:everyone|everybody|all|all of us|we|us|pcs|all characters|all adventurers|all party members|the whole party|whole party)$/.test(a);
   }
 
+  function partyActorStateSelector(text){
+    const a=String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9\s'-]/g,' ').replace(/\s+/g,' ').trim();
+    if(!a) return null;
+    const unengaged=/^(?:(?:the )?(?:those|ones|characters?|adventurers?|party members?|members?|pcs|player characters|anyone|everyone|everybody)(?: who are| that are)? (?:currently )?(?:not|not yet) (?:engaged(?: in melee)?|in melee|fighting(?: in melee)?|in hand[- ]to[- ]hand(?: combat)?)|(?:the )?(?:unengaged|not-yet-engaged) (?:characters?|adventurers?|party members?|members?|pcs|player characters)|(?:the )?(?:those|ones|characters?|adventurers?|party members?|members?|pcs|anyone|everyone)(?: who are| that are)? (?:still )?(?:outside melee|not in melee|not yet in melee|still approaching))$/.test(a);
+    if(unengaged) return 'unengaged';
+    const engaged=/^(?:(?:the )?(?:those|ones|characters?|adventurers?|party members?|members?|pcs|player characters|anyone|everyone|everybody)(?: who are| that are)? (?:already |currently )?(?:engaged(?: in melee)?|in melee|fighting(?: in melee)?|in hand[- ]to[- ]hand(?: combat)?)|(?:the )?(?:engaged|melee-engaged) (?:characters?|adventurers?|party members?|members?|pcs|player characters))$/.test(a);
+    if(engaged) return 'engaged';
+    return null;
+  }
+
+  function pcCurrentlyEngaged(pc){
+    return Boolean(pc && !pc.dead && Number(pc.hp)>0 && engagementsForPc(pc).length);
+  }
+
   function isPartyGroupActorExpression(text){
     const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
-    if(isWholePartyActor(a) || isRelativePartyActor(a)) return true;
+    if(isWholePartyActor(a) || isRelativePartyActor(a) || partyActorStateSelector(a)) return true;
     const exclusion=/^(.*?)(?:\s+)(?:except|but not|but|other than|excluding|minus|leaving out|not including)(?:\s+)(.+)$/i.exec(a);
     return Boolean(exclusion && (isWholePartyActor(exclusion[1]) || isRelativePartyActor(exclusion[1]) || /^(?:everyone|everybody|all|we|us)$/.test(exclusion[1])));
   }
@@ -3766,6 +3786,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const living=livingParty();
     const assigned=context.assigned instanceof Set?context.assigned:new Set();
     const explicitlyAssigned=context.explicitlyAssigned instanceof Set?context.explicitlyAssigned:new Set();
+    const stateSelector=partyActorStateSelector(a);
+    if(stateSelector==='engaged') return living.filter(pc=>pcCurrentlyEngaged(pc));
+    if(stateSelector==='unengaged') return living.filter(pc=>!pcCurrentlyEngaged(pc));
     if(isRelativePartyActor(a)) return living.filter(pc=>!assigned.has(pc.name.toLowerCase()) && !explicitlyAssigned.has(pc.name.toLowerCase()));
     const exclusion=/^(.*?)(?:\s+)(?:except|but not|but|other than|excluding|minus|leaving out|not including)(?:\s+)(.+)$/i.exec(a);
     if(exclusion && (isWholePartyActor(exclusion[1]) || isRelativePartyActor(exclusion[1]) || /^(?:everyone|everybody|all|we|us)$/.test(exclusion[1]))){
@@ -3776,7 +3799,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(isWholePartyActor(a)) return living;
     const named=namedPcsInText(raw);
     if(named.length) return named;
-    const pc=findPc(actor); return pc?[pc]:[];
+    const pc=findPc(actor); return pc && !pc.dead && Number(pc.hp)>0 ? [pc] : [];
   }
 
   function normalizeCombatMovement(value,legacyAction=''){
@@ -3894,23 +3917,45 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function deterministicCombatActorPattern(){
     const names=livingParty().map(pc=>escapeRegexText(pc.name)).sort((a,b)=>b.length-a.length);
     const groups=[
+      'those who are not engaged in melee','those who are not in melee','those who are not','those that are not','those who aren\'t','those that aren\'t','those not yet engaged in melee','those not yet engaged','those not engaged in melee','those not in melee','characters not engaged in melee','party members not engaged in melee','anyone not engaged in melee','everyone not engaged in melee','unengaged characters','unengaged party members','those still outside melee','those still approaching',
+      'those who are engaged in melee','those engaged in melee','those already engaged in melee','those currently engaged in melee','those in melee','characters engaged in melee','party members engaged in melee','anyone engaged in melee','everyone engaged in melee','those already fighting','those currently fighting','engaged characters','engaged party members',
       'the rest of the party','rest of the party','the rest of the group','rest of the group','the rest','the rest of them','rest of them','the remaining characters','remaining characters','the remaining adventurers','remaining adventurers','the remaining party members','remaining party members','the remaining group members','remaining group members','the remaining members','remaining members','all remaining','all remaining characters','all remaining adventurers','everyone else','everybody else','the others','others','the whole party','whole party','the party','party','the group','group','everyone','everybody','all of us','we','pcs','player characters'
     ].map(escapeRegexText).sort((a,b)=>b.length-a.length);
     return [...names,...groups].join('|');
   }
 
+  function normalizeCombatCommandFraming(input){
+    return String(input||'').trim()
+      .replace(/^(?:please\s+)?(?:i want(?: you to)?|i would like(?: you to)?|i'd like(?: you to)?|i want to|i'd like to)\s+/i,'')
+      .replace(/^(?:please\s+)?(?:have|let|make)\s+/i,'')
+      .trim();
+  }
+
   function deterministicCombatClauseSegments(input){
     const actorPattern=deterministicCombatActorPattern();
     if(!actorPattern) return [];
-    const re=new RegExp(`(?:^|(?:\\s*(?:(?:,|;)\\s*(?:and\\s+)?|\\b(?:and(?:\\s+then)?|while|then)\\b\\s*)))(?:have\\s+|let\\s+|make\\s+)?(${actorPattern})(?=\\s|$)`,'ig');
+    const source=normalizeCombatCommandFraming(input);
+    const re=new RegExp(`(?:^|(?:\\s*(?:(?:,|;|\\.)\\s*(?:and\\s+)?|\\b(?:and(?:\\s+then)?|while|then)\\b\\s*)))(?:have\\s+|let\\s+|make\\s+)?(${actorPattern})(?=\\s|$)`,'ig');
     const matches=[];
     let m;
-    while((m=re.exec(String(input||'')))!==null){
+    while((m=re.exec(source))!==null){
       matches.push({index:m.index,after:re.lastIndex,actor:m[1]});
       if(m[0].length===0) re.lastIndex++;
     }
     if(matches.length<2) return [];
-    return matches.map((m,i)=>({actor:m.actor,body:String(input||'').slice(m.after,i+1<matches.length?matches[i+1].index:undefined).replace(/^[,;:\s-]+|[,;:\s-]+$/g,'').trim()}));
+    const segments=matches.map((m,i)=>({actor:m.actor,body:source.slice(m.after,i+1<matches.length?matches[i+1].index:undefined).replace(/^[,;.:\s-]+|[,;.:\s-]+$/g,'').trim()}));
+    // English often elides a repeated predicate across coordinated actor groups:
+    // “those who are engaged ... and those who are not ...”. Resolve the second
+    // actor as the complement of the immediately preceding dynamic actor set.
+    for(let i=1;i<segments.length;i++){
+      const a=String(segments[i].actor||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s]/g,' ').replace(/\s+/g,' ').trim();
+      if(/^(?:those|the ones|ones) (?:who|that) (?:are not|aren't)$/.test(a)){
+        const previous=partyActorStateSelector(segments[i-1].actor);
+        if(previous==='engaged') segments[i].actor='those who are not engaged in melee';
+        else if(previous==='unengaged') segments[i].actor='those who are engaged in melee';
+      }
+    }
+    return segments;
   }
 
   function currentFoeGroupLabels(){
@@ -3965,10 +4010,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const lower=text.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
     if(!text) return null;
     let movement='hold';
-    if(/\b(?:retreat|flee|run away|full retreat)\b/.test(lower)) movement='retreat';
-    else if(/\b(?:withdraw|fighting withdrawal|fall back|back away|give ground)\b/.test(lower)) movement='withdraw';
-    else if(/\b(?:advance|approach|move(?:s)?(?: in| up| toward| towards)?|close(?:s)?(?: in| distance)?|charge|rush)\b/.test(lower)) movement='approach';
-    else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)) movement='hold';
+    let movementExplicit=false;
+    if(/\b(?:retreat|flee|run away|full retreat)\b/.test(lower)){ movement='retreat'; movementExplicit=true; }
+    else if(/\b(?:withdraw|fighting withdrawal|fall back|back away|give ground)\b/.test(lower)){ movement='withdraw'; movementExplicit=true; }
+    else if(/\b(?:advance|approach|move(?:s)?(?: in| up| toward| towards)?|close(?:s)?(?: in| distance)?|charge|rush)\b/.test(lower)){ movement='approach'; movementExplicit=true; }
+    else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)){ movement='hold'; movementExplicit=true; }
 
     const movementMode=/\b(?:together|as (?:a )?group|as one|in formation|keep formation|stay together|keep together|same pace|same distance|abreast)\b/.test(lower)?'together':'individual';
     // Resolve an explicitly named foe/group first. In a compound tabletop order,
@@ -3978,18 +4024,27 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     // the player to repeat the noun.
     const explicitTarget=inferCurrentFoeQuery(text);
     const inheritedTarget=String(context?.fallbackTarget||'').trim();
-    const target=explicitTarget || inheritedTarget;
+    let target=explicitTarget || inheritedTarget;
+    const actorState=partyActorStateSelector(actor);
     const spell=knownCombatSpellMention(actor,text);
     let action='none';
     if(spell && /\b(?:cast|casts|casting|use|uses|using)\b/.test(lower)) action='spell';
     else if(/\b(?:shoot|shoots|fire|fires|loose|looses)\b/.test(lower)) action='missile';
-    else if(/\b(?:attack|attacks|fight|fights|engage|engages|strike|strikes|melee)\b/.test(lower)) action='melee';
+    else if(/\b(?:attack|attacks|attacking|fight|fights|fighting|engage|engages|engaging|strike|strikes|striking|melee)\b/.test(lower)) action='melee';
+
+    // Bare tabletop melee orders imply closing if necessary. Characters already
+    // engaged stay in their current melee; explicit movement language always wins.
+    if(action==='melee' && !movementExplicit) movement=actorState==='engaged'?'hold':'approach';
 
     // "advance ... to meet them in melee" is an approach + melee order even if
     // the prose contains filler or a typo in "meet"; the explicit word melee is
     // the semantic signal, not the exact surrounding phrase.
     if(movement==='approach' && /\bmelee\b/.test(lower)) action='melee';
-    if(action==='none' && movement==='hold' && !/\b(?:hold|stay|remain|wait|do nothing)\b/.test(lower)) return null;
+    // In an active fight with one hostile side, ordinary tabletop shorthand does
+    // not need to repeat “the foes” in every clause. Engaged subgroups keep their
+    // current opponent; unengaged characters can close on the current hostile set.
+    if(!target && (action==='melee' || movement==='approach') && livingHostiles().length) target='foes';
+    if(action==='none' && movement==='hold' && !/\b(?:hold|stay|remain|wait|do nothing|continue)\b/.test(lower)) return null;
     if(['melee','missile'].includes(action) && !target) return null;
     if(action==='spell' && !spell) return null;
     if(movement==='approach' && !target) return null;
@@ -3998,7 +4053,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(target){ step.target=target; if(movement==='approach') step.movementTarget=target; }
     if(movementMode==='together') step.movementMode='together';
     if(action==='spell') step.spell=spell;
-    if(/\b(?:random|randomly|at random|whichever|any one)\b/.test(lower)) step.targetSelection='random';
+    if(actorState==='engaged' && action==='melee') step.targetSelection='engaged';
+    else if(/\b(?:random|randomly|at random|whichever|any one)\b/.test(lower)) step.targetSelection='random';
     return step;
   }
 
@@ -4021,6 +4077,30 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
     if(steps.length<2) return null;
     return {kind:'ACTION_PLAN',confidence:1,summary:'Deterministic full-input combat interpretation',steps,source:String(input||'')};
+  }
+
+  function parseDeterministicSingleCombatPlan(input){
+    if(!combatActive()) return null;
+    const source=normalizeCombatCommandFraming(input);
+    if(!source || looksLikeCompoundCombatInstruction(source)) return null;
+    const actorPattern=deterministicCombatActorPattern();
+    let actor='party', body=source;
+    if(actorPattern){
+      const m=new RegExp(`^(${actorPattern})(?=\\s|$)`,'i').exec(source);
+      if(m){ actor=m[1]; body=source.slice(m[0].length).replace(/^[,;.:\s-]+/,'').trim(); }
+    }
+    // Actorless shorthand is accepted only when it clearly names a combat action,
+    // so a directional command such as “move north” is not stolen by this parser.
+    if(actor==='party' && !/\b(?:attack|fight|engage|strike|melee|shoot|fire|cast)\b/i.test(body)) return null;
+    const step=parseDeterministicCombatClause(actor,body,{fallbackTarget:inferCurrentFoeQuery(source)||'foes'});
+    if(!step) return null;
+    step.id='1';
+    return {kind:'ACTION_PLAN',confidence:1,summary:'Deterministic complete combat interpretation',steps:[step],source:String(input||'')};
+  }
+
+  function isGenericCombatTargetQuery(text){
+    const q=normalizeCombatTargetQuery(text);
+    return !q || /^(?:foe|foes|enemy|enemies|monster|monsters|opponent|opponents|target|targets|them|one)$/.test(q);
   }
 
   function applyCombatPlan(orders,sourceInput=''){
@@ -4052,20 +4132,25 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       // When the player explicitly gives a group actor and says the group stays
       // together, do not depend on the AI remembering to repeat movementMode.
       if(movement==='approach' && sourceRequestsTogether && !movementModeExplicit && (isPartyGroupActorExpression(entry?.actor) || actors.length>1)) movementMode='together';
-      const isRandom=String(entry?.targetSelection||'').toLowerCase()==='random' || /\b(?:random|randomly|at random|whichever)\b/i.test(String(entry?.target||''));
-      const targets=isRandom?[]:strictCombatTargetsFromText(entry?.target);
+      const selection=String(entry?.targetSelection||'').toLowerCase();
+      const isRandom=selection==='random' || /\b(?:random|randomly|at random|whichever)\b/i.test(String(entry?.target||''));
+      const isEngagedSelection=selection==='engaged' || selection==='current_opponent' || selection==='current opponent';
+      const targets=(isRandom||isEngagedSelection)?[]:strictCombatTargetsFromText(entry?.target);
       const movementText=String(entry?.movementTarget||entry?.moveTarget||((movement==='approach'&&(action==='hold'||rawAction==='none'))?entry?.target:'')||'').trim();
       const movementCandidates=movementText?strictCombatTargetsFromText(movementText):[];
       const spellName=String(entry?.spell||'').trim();
       const isAreaSleep=action==='spell' && spellName.toLowerCase()==='sleep';
       if(movement==='approach' && !movementText && action!=='melee' && !entry?.target){ issues.push(`Approach order for “${String(entry?.actor||'')}” has no foe/group to approach.`); return; }
       if(movement==='approach' && movementText && !movementCandidates.length){ issues.push(`No eligible foes match movement target “${movementText}”.`); return; }
-      if(['melee','missile','spell'].includes(action) && !isRandom && entry?.target && !targets.length){ issues.push(`No eligible foes match action target “${String(entry.target)}”.`); return; }
+      if(['melee','missile','spell'].includes(action) && !isRandom && !isEngagedSelection && entry?.target && !targets.length){ issues.push(`No eligible foes match action target “${String(entry.target)}”.`); return; }
       for(const pc of actors){
-        const order={action,movement,movementMode,targetId:null};
+        const currentEngaged=action==='melee'?engagementsForPc(pc).map(x=>x.monster).find(monsterStillPresent):null;
+        let effectiveMovement=movement;
+        if(action==='melee' && movement==='approach' && currentEngaged && isGenericCombatTargetQuery(movementText||entry?.target||'')) effectiveMovement='hold';
+        const order={action,movement:effectiveMovement,movementMode:effectiveMovement==='hold'?'individual':movementMode,targetId:null};
         order._movementModeExplicit=movementModeExplicit;
         if(entry?.movementGroup) order.movementGroup=String(entry.movementGroup);
-        if(movement==='approach'){
+        if(effectiveMovement==='approach'){
           order.movementTargetQuery=movementText || String(entry?.target||'foe');
           if(movementCandidates.length===1) order.movementTargetId=movementCandidates[0].id;
         }
@@ -4077,12 +4162,21 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
           } else if(isRandom){
             const spec=randomTargetSpec(entry?.target)||{targetSelection:'random',targetQuery:String(entry?.target||'foe')};
             order.targetSelection='random'; order.targetQuery=spec.targetQuery;
+          } else if(isEngagedSelection){
+            if(!currentEngaged){ issues.push(`${pc.name} is not currently engaged with an eligible foe.`); continue; }
+            order.targetId=currentEngaged.id;
           } else if(entry?.target){
-            const target=targets[targetIndex++%Math.max(1,targets.length)];
+            let target=null;
+            if(action==='melee' && currentEngaged && isGenericCombatTargetQuery(entry.target)) target=currentEngaged;
+            else if(action==='melee' && isGenericCombatTargetQuery(entry.target)) target=targets.slice().sort((a,b)=>combatSeparation(pc,a)-combatSeparation(pc,b)||String(a.id).localeCompare(String(b.id)))[0]||null;
+            else target=targets[targetIndex++%Math.max(1,targets.length)];
+            order.targetId=target?.id||null;
+          } else if(action==='melee'){
+            const target=currentEngaged || livingHostiles().slice().sort((a,b)=>combatSeparation(pc,a)-combatSeparation(pc,b)||String(a.id).localeCompare(String(b.id)))[0] || null;
             order.targetId=target?.id||null;
           }
         }
-        if(action==='melee' && movement==='approach' && !order.movementTargetId && order.targetId) order.movementTargetId=order.targetId;
+        if(action==='melee' && effectiveMovement==='approach' && !order.movementTargetId && order.targetId) order.movementTargetId=order.targetId;
         if(entry?.spell) order.spell=entry.spell;
         if(entry?.rangeIntent && ['press','hold','open'].includes(String(entry.rangeIntent).toLowerCase())) order.rangeIntent=String(entry.rangeIntent).toLowerCase();
         if(entry?.rangeBand && ['short','medium','long'].includes(String(entry.rangeBand).toLowerCase())) order.rangeBand=String(entry.rangeBand).toLowerCase();
@@ -4092,10 +4186,16 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     });
     if(issues.length) return {ok:false,applied:0,issues};
 
+    // Actor sets may intentionally overlap. Later/more-specific clauses override
+    // earlier ones for the same PC before any order mutates combat state.
+    const finalByPc=new Map();
+    for(const item of staged) finalByPc.set(item.pc.name.toLowerCase(),item);
+    const finalStaged=[...finalByPc.values()];
+
     // A semantic "move together" instruction is plan-level. If the AI expands a
     // party/group order into one row per PC, those rows must still become ONE
     // movement group instead of one one-person "group" per row.
-    const approaching=staged.filter(x=>x.order.movement==='approach');
+    const approaching=finalStaged.filter(x=>x.order.movement==='approach');
     const sourceRequestsSeparate=/\b(?:separately|individually|split up|spread out|at (?:their|each character's) own pace)\b/.test(source);
     if(sourceRequestsTogether && !sourceRequestsSeparate && approaching.length>1){
       // The original player language is authoritative here. If it unambiguously
@@ -4125,11 +4225,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
 
     let applied=0;
-    for(const {pc,order} of staged){
+    for(const {pc,order} of finalStaged){
       delete order._movementModeExplicit;
       if(setPcCombatOrder(pc,order)) applied++;
     }
-    return {ok:applied===staged.length && applied>0,applied,issues:applied===staged.length?[]:[`Only ${applied} of ${staged.length} staged PC orders could be applied.`]};
+    return {ok:applied===finalStaged.length && applied>0,applied,issues:applied===finalStaged.length?[]:[`Only ${applied} of ${finalStaged.length} staged PC orders could be applied.`]};
   }
 
   function parseLocalGroupCombat(input){
@@ -5153,6 +5253,7 @@ new game / clear`);
       lastActionInput:d.lastActionInput||null,
       lastPlan:d.lastPlan||null,
       lastSuccessfulPlan:d.lastSuccessfulPlan||null,
+      lastSuccessfulInput:d.lastSuccessfulInput||null,
       lastAddressee:d.lastAddressee||null,
       lastTopic:d.lastTopic||null,
       lastTarget:d.lastTarget||null,
@@ -5167,7 +5268,7 @@ new game / clear`);
     let snapshot=plan;
     try{ snapshot=JSON.parse(JSON.stringify(plan)); }catch{}
     d.lastPlan=snapshot;
-    if(outcome==='success') d.lastSuccessfulPlan=snapshot;
+    if(outcome==='success'){ d.lastSuccessfulPlan=snapshot; d.lastSuccessfulInput=String(input||'').trim()||d.lastSuccessfulInput; }
     if(outcome==='failed') d.lastFailedPlan=snapshot;
     const steps=Array.isArray(plan?.steps)?plan.steps:[];
     const entities=[];
@@ -5218,14 +5319,35 @@ new game / clear`);
 
   function isRepeatPreviousActionInput(input){
     const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
-    return /^(?:do|try|perform|repeat)(?: the| that| it)? same(?: thing| action| order| orders| move)?(?: again)?$/.test(q) || /^(?:same again|again|repeat that|do that again|do it again|repeat the last (?:action|order|orders|move))$/.test(q);
+    return /^(?:do|try|perform|repeat)(?: the| that| it)? same(?: thing| action| order| orders| move| command)?(?: again)?$/.test(q) || /^(?:same again|again|repeat that|do that again|do it again|repeat the last (?:action|order|orders|move|command)|repeat last (?:action|order|orders|move|command))$/.test(q);
+  }
+
+  function isCombatContinuePreviousActionInput(input){
+    if(!combatActive() || state.combat?.awaitingWeaponChanges || state.combat?.awaitingMoveChoice || state.combat?.initiative) return false;
+    if(Object.keys(state.combat?.pcOrders||{}).length) return false;
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
+    return /^(?:continue|continue fighting|carry on|keep going|same orders)$/.test(q);
+  }
+
+  function adaptRepeatedPlanToCurrentContext(plan){
+    const copy=normalizeActionPlan(plan,ensureDiscourse().lastSuccessfulInput||'');
+    if(!combatActive()) return copy;
+    copy.steps=copy.steps.filter(step=>{
+      if(step.domain!=='combat' || step.verb!=='combat_order') return true;
+      if(isPartyGroupActorExpression(step.actor)) return true;
+      const pc=findPc(step.actor);
+      return !(pc && (pc.dead || Number(pc.hp)<=0));
+    });
+    return copy;
   }
 
   async function repeatPreviousActionPlan(input){
-    const plan=previousSuccessfulActionPlan();
-    if(!plan){ write('There is no previous successful action plan to repeat.','warning'); return true; }
+    const prior=previousSuccessfulActionPlan();
+    if(!prior){ return askForActionClarification(input,['There is no previous successful action plan in the current discourse context.'],null); }
+    const plan=adaptRepeatedPlanToCurrentContext(prior);
+    if(!plan.steps.length) return askForActionClarification(input,['None of the actors from the previous successful plan can act now.'],plan);
     beginParserTrace(input,combatActive()?'combat-repeat':'universal-repeat');
-    patchParserTrace(input,{localParser:'repeat shorthand resolved from discourse memory',aiParser:'not needed'});
+    patchParserTrace(input,{localParser:'repeat shorthand resolved from last successful plan',aiParser:'not needed'});
     return executeActionPlan(plan,input,{allowRepair:true});
   }
 
@@ -5234,7 +5356,7 @@ new game / clear`);
     const base={
       mode:state.mode,
       location:state.mode==='wilderness'?(currentHex()?.name||`hex ${state.hex.q},${state.hex.r}`):(currentSite()?.name||state.location),
-      party:livingParty().map(p=>({name:p.name,role:p.role,equipped:equippedWeaponItem(p)?.name||'unarmed',preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)})),
+      party:livingParty().map(p=>({name:p.name,role:p.role,equipped:equippedWeaponItem(p)?.name||'unarmed',preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady),engagedWith:combatActive()?engagementsForPc(p).map(x=>x.monster?.name).filter(Boolean):[]})),
       knownDestinations:known,
       npcs:sceneNpcNames(),
       discourse:discourseContextForParser()
@@ -5438,6 +5560,46 @@ new game / clear`);
     }
   }
 
+  function clarificationQuestionForIssues(input,issues=[],plan=null){
+    const list=(Array.isArray(issues)?issues:[issues]).map(x=>String(x||'').trim()).filter(Boolean);
+    const first=list[0]||'';
+    let m=/No living PC matched actor [“"]([^”"]+)[”"]/.exec(first);
+    if(m) return `I understood the requested action, but I could not resolve “${m[1]}” to any living party members. Which characters do you mean?`;
+    m=/Approach order for [“"]([^”"]+)[”"] has no foe\/group to approach/.exec(first);
+    if(m) return `I understood that ${m[1]} should approach, but I could not determine which foe or group they should close with. Which opponents do you mean?`;
+    m=/No eligible foes match movement target [“"]([^”"]+)[”"]/.exec(first);
+    if(m) return `I understood the movement, but I cannot match “${m[1]}” to a living opponent in this fight. Which foe or group should they move toward?`;
+    m=/No eligible foes match action target [“"]([^”"]+)[”"]/.exec(first);
+    if(m) return `I understood the action, but I cannot match “${m[1]}” to a living target. Which opponent do you mean?`;
+    m=/unsupported combat action [“"]([^”"]+)[”"]/i.exec(first);
+    if(m) return `I understood who should act, but I do not know how “${m[1]}” maps to a combat action. Do you mean melee, missile fire, a spell, or no attack?`;
+    m=/unsupported combat movement [“"]([^”"]+)[”"]/i.exec(first);
+    if(m) return `I understood the action, but I do not know how “${m[1]}” maps to movement. Do you mean approach, hold, withdraw, or retreat?`;
+    if(/no action steps/i.test(first)) return 'I can tell you are giving an instruction, but I could not identify a concrete action from it. What do you want the character or party to do?';
+    if(/needs a valid direction/i.test(first)) return 'I understood that you want to move, but I need the direction.';
+    if(/destination is ambiguous/i.test(first)) return `${first} Which destination do you mean?`;
+    if(/does not identify what to buy/i.test(first)) return 'I understood that you want to buy something, but I need to know what item.';
+    if(/needs both an adventurer and an item to equip/i.test(first)) return 'I understood that you want to equip something. Which adventurer, and which item?';
+    if(combatActive()){
+      const q=String(input||'').toLowerCase();
+      const actorKnown=Boolean(namedPcsInText(q).length)||isWholePartyActor(q)||isRelativePartyActor(q)||Boolean(partyActorStateSelector(q))||/\b(?:party|group|everyone|everybody|we|pcs|those|characters|adventurers)\b/.test(q);
+      const actionKnown=/\b(?:attack|fight|engage|strike|melee|shoot|fire|cast|advance|approach|move|hold|stay|withdraw|retreat)\b/.test(q);
+      if(!actorKnown) return 'I understand this as a combat instruction, but I cannot tell who should act. Which character or party group do you mean?';
+      if(!actionKnown) return 'I understand who you are referring to, but I cannot tell what combat action you want them to take.';
+      return `I understood this as a combat order, but one part still cannot be mapped to the current combat state${first?`: ${first}`:'.'} What should I change or clarify?`;
+    }
+    return `I understood that you are trying to act, but one detail is still unresolved${first?`: ${first}`:'.'} What did you mean?`;
+  }
+
+  function askForActionClarification(input,issues=[],plan=null){
+    const question=clarificationQuestionForIssues(input,issues,plan);
+    const context=plan?{partialPlan:normalizeActionPlan(plan,input),issues:(Array.isArray(issues)?issues:[issues]).slice(0,4)}:{issues:(Array.isArray(issues)?issues:[issues]).slice(0,4)};
+    rememberPendingClarification(input,question,context);
+    patchParserTrace(input,{execution:'referee clarification requested',detail:(Array.isArray(issues)?issues:[issues]).filter(Boolean).join(' | ')||null});
+    write(`REFEREE: ${question}`,'ai');
+    return true;
+  }
+
   function semanticPlanRefereePrompt(playerInput,plan,reasons=[]){
     return `You are the bounded tabletop referee for Known World Referee. The universal semantic parser has ALREADY understood the player's in-world action. Do not reinterpret it as a different command and do not say the English was unclear unless the plan itself contains an actual ambiguity. JavaScript remains authoritative for state and dice.\n\nSEMANTIC ACTION PLAN:\n${actionPlanSummary(plan,1300)}\n\nWHY THIS REACHED THE REFEREE:\n${safeTraceValue(reasons.join(' | ')||'The action requires referee judgment.',600)}\n\nVISIBLE SCENE:\n${safeTraceValue(semanticSceneContext(),900)}\n\nPLAYER WORDING:\n${String(playerInput||'').slice(0,600)}\n\nRespond as a concise 1980s-style referee. If the loaded scene supplies enough facts to answer an NPC/social interaction, respond naturally without inventing hidden facts. If a deterministic procedure is genuinely missing, say exactly which procedure is missing and preserve the understood intent. Never claim to change game state, roll dice, move characters, spend resources, reveal secrets, or create NPC facts that the engine did not supply.`;
   }
@@ -5477,10 +5639,8 @@ new game / clear`);
         if(repaired && String(repaired.kind||'').toUpperCase()==='ACTION_PLAN') return executeActionPlan(repaired,originalInput,{allowRepair:false});
       }
       rememberDiscoursePlan(originalInput,validation.plan,'failed');
-      const question=validation.issues[0] || 'I need one more detail before I can carry out that plan.';
-      rememberPendingClarification(originalInput,question);
       patchParserTrace(originalInput,{execution:'semantic plan needs clarification'});
-      write(question,'warning'); return true;
+      return askForActionClarification(originalInput,validation.issues,validation.plan);
     }
 
     if(validation.refereeReasons.length){
@@ -5507,7 +5667,7 @@ new game / clear`);
           if(repaired && String(repaired.kind||'').toUpperCase()==='ACTION_PLAN') return executeActionPlan(repaired,originalInput,{allowRepair:false});
         }
         rememberDiscoursePlan(originalInput,validation.plan,'failed');
-        write(`I understood the complete combat plan, but the deterministic engine rejected it${result.issues?.length?`: ${result.issues.join(' ')}`:'.'}`,'warning'); return true;
+        return askForActionClarification(originalInput,result.issues||['The combat plan could not be applied to the current state.'],validation.plan);
       }
       rememberDiscoursePlan(originalInput,validation.plan,'success'); clearPendingClarification(); return true;
     }
@@ -5577,9 +5737,9 @@ RULES:
 - Preserve EVERY clause and its order. Keep then/while/before/after/until/unless/if, exclusions, quantities, topics, route preferences, stopping conditions and constraints. Never parse only the first recognizable clause.
 - Use scene + discourse to resolve pronouns and short clarification answers when reasonably clear. Never discard already-understood parts of the prior instruction. Phrases such as ‘do the same again’, ‘repeat that’, or ‘do it again’ mean repeat the last successful ACTION_PLAN when one exists; do not ask the player to restate it merely because the wording is shorthand.
 - Do not invent named entities. Descriptive referents (innkeeper, door, river, skeletons) are valid targets/addressees.
-- Party/everyone/we = whole party; rest/remaining/everyone else = party minus separately ordered actors. Preserve named exclusions.
+- Party/everyone/we = whole party; rest/remaining/everyone else = party minus separately ordered actors. Preserve named exclusions. Dynamic combat actor sets are valid and should be preserved semantically: ‘those engaged/in melee/already fighting’ = living PCs currently in a melee; ‘those not engaged/not in melee/unengaged’ = living PCs currently outside melee.
 - random/whichever/at random => targetSelection="random" over the described eligible set; never choose the individual.
-- Combat step verb=combat_order; movement=approach|hold|withdraw|retreat and action=none|melee|missile|spell are independent. together/as a group/same pace => movementMode="together" and one shared movementGroup when useful. rangeIntent=press|hold|open is only the shared Close/Normal/Far melee state. Area spells such as Sleep keep the group target.
+- Combat step verb=combat_order; movement=approach|hold|withdraw|retreat and action=none|melee|missile|spell are independent. together/as a group/same pace => movementMode="together" and one shared movementGroup when useful. rangeIntent=press|hold|open is only the shared Close/Normal/Far melee state. Area spells such as Sleep keep the group target. If the whole party is told to close/attack, PCs already engaged should hold their existing melee and attack their current opponent while unengaged PCs approach the hostile side.
 - Travel keeps destination/direction/feature AND conditions/stopping instructions. Social actions remain ACTION_PLAN with addressee/topic/speechAct; do not punt them to REFEREE just because adjudication may be needed.
 - Unknown-but-reasonable physical actions are still ACTION_PLAN; the validator decides capability.
 
@@ -5598,12 +5758,12 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
   }
 
   function compactIntentInterpreterPrompt(playerInput){
-    return `ONE raw JSON only. In-world action=>ACTION_PLAN; question/table talk=>REFEREE; CLARIFY only for material ambiguity. Preserve ALL clauses, sequence, conditions, exclusions, group/relative references, random selectors and formation. steps use domain combat|travel|exploration|social|commerce|inventory|meta plus verb and relevant fields. Combat: verb=combat_order, movement=approach|hold|withdraw|retreat, action=none|melee|missile|spell, movementMode=together|individual. Social actions are ACTION_PLAN even if referee adjudication is needed. Scene=${safeTraceValue(semanticSceneContext(),650)} Pending=${safeTraceValue(pendingClarificationPrompt(),300)} Player=${String(playerInput||'').slice(0,550)}`;
+    return `ONE raw JSON only. In-world action=>ACTION_PLAN; question/table talk=>REFEREE; CLARIFY only for material ambiguity. Preserve ALL clauses, sequence, conditions, exclusions, group/relative references, dynamic combat groups (engaged PCs vs unengaged PCs), random selectors and formation. steps use domain combat|travel|exploration|social|commerce|inventory|meta plus verb and relevant fields. Combat: verb=combat_order, movement=approach|hold|withdraw|retreat, action=none|melee|missile|spell, movementMode=together|individual. Social actions are ACTION_PLAN even if referee adjudication is needed. Scene=${safeTraceValue(semanticSceneContext(),650)} Pending=${safeTraceValue(pendingClarificationPrompt(),300)} Player=${String(playerInput||'').slice(0,550)}`;
   }
 
   function combatRepairPrompt(playerInput,previousIntent){
     const combat={round:state.combat?.round||null,foes:livingHostiles().map(m=>m.name),pcs:livingParty().map(p=>({name:p.name,preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}))};
-    return `You are a second-pass combat INTENT PARSER, not a narrator. The first pass did not yield an executable combat plan. Re-evaluate the player's ordinary English and return ONE raw JSON object only. Prefer COMBAT_PLAN whenever every requested action fits this schema. orders:[{actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement=approach|hold|withdraw|retreat. action=none|melee|missile|spell. movement and action are independent. movementMode=together when actors stay together/keep formation/move at the same pace. Relative actor phrases (rest, remaining characters, everyone else, party) are valid. Random/whichever means targetSelection=random over the described eligible foe set. Area spells such as Sleep can name a foe group without choosing an individual. Example pattern: one named caster holds and casts a prepared spell on a foe group; the rest approach that foe group together with action=none. Do not hard-code any example names or monsters. Return REFEREE only if some requested behavior truly cannot fit the schema. Combat=${JSON.stringify(combat)}. FirstPass=${safeTraceValue(previousIntent,700)}. Player=${playerInput}`;
+    return `You are a second-pass combat INTENT PARSER, not a narrator. The first pass did not yield an executable combat plan. Re-evaluate the player's ordinary English and return ONE raw JSON object only. Prefer COMBAT_PLAN whenever every requested action fits this schema. orders:[{actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement=approach|hold|withdraw|retreat. action=none|melee|missile|spell. movement and action are independent. movementMode=together when actors stay together/keep formation/move at the same pace. Relative actor phrases (rest, remaining characters, everyone else, party) and state-based actor phrases (those engaged in melee, those not engaged, unengaged PCs) are valid. Random/whichever means targetSelection=random over the described eligible foe set. Area spells such as Sleep can name a foe group without choosing an individual. Example pattern: one named caster holds and casts a prepared spell on a foe group; the rest approach that foe group together with action=none. Do not hard-code any example names or monsters. Return REFEREE only if some requested behavior truly cannot fit the schema. Combat=${JSON.stringify(combat)}. FirstPass=${safeTraceValue(previousIntent,700)}. Player=${playerInput}`;
   }
 
   async function repairCombatIntentWithAi(playerInput,previousIntent){
@@ -5702,7 +5862,7 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
       case 'COMBAT_PLAN': {
         const result=applyCombatPlan(intent.orders||[],originalInput);
         patchParserTrace(originalInput,{execution:result.ok?`combat plan applied (${result.applied} PC order${result.applied===1?'':'s'})`:`combat plan rejected`,detail:result.issues?.length?result.issues.join(' | '):null});
-        if(!result.ok){ write(`I understood this as combat orders, but the engine could not apply the complete plan${result.issues?.length?`: ${result.issues.join(' ')}`:'.'}`,'warning'); return true; }
+        if(!result.ok) return askForActionClarification(originalInput,result.issues||['The combat orders could not be applied to the current state.'],{kind:'ACTION_PLAN',steps:(intent.orders||[]).map((o,i)=>({id:String(i+1),domain:'combat',verb:'combat_order',...o}))});
         return true;
       }
       case 'REFEREE': return false;
@@ -5995,7 +6155,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     }
     if(isNaturalMatrixQuestion(input)) return explainWeaponMatrix(input,{natural:true});
     if(isParserDiagnosticQuestion(input)) return callParserDiagnosticReferee(input);
-    if(isRepeatPreviousActionInput(input)) return repeatPreviousActionPlan(input);
+    if(isCombatContinuePreviousActionInput(input) || isRepeatPreviousActionInput(input)) return repeatPreviousActionPlan(input);
 
     // Deterministic engine/developer questions should be answerable directly from
     // authoritative state even if AI context is compacted, unavailable, or stale.
@@ -6023,10 +6183,10 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     // only when it can account for every actor clause. Unlike the old fast parser,
     // it never claims a sentence after recognizing only its first clause.
     if(combatActive()){
-      const fullCombatPlan=parseDeterministicCompoundCombatPlan(input);
+      const fullCombatPlan=parseDeterministicCompoundCombatPlan(input) || parseDeterministicSingleCombatPlan(input);
       if(fullCombatPlan){
         beginParserTrace(input,'combat-full-input');
-        patchParserTrace(input,{localParser:'deterministic full-input combat grammar matched every actor clause',aiParser:'not needed'});
+        patchParserTrace(input,{localParser:'deterministic full-input combat grammar consumed the complete command',aiParser:'not needed'});
         return executeActionPlan(fullCombatPlan,input,{allowRepair:false});
       }
     }
@@ -6097,7 +6257,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       patchParserTrace(input,{localParser:localCombatIntent?safeTraceValue(localCombatIntent,1400):'no local combat fallback match'});
       if(localCombatIntent && await executeIntent(localCombatIntent,input)) return;
       patchParserTrace(input,{execution:'no executable semantic or local combat intent returned'});
-      write('I could not turn that into executable combat orders. Type “why did that command fail?” for the parser trace.','warning'); return;
+      return askForActionClarification(input,['No executable combat plan was produced from the instruction.'],null);
     }
 
     const localIntent=parseLocalIntent(input);
@@ -6447,6 +6607,90 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const answer=developerCombatantStateAnswer('what was wolf 2 original hp?');
         harnessAssert(answer && /7 HP/.test(answer) && /archived encounter roster/i.test(answer),'Archived encounter did not retain original monster HP');
       }},
+      {name:'Dynamic engaged/unengaged party selectors resolve from combat state',run:()=>{
+        installHarnessFixture({distance:40});
+        const tyree=findPc('Tyree'), karson=findPc('Karson');
+        const s1=state.combat.monsters[0], s2=state.combat.monsters[1];
+        setCombatPcPosition(tyree,combatMonsterPosition(s1)); setEngagement(tyree,s1,'normal');
+        setCombatPcPosition(karson,combatMonsterPosition(s2)); setEngagement(karson,s2,'normal');
+        harnessEqual(groupCombatActors('those engaged in melee',{}).map(p=>p.name).sort(),['Karson','Tyree'],'Engaged selector did not resolve current melee participants');
+        const outside=groupCombatActors('those who are not engaged in melee',{}).map(p=>p.name);
+        harnessAssert(outside.length===4 && !outside.includes('Tyree') && !outside.includes('Karson'),'Unengaged selector did not exclude current melee participants');
+      }},
+      {name:'Overlapping whole-party plus engaged override executes correctly',run:()=>{
+        installHarnessFixture({distance:40});
+        const tyree=findPc('Tyree'), karson=findPc('Karson');
+        const s1=state.combat.monsters[0], s2=state.combat.monsters[1];
+        setCombatPcPosition(tyree,combatMonsterPosition(s1)); setEngagement(tyree,s1,'normal');
+        setCombatPcPosition(karson,combatMonsterPosition(s2)); setEngagement(karson,s2,'normal');
+        const text='Party move to melee and attack. Those engaged in melee hold and attack.';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Full command did not parse into two clauses');
+        const result=applyCombatPlan(actionPlanToCombatOrders(plan),text);
+        harnessAssert(result.ok && result.applied===6,`Expected six final PC orders: ${(result.issues||[]).join(' | ')}`);
+        harnessAssert(state.combat.pcOrders.tyree?.movement==='hold' && state.combat.pcOrders.tyree?.targetId===s1.id,'Engaged Tyree did not hold and keep current opponent');
+        harnessAssert(state.combat.pcOrders.karson?.movement==='hold' && state.combat.pcOrders.karson?.targetId===s2.id,'Engaged Karson did not hold and keep current opponent');
+        for(const pc of state.party.filter(p=>!['Tyree','Karson'].includes(p.name))) harnessAssert(state.combat.pcOrders[pc.name.toLowerCase()]?.movement==='approach','Unengaged party member did not approach melee');
+      }},
+      {name:'Bare Attack adapts engaged PCs vs unengaged PCs',run:async()=>{
+        installHarnessFixture({distance:40});
+        const tyree=findPc('Tyree'), s1=state.combat.monsters[0];
+        setCombatPcPosition(tyree,combatMonsterPosition(s1)); setEngagement(tyree,s1,'normal');
+        await handle('Attack');
+        harnessAssert(state.combat.pcOrders.tyree?.movement==='hold' && state.combat.pcOrders.tyree?.action==='melee','Bare Attack did not keep engaged PC fighting');
+        const others=state.party.filter(p=>p.name!=='Tyree').map(p=>state.combat.pcOrders[p.name.toLowerCase()]);
+        harnessAssert(others.every(o=>o?.movement==='approach'&&o?.action==='melee'),'Bare Attack did not send unengaged PCs toward melee');
+      }},
+      {name:'Actorless Move and attack / Close and attack stay combat commands',run:async()=>{
+        for(const text of ['Move and attack','Close and attack']){
+          installHarnessFixture({distance:40});
+          await handle(text);
+          harnessAssert(Object.keys(state.combat.pcOrders).length===6,`${text} did not assign the whole party`);
+          harnessAssert(Object.values(state.combat.pcOrders).every(o=>o.action==='melee'&&o.movement==='approach'),`${text} was not interpreted as approach + melee`);
+        }
+      }},
+      {name:'Elliptical dynamic actor complement carries engaged predicate',run:()=>{
+        installHarnessFixture({distance:40});
+        const tyree=findPc('Tyree'), s1=state.combat.monsters[0];
+        setCombatPcPosition(tyree,combatMonsterPosition(s1)); setEngagement(tyree,s1,'normal');
+        const text='I want those who are engaged in melee to continue fighting and those who are not to move to melee and attack.';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Elliptical engaged/not-engaged sentence did not parse into two clauses');
+        harnessAssert(partyActorStateSelector(plan.steps[0].actor)==='engaged','First dynamic actor was not engaged PCs');
+        harnessAssert(partyActorStateSelector(plan.steps[1].actor)==='unengaged','Elliptical “those who are not” did not inherit the complement of engaged');
+      }},
+      {name:'Literal engaged-vs-unengaged natural command parses and executes',run:async()=>{
+        installHarnessFixture({distance:40});
+        const tyree=findPc('Tyree'), s1=state.combat.monsters[0];
+        setCombatPcPosition(tyree,combatMonsterPosition(s1)); setEngagement(tyree,s1,'normal');
+        const text='I want those who are engaged in melee to continue fighting and those who are not to move to melee and attack.';
+        await handle(text);
+        harnessAssert(state.combat.pcOrders.tyree?.movement==='hold' && state.combat.pcOrders.tyree?.action==='melee','Engaged PC did not continue fighting');
+        const others=state.party.filter(p=>p.name!=='Tyree').map(p=>state.combat.pcOrders[p.name.toLowerCase()]);
+        harnessAssert(others.every(o=>o?.movement==='approach'&&o?.action==='melee'),'Unengaged PCs did not approach and attack');
+      }},
+      {name:'Actorless move-to-melee shorthand applies to current party',run:async()=>{
+        installHarnessFixture({distance:40});
+        await handle('Move to melee and attack');
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'Actorless party combat shorthand did not issue six orders');
+        harnessAssert(Object.values(state.combat.pcOrders).every(o=>o.action==='melee'),'Actorless move-to-melee shorthand did not become melee orders');
+      }},
+      {name:'Continue and repeat-the-last-command are contextual repeat shorthands',run:async()=>{
+        installHarnessFixture({distance:40});
+        const prior=parseDeterministicSingleCombatPlan('Move to melee and attack');
+        rememberDiscoursePlan('Move to melee and attack',prior,'success');
+        harnessAssert(isCombatContinuePreviousActionInput('Continue'),'Fresh-round Continue was not recognized as repeat shorthand');
+        harnessAssert(isRepeatPreviousActionInput('Repeat the last command'),'Repeat the last command was not recognized');
+        await handle('Continue');
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'Continue did not reapply last successful combat plan');
+      }},
+      {name:'Rejected action asks targeted referee clarification and preserves context',run:()=>{
+        installHarnessFixture();
+        beginParserTrace('the invisible reserves attack','combat');
+        askForActionClarification('the invisible reserves attack',['No living PC matched actor “the invisible reserves”.'],{kind:'ACTION_PLAN',steps:[{domain:'combat',verb:'combat_order',actor:'the invisible reserves',movement:'hold',action:'melee'}]});
+        harnessAssert(/which characters do you mean/i.test(state.pendingClarification?.question||''),'Clarification did not identify the unresolved actor');
+        harnessAssert(state.pendingClarification?.understoodContext?.partialPlan?.steps?.length===1,'Partial understood plan was not preserved with clarification');
+      }},
       {name:'Clarification state preserves the original instruction',run:()=>{
         installHarnessFixture();
         rememberPendingClarification('Nemiriel casts magic missile','Which foe?');
@@ -6590,7 +6834,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds the regression/specification harness around the Universal Action Plan and deterministic engine. Known parser/rules failures are now permanent tests; optional live-AI smoke tests remain separate.','system');
+    write('This build uses the regression/specification harness around the Universal Action Plan and deterministic engine. Failed action plans now preserve their partial interpretation and ask targeted referee clarification instead of returning a generic parser failure.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
