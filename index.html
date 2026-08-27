@@ -204,6 +204,12 @@
             <button type="button" id="developerModeButton">DEVELOPER MODE: OFF</button>
             <button type="button" id="openRefereeLogButton">OPEN REFEREE LOG</button>
           </div>
+          <div class="button-row" style="margin-top:8px">
+            <button type="button" id="runSelfTestsButton">RUN SELF-TESTS</button>
+            <button type="button" id="runAiParserTestsButton">RUN AI PARSER SMOKE TESTS</button>
+            <button type="button" id="copyTestReportButton">COPY TEST REPORT</button>
+          </div>
+          <p class="tiny"><strong>Regression Harness:</strong> RUN SELF-TESTS checks deterministic parser helpers, semantic-plan normalization, entity/group resolution, transactional combat plans, group movement, and melee-distance invariants without calling AI or changing the campaign. AI PARSER SMOKE TESTS are optional and use the configured referee connection to test several natural-language interpretations across combat, travel, social, and inventory play. The harness is also exposed as <code>window.KnownWorldTestHarness</code> for future browser/CI automation.</p>
           <p class="tiny">Developer Mode is full referee/testing transparency. It lets the referee answer any informational question and exposes loaded behind-the-screen state as well as hidden engine records: monster statistics, current HP, morale, saves, target logic, hidden exits/keyed data, encounter-distance procedure, initiative, attacks, and other referee-side decisions. It does not change the actual rules or rolls.</p>
 
           <h3>AI REFEREE ACCESS</h3>
@@ -379,7 +385,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.27';
+  const APP_VERSION = '0.3.28';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -406,6 +412,9 @@
   const developerModeButton = document.getElementById('developerModeButton');
   const developerRuleState = document.getElementById('developerRuleState');
   const openRefereeLogButton = document.getElementById('openRefereeLogButton');
+  const runSelfTestsButton = document.getElementById('runSelfTestsButton');
+  const runAiParserTestsButton = document.getElementById('runAiParserTestsButton');
+  const copyTestReportButton = document.getElementById('copyTestReportButton');
   const optionsDetails = document.getElementById('optionsDetails');
   const matrixWeaponsButton = document.getElementById('matrixWeaponsButton');
   const auditWeaponsButton = document.getElementById('auditWeaponsButton');
@@ -832,6 +841,7 @@
   }
 
   function appendJournalEntry(text,category='narrative',audience='player',meta={}){
+    if(testHarnessIsolationDepth>0) return Promise.resolve();
     if(journalBooting || !String(text||'').trim()) return Promise.resolve();
     const snap=journalSnapshot();
     const entry={...snap,category,audience,text:String(text),searchText:`${snap.clock} ${snap.location} ${category} ${String(text)}`.toLowerCase(),meta};
@@ -1180,6 +1190,9 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   let state = initialState();
   let aiBusy = false;
+  let testHarnessIsolationDepth = 0;
+  let lastSelfTestReport = null;
+  let lastAiParserTestReport = null;
 
   function clearPendingClarification(){
     state.pendingClarification=null;
@@ -1353,6 +1366,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
 
   function write(text, cls='') {
+    if(testHarnessIsolationDepth>0) return;
     renderTerminalEntry(text,cls);
     void appendJournalEntry(text,journalCategoryForClass(cls),'player',{cssClass:cls||''});
   }
@@ -1810,7 +1824,10 @@ W: swollen wooden door · E: cellar`;
     rawInitiativeButton.disabled = rules.initiativeMode === 'RAW';
     phasedInitiativeButton.disabled = rules.initiativeMode === 'PHASED';
     auditWeaponsButton.textContent = rules.weaponAudit ? 'WEAPON AUDIT: ON' : 'WEAPON AUDIT: OFF';
-    if(developerRuleState) developerRuleState.innerHTML=`<strong>Developer Mode:</strong> ${rules.developerMode?'ON — full referee / behind-the-screen transparency':'OFF — ordinary player information only'}`;
+    if(developerRuleState){
+      const testSummary=lastSelfTestReport?`${lastSelfTestReport.passed}/${lastSelfTestReport.total} passed${lastSelfTestReport.failed?` · ${lastSelfTestReport.failed} FAILED`:' · all required core tests pass'}`:'not run in this page session';
+      developerRuleState.innerHTML=`<strong>Developer Mode:</strong> ${rules.developerMode?'ON — full referee / behind-the-screen transparency':'OFF — ordinary player information only'}<br><strong>Regression suite:</strong> ${testSummary}`;
+    }
     if(developerModeButton){ developerModeButton.textContent=rules.developerMode?'DEVELOPER MODE: ON':'DEVELOPER MODE: OFF'; developerModeButton.classList.toggle('developer-on',Boolean(rules.developerMode)); }
     if(openRefereeLogButton) openRefereeLogButton.disabled=!rules.developerMode;
     if(combatPanel){
@@ -3745,24 +3762,34 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function normalizeCombatMovement(value,legacyAction=''){
-    let m=String(value||'').trim().toLowerCase();
+    let m=String(value||'').trim().toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ');
     if(!m){
       if(legacyAction==='withdraw') return 'withdraw';
       if(legacyAction==='retreat') return 'retreat';
-      if(legacyAction==='melee') return 'approach';
+      if(['melee','attack','fight','engage','strike'].includes(String(legacyAction||'').toLowerCase())) return 'approach';
       return 'hold';
     }
-    if(['approach','advance','close','move in','move toward','move towards','engage'].includes(m)) return 'approach';
-    if(['hold','stay','remain','stationary','none'].includes(m)) return 'hold';
-    if(['withdraw','fighting withdrawal','fall back'].includes(m)) return 'withdraw';
-    if(['retreat','flee','run away'].includes(m)) return 'retreat';
+    if(['approach','advance','close','move in','move toward','move towards','engage','charge','rush','move to melee','close to melee','meet in melee','move up'].includes(m)) return 'approach';
+    if(['hold','stay','remain','stationary','none','stay put','hold position','remain in place','stay back'].includes(m)) return 'hold';
+    if(['withdraw','fighting withdrawal','fall back','back away','give ground'].includes(m)) return 'withdraw';
+    if(['retreat','flee','run away','full retreat'].includes(m)) return 'retreat';
+    if(/^(?:approach|advance|close|move|charge|rush)\b/.test(m)) return 'approach';
+    if(/^(?:hold|stay|remain)\b/.test(m)) return 'hold';
+    if(/^(?:withdraw|fall back|back away)\b/.test(m)) return 'withdraw';
+    if(/^(?:retreat|flee|run away)\b/.test(m)) return 'retreat';
     return '';
   }
 
   function normalizeCombatAction(value){
-    let a=String(value||'').trim().toLowerCase();
-    if(['withdraw','retreat','advance','approach','move','none','no attack','do nothing'].includes(a)) return 'hold';
+    let a=String(value||'').trim().toLowerCase().replace(/[–—]/g,'-').replace(/\s+/g,' ');
+    if(['withdraw','retreat','advance','approach','move','none','no attack','do nothing','wait'].includes(a)) return 'hold';
     if(['hold','melee','missile','spell'].includes(a)) return a;
+    if(['attack','attacks','fight','fights','engage','engages','strike','strikes','hand-to-hand','hand to hand','close combat'].includes(a)) return 'melee';
+    if(['shoot','shoots','fire','fires','ranged','ranged attack','missile attack'].includes(a)) return 'missile';
+    if(['cast','casts','cast spell','casts spell','use spell','uses spell','magic'].includes(a)) return 'spell';
+    if(/^(?:attack|fight|engage|strike)\b/.test(a)) return 'melee';
+    if(/^(?:shoot|fire)\b/.test(a)) return 'missile';
+    if(/^(?:cast|use spell)\b/.test(a)) return 'spell';
     return '';
   }
 
@@ -3840,6 +3867,129 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(formed) write(`${active.map(pc=>pc.name).join(', ')} advance together at the group's pace toward ${label}; the formation ends ${combatDistanceLabel(remain)} away.`,'system');
     else write(`${active.map(pc=>pc.name).join(', ')} move to regroup while advancing toward ${label}; the formation cannot fully close this round without someone moving backward.`,'system');
     void refereeLog(`GROUP MOVEMENT — round ${state.combat?.round||'?'}: ${active.map(pc=>pc.name).join(', ')}; target ${label}; starts [${starts.join(', ')}]; speeds [${active.map(pc=>pcEncounterSpeed(pc)).join(', ')}]; ends [${finalPositions.join(', ')}]; ${formed?'formation maintained/formed':'regrouping incomplete'}.`,{type:'group_movement',round:state.combat?.round||null,pcs:active.map(pc=>pc.name),target:label,starts,speeds:active.map(pc=>pcEncounterSpeed(pc)),ends:finalPositions,formed});
+  }
+
+  function escapeRegexText(value){
+    return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  }
+
+  function deterministicCombatActorPattern(){
+    const names=livingParty().map(pc=>escapeRegexText(pc.name)).sort((a,b)=>b.length-a.length);
+    const groups=[
+      'the rest of the party','rest of the party','the rest of the group','rest of the group','the rest','the rest of them','rest of them','the remaining characters','remaining characters','the remaining adventurers','remaining adventurers','the remaining party members','remaining party members','the remaining group members','remaining group members','the remaining members','remaining members','all remaining','all remaining characters','all remaining adventurers','everyone else','everybody else','the others','others','the whole party','whole party','the party','party','the group','group','everyone','everybody','all of us','we','pcs','player characters'
+    ].map(escapeRegexText).sort((a,b)=>b.length-a.length);
+    return [...names,...groups].join('|');
+  }
+
+  function deterministicCombatClauseSegments(input){
+    const actorPattern=deterministicCombatActorPattern();
+    if(!actorPattern) return [];
+    const re=new RegExp(`(?:^|(?:\\s*(?:(?:,|;)\\s*(?:and\\s+)?|\\b(?:and(?:\\s+then)?|while|then)\\b\\s*)))(?:have\\s+|let\\s+|make\\s+)?(${actorPattern})(?=\\s|$)`,'ig');
+    const matches=[];
+    let m;
+    while((m=re.exec(String(input||'')))!==null){
+      matches.push({index:m.index,after:re.lastIndex,actor:m[1]});
+      if(m[0].length===0) re.lastIndex++;
+    }
+    if(matches.length<2) return [];
+    return matches.map((m,i)=>({actor:m.actor,body:String(input||'').slice(m.after,i+1<matches.length?matches[i+1].index:undefined).replace(/^[,;:\s-]+|[,;:\s-]+$/g,'').trim()}));
+  }
+
+  function currentFoeGroupLabels(){
+    const out=[];
+    const seen=new Set();
+    for(const m of livingHostiles()){
+      const exact=String(m.name||'').trim();
+      if(exact && !seen.has(exact.toLowerCase())){out.push({query:exact,forms:[exact.toLowerCase()]});seen.add(exact.toLowerCase());}
+      const base=String(m.name||'').replace(/\s+\d+$/,'').trim();
+      const profile=String(COMBAT_MONSTERS[m.type]?.name||'').trim();
+      const type=String(m.type||'').replace(/[_-]+/g,' ').trim();
+      for(const label of [base,profile,type]){
+        if(!label) continue;
+        const key=label.toLowerCase();
+        if(seen.has(`group:${key}`)) continue;
+        seen.add(`group:${key}`);
+        const plural=key.endsWith('s')?key:key==='wolf'?'wolves':key.endsWith('y')?key.slice(0,-1)+'ies':key+'s';
+        out.push({query:plural,forms:[key,plural]});
+      }
+    }
+    return out.sort((a,b)=>Math.max(...b.forms.map(x=>x.length))-Math.max(...a.forms.map(x=>x.length)));
+  }
+
+  function inferCurrentFoeQuery(text){
+    const q=String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s_-]/g,' ').replace(/\s+/g,' ').trim();
+    if(!q) return '';
+    const exact=livingHostiles().slice().sort((a,b)=>String(b.name).length-String(a.name).length).find(m=>new RegExp(`(?:^|\\b)${escapeRegexText(String(m.name||'').toLowerCase())}(?:$|\\b)`).test(q));
+    if(exact) return exact.name;
+    for(const entry of currentFoeGroupLabels()){
+      if(entry.forms.some(form=>new RegExp(`(?:^|\\b)${escapeRegexText(form)}(?:$|\\b)`).test(q))) return entry.query;
+    }
+    if(/\b(?:enemy|enemies|foe|foes|monster|monsters|opponent|opponents|them)\b/.test(q)) return 'foes';
+    return '';
+  }
+
+  function knownCombatSpellMention(actorText,body){
+    const actors=groupCombatActors(actorText,{});
+    const names=[];
+    const add=name=>{const n=String(name||'').trim();if(n&&!names.some(x=>x.toLowerCase()===n.toLowerCase()))names.push(n);};
+    for(const pc of actors) for(const spell of pc.spellbook||[]) add(spell);
+    for(const pc of livingParty()) for(const spell of pc.spellbook||[]) add(spell);
+    names.sort((a,b)=>b.length-a.length);
+    const lower=String(body||'').toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
+    return names.find(name=>{
+      const normalized=String(name||'').toLowerCase().replace(/[_-]+/g,' ').replace(/\s+/g,' ');
+      return new RegExp(`(?:^|\\b)${escapeRegexText(normalized)}(?:$|\\b)`).test(lower);
+    })||null;
+  }
+
+  function parseDeterministicCombatClause(actor,body){
+    const text=String(body||'').trim();
+    const lower=text.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    if(!text) return null;
+    let movement='hold';
+    if(/\b(?:retreat|flee|run away|full retreat)\b/.test(lower)) movement='retreat';
+    else if(/\b(?:withdraw|fighting withdrawal|fall back|back away|give ground)\b/.test(lower)) movement='withdraw';
+    else if(/\b(?:advance|approach|move(?:s)?(?: in| up| toward| towards)?|close(?:s)?(?: in| distance)?|charge|rush)\b/.test(lower)) movement='approach';
+    else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)) movement='hold';
+
+    const movementMode=/\b(?:together|as (?:a )?group|as one|in formation|keep formation|stay together|keep together|same pace|same distance|abreast)\b/.test(lower)?'together':'individual';
+    const target=inferCurrentFoeQuery(text);
+    const spell=knownCombatSpellMention(actor,text);
+    let action='none';
+    if(spell && /\b(?:cast|casts|casting|use|uses|using)\b/.test(lower)) action='spell';
+    else if(/\b(?:shoot|shoots|fire|fires|loose|looses)\b/.test(lower)) action='missile';
+    else if(/\b(?:attack|attacks|fight|fights|engage|engages|strike|strikes|melee)\b/.test(lower)) action='melee';
+
+    // "advance ... to meet them in melee" is an approach + melee order even if
+    // the prose contains filler or a typo in "meet"; the explicit word melee is
+    // the semantic signal, not the exact surrounding phrase.
+    if(movement==='approach' && /\bmelee\b/.test(lower)) action='melee';
+    if(action==='none' && movement==='hold' && !/\b(?:hold|stay|remain|wait|do nothing)\b/.test(lower)) return null;
+    if(['melee','missile'].includes(action) && !target) return null;
+    if(action==='spell' && !spell) return null;
+    if(movement==='approach' && !target) return null;
+
+    const step={domain:'combat',verb:'combat_order',actor:String(actor||'').trim(),movement,action};
+    if(target){ step.target=target; if(movement==='approach') step.movementTarget=target; }
+    if(movementMode==='together') step.movementMode='together';
+    if(action==='spell') step.spell=spell;
+    if(/\b(?:random|randomly|at random|whichever|any one)\b/.test(lower)) step.targetSelection='random';
+    return step;
+  }
+
+  function parseDeterministicCompoundCombatPlan(input){
+    if(!combatActive()) return null;
+    const segments=deterministicCombatClauseSegments(input);
+    if(segments.length<2) return null;
+    const steps=[];
+    for(const seg of segments){
+      const step=parseDeterministicCombatClause(seg.actor,seg.body);
+      if(!step) return null; // full-consumption rule: never claim only part of the command.
+      step.id=String(steps.length+1);
+      steps.push(step);
+    }
+    if(steps.length<2) return null;
+    return {kind:'ACTION_PLAN',confidence:1,summary:'Deterministic full-input combat interpretation',steps,source:String(input||'')};
   }
 
   function applyCombatPlan(orders,sourceInput=''){
@@ -4134,10 +4284,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function isMeleeDistanceQuestion(input){
     const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
     if(!q) return false;
-    const melee=/(?:melee|hand[- ]to[- ]hand|close combat|attack(?:s|ed|ing)?|hit(?:ting)?|strike|striking)/.test(q);
-    const distance=/(?:distance|range|reach|away|yards?|yds?|feet|ft|contact)/.test(q);
+    const melee=/(?:\bmelee\b|hand[- ]to[- ]hand|close combat|attack(?:s|ed|ing)?|hit(?:ting)?|strike|striking)/.test(q);
+    const distance=/(?:\bdistance\b|\brange\b|\breach\b|\baway\b|yards?|\byds?\b|feet|\bft\b|contact)/.test(q);
     return melee && distance;
   }
+
 
   function answerMeleeDistanceQuestion(input){
     if(!isMeleeDistanceQuestion(input)) return false;
@@ -4160,7 +4311,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const nearest=current.sort((a,b)=>a.separation-b.separation)[0];
       detail=` The nearest currently separated PC/foe pair is ${nearest.pc} and ${nearest.monster} at ${nearest.separation} ${unit}; they are not yet in melee.`;
     }
-    renderTerminalEntry(`REFEREE (ENGINE): Hand-to-hand attacks require encounter separation 0 ${unit}. The normal tabletop idea of being within roughly 5 feet is collapsed to 0 in this position model so encounter/missile distance stays distinct from the Matrix melee bands. Close, Normal, and Far describe weapon distance only after a melee has formed; none of them permits an attack while encounter separation is still above 0.${detail}`,'ai');
+    if(testHarnessIsolationDepth===0) renderTerminalEntry(`REFEREE (ENGINE): Hand-to-hand attacks require encounter separation 0 ${unit}. The normal tabletop idea of being within roughly 5 feet is collapsed to 0 in this position model so encounter/missile distance stays distinct from the Matrix melee bands. Close, Normal, and Far describe weapon distance only after a melee has formed; none of them permits an attack while encounter separation is still above 0.${detail}`,'ai');
     return true;
   }
 
@@ -4408,23 +4559,33 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — the PC side of that whole melee tries to shift one shared band inward\nAldric opens from goblin 1 — the PC side tries to shift the whole melee one shared band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nAldric advances toward the goblins — movement without an attack\nThe rest advance toward the goblins together — relative group movement at the same pace\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve through movement; the engine then pauses after melee distance is established\nAldric switches to dagger / equip Aldric with spear — change to an already-carried weapon during the post-movement weapon window\ncontinue round — finish Missile, Magic, and Hand-to-Hand after weapon choices\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nMELEE CONTACT: encounter-scale separation must reach 0 yd/ft before hand-to-hand attacks are legal. Once contact is established, every combatant in one connected melee shares the same Close/Normal/Far state. Separate melees may differ. Each side chooses Press/Hold/Open; initiative decides incompatible intentions.\nWEAPON SWITCHING: QUICK weapons keep attack initiative. Readying a CUMBERSOME weapon (normally Matrix Medium-Large or larger, including spears/polearms/two-handed swords) defers only that character's Missile or Hand-to-Hand attack until the end of that phase. Movement and other phases are unchanged. Matrix mode has no blanket initiative penalty simply for using a two-handed weapon.\nRAW mode: initiative winner completes its side sequence before the loser; post-movement weapon windows preserve that ordering, with deferred attacks held until the appropriate later attack opportunity.\nPHASED mode: initiative winner chooses which side moves first; after both sides move and shared melee distance is settled, weapon choices occur, then the initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase except deferred weapon-switch attacks resolve last.`,'system');
   }
 
-  function parseMovementChoiceCommand(text){
-    if(!combatActive() || !state.combat?.awaitingMoveChoice) return false;
+  function movementOrderChoiceFromText(text){
     const n=String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
     const pcTerms='(?:us|we|the party|party|pcs?|player characters?|characters?|players?|our side)';
     const foeTerms='(?:them|they|foes?|monsters?|enem(?:y|ies)|their side|opponents?)';
     const pcFirst =
       ['move us first','us first','we move first','we go first','party first','pcs first','characters first','our side first','foes move last','foes go last','monsters move last','enemies move last'].includes(n) ||
-      new RegExp(`\b${pcTerms}\b.*\b(?:first|before them|before the foes|before the monsters)\b`).test(n) ||
-      new RegExp(`\b${foeTerms}\b.*\b(?:last|second|after us|after the party|after the pcs)\b`).test(n);
+      new RegExp(`\\b${pcTerms}\\b.*\\b(?:first|before them|before the foes|before the monsters)\\b`).test(n) ||
+      new RegExp(`\\b${foeTerms}\\b.*\\b(?:last|second|after us|after the party|after the pcs)\\b`).test(n);
     const foeFirst =
       ['make them move first','them first','they move first','they go first','foes first','monsters first','enemy first','enemies first','let them move first','pcs move last','pcs go last','party moves last','party goes last','we move last','we go last','our side moves last'].includes(n) ||
-      new RegExp(`\b${foeTerms}\b.*\b(?:first|before us|before the party|before the pcs)\b`).test(n) ||
-      new RegExp(`\b${pcTerms}\b.*\b(?:last|second|after them|after the foes|after the monsters)\b`).test(n);
-    if(pcFirst && !foeFirst){ chooseMovementOrder(state.combat.initiative?.winner==='pc'?'winner':'loser'); return true; }
-    if(foeFirst && !pcFirst){ chooseMovementOrder(state.combat.initiative?.winner==='monster'?'winner':'loser'); return true; }
-    return false;
+      new RegExp(`\\b${foeTerms}\\b.*\\b(?:first|before us|before the party|before the pcs)\\b`).test(n) ||
+      new RegExp(`\\b${pcTerms}\\b.*\\b(?:last|second|after them|after the foes|after the monsters)\\b`).test(n);
+    if(pcFirst && !foeFirst) return 'pc-first';
+    if(foeFirst && !pcFirst) return 'foe-first';
+    return null;
   }
+
+  function parseMovementChoiceCommand(text){
+    if(!combatActive() || !state.combat?.awaitingMoveChoice) return false;
+    const choice=movementOrderChoiceFromText(text);
+    if(!choice) return false;
+    const winner=state.combat.initiative?.winner;
+    if(choice==='pc-first') chooseMovementOrder(winner==='pc'?'winner':'loser');
+    else chooseMovementOrder(winner==='monster'?'winner':'loser');
+    return true;
+  }
+
 
   function handleCombatDirect(input,normalized){
     if(parseMovementChoiceCommand(normalized)) return true;
@@ -4851,6 +5012,9 @@ roll 2d6
 save / load
 referee [question] — ask a rules or game-state question at any time, including during combat
 developer mode on — full referee/testing transparency, including hidden current-state data
+self test / regression tests — run deterministic regression/specification suite without changing the campaign
+ai parser tests — optional live-AI semantic smoke tests, reported separately
+copy test report — copy the most recent core/AI test report and parser trace
 new game / clear`);
   }
 
@@ -5744,7 +5908,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       return callReferee(input);
     }
 
-    const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee','self test','self tests','run tests','run self tests','regression tests','ai parser tests','ai parser smoke tests','run ai parser tests','test report','copy test report'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
       write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning'); return;
     }
@@ -5753,6 +5917,18 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(combatActive() && state.combat?.awaitingMoveChoice){
       if(parseMovementChoiceCommand(input)) return;
       write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning'); return;
+    }
+
+    // A deterministic full-input grammar handles common compound combat orders
+    // only when it can account for every actor clause. Unlike the old fast parser,
+    // it never claims a sentence after recognizing only its first clause.
+    if(combatActive()){
+      const fullCombatPlan=parseDeterministicCompoundCombatPlan(input);
+      if(fullCombatPlan){
+        beginParserTrace(input,'combat-full-input');
+        patchParserTrace(input,{localParser:'deterministic full-input combat grammar matched every actor clause',aiParser:'not needed'});
+        return executeActionPlan(fullCombatPlan,input,{allowRepair:false});
+      }
     }
 
     // Remaining exact/simple commands continue to work offline and without parser latency.
@@ -5781,6 +5957,9 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if (normalized === 'referee log' || normalized === 'developer log' || normalized === 'engine log') { void openRefereeLog(''); return; }
     if (normalized.startsWith('referee log ') || normalized.startsWith('developer log ') || normalized.startsWith('engine log ')) { const q=input.replace(/^(?:referee|developer|engine)\s+log\s+/i,'').trim(); void openRefereeLog(q); return; }
     if (normalized === 'events') return events();
+    if (['self test','self tests','run tests','run self tests','regression tests'].includes(normalized)) return runCoreSelfTests({display:true});
+    if (['ai parser tests','ai parser smoke tests','run ai parser tests'].includes(normalized)) return runAiParserSmokeTests({display:true});
+    if (['test report','copy test report'].includes(normalized)) return copyLastTestReport();
     if (normalized === 'save') return save();
     if (normalized === 'help' || normalized === '?') return help();
     if (normalized === 'clear') { terminal.innerHTML=''; return; }
@@ -5831,13 +6010,423 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     return callReferee(input);
   }
 
+  // --- v0.3.28 regression / specification harness ---------------------------
+  // Tests encode intended behavior, not historical behavior. A previous build is
+  // never treated as correct merely because it once shipped. The current campaign
+  // is snapshotted and restored around every deterministic test.
+
+  function harnessClone(value){
+    try{return typeof structuredClone==='function'?structuredClone(value):JSON.parse(JSON.stringify(value));}
+    catch{return JSON.parse(JSON.stringify(value));}
+  }
+
+  function harnessPartyFixture(){
+    const make=(name,className='Fighter',extra={})=>normalizeMember({
+      name,className,level:1,role:`${className} 1`,hp:8,maxHp:8,ac:7,thac0:19,
+      abilities:{str:12,int:10,wis:10,dex:10,con:10,cha:10},inventory:[],
+      equippedWeapon:{itemId:'sword_normal',name:'Normal Sword',matrixId:'Sword, Normal (RC)'},
+      ...extra
+    });
+    return [
+      make('Nemiriel','Elf',{spellbook:['Read Magic','Magic Missile'],memorizedSpell:'Magic Missile',spellReady:true,hp:5,maxHp:5}),
+      make('Tyree'), make('Karson'), make('Serena'), make('Shannon'),
+      make('Dor','Fighter',{inventory:[{itemId:'test_load',name:'Test Load',qty:1,enc:500}]})
+    ];
+  }
+
+  function harnessCombatFixture({distance=90,type='skeleton',count=4}={}){
+    const monsters=[];
+    for(let i=1;i<=count;i++){
+      const p=COMBAT_MONSTERS[type]||COMBAT_MONSTERS.skeleton;
+      monsters.push({id:`${type}-${i}`,name:`${p.name} ${i}`,type,hp:8,maxHp:8,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false});
+    }
+    const positions={pcs:{},monsters:{}};
+    for(const pc of state.party) positions.pcs[pc.name.toLowerCase()]=0;
+    for(const m of monsters) positions.monsters[m.id]=distance;
+    return {active:true,round:1,source:'harness',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance:distance,distanceUnit:'yd',encounterDistanceTrace:null,positions};
+  }
+
+  function installHarnessFixture(options={}){
+    state=initialState();
+    state.mode='wilderness'; state.hex={q:0,r:0};
+    state.party=harnessPartyFixture();
+    state.campaignCreated=true;
+    state.rules={...state.rules,weaponDamageMode:'MATRIX',weaponAudit:true,initiativeMode:'PHASED',developerMode:true};
+    state.combat=harnessCombatFixture(options);
+    normalizeCombatState();
+    return state;
+  }
+
+  function harnessAssert(condition,message='Assertion failed'){
+    if(!condition) throw new Error(message);
+  }
+
+  function harnessEqual(actual,expected,message='Values differ'){
+    const a=JSON.stringify(actual),e=JSON.stringify(expected);
+    if(a!==e) throw new Error(`${message}. expected=${e} actual=${a}`);
+  }
+
+  function canonicalMagicMissileAdvancePlan(){
+    return {kind:'ACTION_PLAN',confidence:1,summary:'caster fires while the others close together',steps:[
+      {id:'1',domain:'combat',verb:'combat_order',actor:'Nemiriel',movement:'hold',action:'spell',spell:'Magic Missile',target:'skeletons',targetSelection:'random'},
+      {id:'2',domain:'combat',verb:'combat_order',actor:'the rest of the party',movement:'approach',movementTarget:'skeletons',movementMode:'together',action:'melee',target:'skeletons'}
+    ]};
+  }
+
+  function coreHarnessTestDefinitions(){
+    return [
+      {name:'Defaults: Matrix / audit / phased / developer',run:()=>{
+        const fresh=initialState();
+        harnessEqual([fresh.rules.weaponDamageMode,fresh.rules.weaponAudit,fresh.rules.initiativeMode,fresh.rules.developerMode],['MATRIX',true,'PHASED',true],'Default options changed');
+      }},
+      {name:'Random selector is creature-agnostic',run:()=>{
+        installHarnessFixture();
+        state.combat.monsters=[{...state.combat.monsters[0],id:'rat-1',name:'Giant Rat 1',type:'future_giant_rat'},{...state.combat.monsters[1],id:'rat-2',name:'Giant Rat 2',type:'future_giant_rat'}];
+        state.combat.positions.monsters={'rat-1':90,'rat-2':90};
+        harnessAssert(strictCombatTargetsFromText('giant rats').length===2,'Future creature-name group did not resolve');
+        const spec=randomTargetSpec('a random giant rat');
+        harnessAssert(spec?.targetSelection==='random' && /giant rat/.test(spec.targetQuery),'Random target selector was not generic');
+      }},
+      {name:'Relative party references are semantic',run:()=>{
+        installHarnessFixture();
+        const variants=['the rest of the party','the rest','remaining characters','everyone else','the others'];
+        for(const phrase of variants) harnessAssert(isRelativePartyActor(phrase),`Did not recognize relative party phrase: ${phrase}`);
+        const explicit=new Set(['nemiriel']);
+        const actors=groupCombatActors('the rest of the party',{assigned:new Set(),explicitlyAssigned:explicit});
+        harnessAssert(actors.length===5 && actors.every(pc=>pc.name!=='Nemiriel'),'Rest-of-party resolution included the separately ordered PC');
+      }},
+      {name:'Combat action normalization tolerates natural aliases',run:()=>{
+        harnessEqual(['attack','engage','shoot','fire','cast'].map(normalizeCombatAction),['melee','melee','missile','missile','spell'],'Natural combat aliases did not normalize');
+      }},
+      {name:'PCs move last means foes move first',run:()=>{
+        for(const phrase of ['PCs move last','the players should move last','we go second','let the foes move first']) harnessAssert(movementOrderChoiceFromText(phrase)==='foe-first',`Movement order not understood: ${phrase}`);
+      }},
+      {name:'Melee-distance mechanics question is answered by the engine path',run:()=>{
+        installHarnessFixture({distance:20});
+        const q='Why are the players able to attack the skeletons at 20 yds away?';
+        harnessAssert(isMeleeDistanceQuestion(q),'Melee-distance diagnostic question was not recognized');
+        harnessAssert(answerMeleeDistanceQuestion(q)===true,'Authoritative local referee path did not answer the melee-distance question');
+      }},
+      {name:'Repeat shorthand is recognized',run:()=>{
+        for(const phrase of ['do the same again','repeat that','do it again','same again']) harnessAssert(isRepeatPreviousActionInput(phrase),`Repeat shorthand not recognized: ${phrase}`);
+      }},
+      {name:'Worker prompts obey hard compaction ceiling',run:()=>{
+        const huge='x'.repeat(20000); harnessAssert(boundedAiPrompt(huge,2100).length<=2100,'AI prompt compaction exceeded limit');
+      }},
+      {name:'Canonical Magic Missile + rest advance plan validates',run:()=>{
+        installHarnessFixture();
+        const v=validateActionPlan(canonicalMagicMissileAdvancePlan());
+        harnessAssert(v.ok,`Canonical plan failed validation: ${v.issues.join(' | ')}`);
+        harnessAssert(v.refereeReasons.length===0,`Canonical deterministic plan was routed to referee: ${v.refereeReasons.join(' | ')}`);
+      }},
+      {name:'Canonical mixed caster/rest plan assigns every PC exactly once',run:()=>{
+        installHarnessFixture();
+        const plan=canonicalMagicMissileAdvancePlan();
+        const result=applyCombatPlan(actionPlanToCombatOrders(normalizeActionPlan(plan,'canonical')), 'Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meet the skeletons in melee');
+        harnessAssert(result.ok && result.applied===6,`Expected 6 applied orders, got ${result.applied}: ${(result.issues||[]).join(' | ')}`);
+        const caster=state.combat.pcOrders.nemiriel;
+        harnessAssert(caster?.action==='spell' && caster.spell==='Magic Missile' && caster.targetSelection==='random','Caster order was not preserved');
+        const rest=state.party.filter(pc=>pc.name!=='Nemiriel').map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
+        harnessAssert(rest.every(o=>o?.movement==='approach'&&o?.movementMode==='together'&&o?.action==='melee'),'Remaining party did not receive approach+together+melee');
+        harnessAssert(new Set(rest.map(o=>o.movementGroup)).size===1 && rest[0].movementGroup,'Remaining party was not assigned one shared movement group');
+      }},
+      {name:'Caster can spell while remaining party only advances together',run:()=>{
+        installHarnessFixture();
+        const text='Nemiriel casts magic missile at a random skeleton and then have the rest of the party advance on the skeletons while maintaining the same distance';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Movement-only compound order did not preserve both clauses');
+        harnessAssert(plan.steps[1].movement==='approach' && plan.steps[1].movementMode==='together' && normalizeCombatAction(plan.steps[1].action)==='hold','Remaining party was incorrectly forced to attack');
+        const result=applyCombatPlan(actionPlanToCombatOrders(plan),text);
+        harnessAssert(result.ok && result.applied===6,'Movement-only caster/rest plan did not assign the whole party');
+      }},
+      {name:'Exact previously failing sentence parses as a complete offline plan',run:()=>{
+        installHarnessFixture();
+        const text='Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meet the skeletons in melee';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Full-input parser did not preserve both clauses');
+        harnessAssert(plan.steps[0].actor==='Nemiriel' && plan.steps[0].action==='spell' && plan.steps[0].targetSelection==='random','Named caster clause parsed incorrectly');
+        harnessAssert(isRelativePartyActor(plan.steps[1].actor) && plan.steps[1].movement==='approach' && plan.steps[1].movementMode==='together' && plan.steps[1].action==='melee','Rest-of-party clause parsed incorrectly');
+      }},
+      {name:'Previously failing sentence executes through Universal Action Plan',run:async()=>{
+        installHarnessFixture();
+        const text='Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meet the skeletons in melee';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        beginParserTrace(text,'harness-end-to-end');
+        await executeActionPlan(plan,text,{allowRepair:false});
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'End-to-end semantic execution did not assign six PC orders');
+        harnessAssert(state.combat.pcOrders.nemiriel?.action==='spell','End-to-end semantic execution lost the caster order');
+        harnessAssert(state.party.filter(pc=>pc.name!=='Nemiriel').every(pc=>state.combat.pcOrders[pc.name.toLowerCase()]?.movementMode==='together'),'End-to-end semantic execution lost group formation');
+      }},
+      {name:'Compound combat parser tolerates paraphrase and typo around meet',run:()=>{
+        installHarnessFixture();
+        const variants=[
+          'Have Nemiriel use magic missile against a random skeleton, and have the remaining characters advance as a group to attack the skeletons',
+          'Nemiriel casts magic missile at whichever skeleton and everyone else moves in together to engage the skeletons',
+          'Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meek the skeletons in melee',
+          'Nemiriel casts magic missile at a random skeleton; all remaining characters advance together and attack the skeletons'
+        ];
+        for(const text of variants){ const plan=parseDeterministicCompoundCombatPlan(text); harnessAssert(plan?.steps?.length===2,`Paraphrase did not fully parse: ${text}`); }
+      }},
+      {name:'Full-input combat grammar never drops an unparsed later clause',run:()=>{
+        installHarnessFixture();
+        const text='Nemiriel casts magic missile at a random skeleton and the rest of the party perform an unsupported cartwheel ritual';
+        harnessAssert(parseDeterministicCompoundCombatPlan(text)===null,'Compound grammar claimed the command after parsing only its first clause');
+      }},
+      {name:'Together movement uses one common party displacement',run:()=>{
+        installHarnessFixture({distance:90});
+        const result=applyCombatPlan(actionPlanToCombatOrders(canonicalMagicMissileAdvancePlan()),'Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meet the skeletons in melee');
+        harnessAssert(result.ok,'Could not stage group movement plan');
+        movementPhase('pc');
+        const movers=state.party.filter(pc=>pc.name!=='Nemiriel');
+        const positions=movers.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,`Together movers split positions: ${positions.join(', ')}`);
+        harnessAssert(positions[0]===30,`Expected slowest-member 30 yd group pace, got ${positions[0]}`);
+        harnessAssert(combatPcPosition(findPc('Nemiriel'))===0,'Stationary caster moved with the group');
+      }},
+      {name:'Random spell target remains unresolved until magic phase',run:()=>{
+        installHarnessFixture({distance:90});
+        const result=applyCombatPlan(actionPlanToCombatOrders(canonicalMagicMissileAdvancePlan()),'canonical');
+        harnessAssert(result.ok,'Could not stage canonical plan');
+        const order=state.combat.pcOrders.nemiriel;
+        harnessAssert(!order.targetId && order.targetSelection==='random','Random target was selected too early');
+        magicPhase('pc');
+        harnessAssert(Boolean(order.targetId),'Random target was not selected when the spell resolved');
+        harnessAssert(state.combat.monsters.some(m=>m.id===order.targetId),'Selected random target is not a current foe');
+      }},
+      {name:'Melee is blocked at any nonzero encounter separation',run:()=>{
+        installHarnessFixture({distance:20});
+        const pc=findPc('Tyree'), target=livingHostiles()[0];
+        state.combat.pcOrders.tyree={action:'melee',movement:'hold',targetId:target.id};
+        const hp=target.hp;
+        meleePhase('pc');
+        harnessAssert(target.hp===hp,'Melee attack changed target HP at nonzero separation');
+        const attempt=state.combat.recentMeleeAttempts.slice(-1)[0];
+        harnessAssert(attempt && !attempt.allowed && attempt.separation===20,'Nonzero melee attempt was not explicitly blocked');
+      }},
+      {name:'Melee contact is represented at exactly zero separation',run:()=>{
+        installHarnessFixture({distance:0});
+        const pc=findPc('Tyree'),target=livingHostiles()[0];
+        harnessAssert(atMeleeContact(pc,target),'Zero separation did not count as melee contact');
+        harnessAssert(setEngagement(pc,target,'normal'),'Could not establish melee at zero separation');
+        harnessAssert(Boolean(getEngagement(pc,target)),'Zero-distance melee engagement was not retained');
+      }},
+      {name:'Combat-plan staging is transactional on invalid later clause',run:()=>{
+        installHarnessFixture();
+        const orders=[
+          {actor:'Nemiriel',movement:'hold',action:'spell',spell:'Magic Missile',target:'skeletons',targetSelection:'random'},
+          {actor:'the rest of the party',movement:'teleport into melee',action:'melee',target:'skeletons'}
+        ];
+        const result=applyCombatPlan(orders,'test');
+        harnessAssert(!result.ok,'Invalid compound plan unexpectedly succeeded');
+        harnessAssert(Object.keys(state.combat.pcOrders).length===0,'Invalid plan partially mutated PC orders');
+      }},
+      {name:'Universal social intent can be valid while referee-adjudicated',run:()=>{
+        installHarnessFixture();
+        state.combat=null;
+        const v=validateActionPlan({kind:'ACTION_PLAN',steps:[{domain:'social',verb:'ask',actor:'party',addressee:'innkeeper',topic:'missing travelers'}]});
+        harnessAssert(v.ok,'Social semantic plan should be structurally valid');
+        harnessAssert(v.refereeReasons.some(x=>x.includes('social:ask')),'Social intent did not preserve referee-adjudication distinction');
+      }},
+      {name:'Universal travel intent preserves conditions instead of discarding them',run:()=>{
+        installHarnessFixture(); state.combat=null;
+        const v=validateActionPlan({kind:'ACTION_PLAN',steps:[{domain:'travel',verb:'follow',feature:'road',direction:'north',until:'dusk'}]});
+        harnessAssert(v.ok,'Conditional travel plan should remain semantically valid');
+        harnessAssert(v.plan.steps[0].until==='dusk','Travel stopping condition was discarded');
+        harnessAssert(v.refereeReasons.some(x=>/conditional|stopping/.test(x)),'Unimplemented generic stop condition was not identified');
+      }},
+      {name:'Area spell target remains a foe group, not one numbered target',run:()=>{
+        installHarnessFixture();
+        const caster=findPc('Nemiriel'); caster.spellbook=['Read Magic','Sleep','Magic Missile']; caster.memorizedSpell='Sleep'; caster.spellReady=true;
+        const text='Nemiriel casts sleep on the skeletons and the rest of the party advance together to attack the skeletons';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Sleep compound sentence did not parse completely');
+        const result=applyCombatPlan(actionPlanToCombatOrders(plan),text);
+        harnessAssert(result.ok,'Sleep compound plan was rejected');
+        const order=state.combat.pcOrders.nemiriel;
+        harnessAssert(!order.targetId && /skeleton/i.test(order.areaTargetQuery||''),'Area spell was incorrectly collapsed to one numbered skeleton');
+      }},
+      {name:'Universal multi-step travel plan preserves sequence and route data',run:()=>{
+        installHarnessFixture(); state.combat=null;
+        const plan=normalizeActionPlan({kind:'ACTION_PLAN',steps:[
+          {domain:'travel',verb:'leave'},
+          {domain:'travel',verb:'follow',feature:'road',direction:'north'},
+          {domain:'travel',verb:'camp'}
+        ]},'leave, follow the road north, then camp');
+        harnessEqual(plan.steps.map(s=>`${s.domain}:${s.verb}`),['travel:leave','travel:follow','travel:camp'],'Travel sequence changed during normalization');
+        harnessAssert(plan.steps[1].feature==='road' && plan.steps[1].direction==='north','Travel route details were lost');
+      }},
+      {name:'Targeted exploration is understood even when procedure needs referee',run:()=>{
+        installHarnessFixture(); state.combat=null;
+        const v=validateActionPlan({kind:'ACTION_PLAN',steps:[{domain:'exploration',verb:'search',actor:'party',target:'behind the tapestry'}]});
+        harnessAssert(v.ok,'Targeted search should remain a valid semantic plan');
+        harnessAssert(v.refereeReasons.some(x=>/targeted search/.test(x)),'Targeted search did not identify the missing deterministic procedure');
+      }},
+      {name:'Inventory transfer is understood rather than rejected as gibberish',run:()=>{
+        installHarnessFixture(); state.combat=null;
+        const v=validateActionPlan({kind:'ACTION_PLAN',steps:[{domain:'inventory',verb:'give',actor:'Tyree',item:'torch',recipient:'Nemiriel'}]});
+        harnessAssert(v.ok,'Inventory transfer should be a structurally valid action');
+        harnessAssert(v.refereeReasons.some(x=>x.includes('inventory:give')),'Unimplemented transfer was not preserved for adjudication');
+      }},
+      {name:'Discourse memory retains NPC addressee and topic',run:()=>{
+        installHarnessFixture(); state.combat=null;
+        const plan=normalizeActionPlan({kind:'ACTION_PLAN',steps:[{domain:'social',verb:'ask',actor:'party',addressee:'innkeeper',topic:'the northern ruins'}]},'ask the innkeeper about the northern ruins');
+        rememberDiscoursePlan('ask the innkeeper about the northern ruins',plan,'success');
+        const d=discourseContextForParser();
+        harnessAssert(d.lastAddressee==='innkeeper' && d.lastTopic==='the northern ruins','Conversation referents were not retained');
+      }},
+      {name:'Parser trace keeps last failed action separate from later table talk',run:()=>{
+        installHarnessFixture();
+        beginParserTrace('advance everyone through the wall','combat');
+        patchParserTrace('advance everyone through the wall',{execution:'validation failed: unsupported movement'});
+        const failed=state.lastProblemParserTrace?.input;
+        beginParserTrace('hello','universal');
+        patchParserTrace('hello',{execution:'routed to referee'});
+        harnessAssert(state.lastProblemParserTrace?.input===failed,'A greeting overwrote the last failed-action diagnostic trace');
+      }},
+      {name:'Clarification state preserves the original instruction',run:()=>{
+        installHarnessFixture();
+        rememberPendingClarification('Nemiriel casts magic missile','Which foe?');
+        const p=JSON.parse(pendingClarificationPrompt());
+        harnessAssert(p.originalInstruction==='Nemiriel casts magic missile' && p.questionAsked==='Which foe?','Clarification context did not preserve original request');
+      }}
+    ];
+  }
+
+  async function runHarnessTests(definitions,{display=true,label='CORE SELF-TESTS'}={}){
+    const outerState=harnessClone(state);
+    const outerStateFingerprint=JSON.stringify(outerState);
+    const outerAiBusy=aiBusy;
+    const started=Date.now();
+    const results=[];
+    testHarnessIsolationDepth++;
+    try{
+      for(const test of definitions){
+        const snapshot=harnessClone(state);
+        const t0=performance.now();
+        try{
+          const value=test.run();
+          if(value && typeof value.then==='function') await value;
+          results.push({name:test.name,pass:true,ms:Math.round((performance.now()-t0)*10)/10});
+        }catch(error){
+          results.push({name:test.name,pass:false,ms:Math.round((performance.now()-t0)*10)/10,error:String(error?.message||error),stack:String(error?.stack||'').split('\\n').slice(0,4).join('\\n')});
+        }finally{
+          state=harnessClone(snapshot); normalizeCombatState();
+        }
+      }
+    }finally{
+      testHarnessIsolationDepth=Math.max(0,testHarnessIsolationDepth-1);
+      state=outerState; aiBusy=outerAiBusy; normalizeCombatState(); updatePanels();
+    }
+    const isolationPreserved=JSON.stringify(state)===outerStateFingerprint;
+    if(!isolationPreserved) results.push({name:'Harness isolation restores campaign state',pass:false,ms:0,error:'The self-test runner did not restore the pre-test campaign state exactly.'});
+    const passed=results.filter(r=>r.pass).length;
+    const report={suite:label,appVersion:APP_VERSION,specVersion:'1.0',timestamp:new Date().toISOString(),durationMs:Date.now()-started,total:results.length,passed,failed:results.length-passed,isolationPreserved,results};
+    if(display){
+      const failures=results.filter(r=>!r.pass);
+      renderTerminalEntry(`${label} — ${passed}/${results.length} PASS${failures.length?`; ${failures.length} FAIL`:' — ALL REQUIRED TESTS PASS'}.`,failures.length?'error':'system');
+      for(const failure of failures) renderTerminalEntry(`FAIL — ${failure.name}: ${failure.error}`,'error');
+      if(!failures.length) renderTerminalEntry('The current build satisfies the deterministic regression/specification suite. Optional AI parser smoke tests remain separate.','system');
+    }
+    return report;
+  }
+
+  async function runCoreSelfTests({display=true}={}){
+    const report=await runHarnessTests(coreHarnessTestDefinitions(),{display,label:'CORE SELF-TESTS'});
+    lastSelfTestReport=report;
+    updatePanels();
+    return report;
+  }
+
+  function actionPlanSemanticChecks(intent,checks=[]){
+    if(!intent || String(intent.kind||'').toUpperCase()!=='ACTION_PLAN') throw new Error(`Expected ACTION_PLAN, got ${String(intent?.kind||'nothing')}`);
+    const plan=normalizeActionPlan(intent,'AI smoke test');
+    for(const check of checks) check(plan);
+    return plan;
+  }
+
+  function aiParserSmokeTestDefinitions(){
+    return [
+      {name:'AI: caster + remaining party compound combat',setup:()=>installHarnessFixture(),input:'Nemiriel casts magic missile on a random skeleton and the rest of the party advance together to meet the skeletons in melee',check:intent=>actionPlanSemanticChecks(intent,[plan=>{
+        harnessAssert(plan.steps.length>=2,'AI dropped a compound clause');
+        const spell=plan.steps.find(s=>String(s.actor).toLowerCase().includes('nemiriel')&&normalizeCombatAction(s.action)==='spell');
+        const rest=plan.steps.find(s=>isRelativePartyActor(s.actor));
+        harnessAssert(spell && String(spell.spell).toLowerCase()==='magic missile' && String(spell.targetSelection).toLowerCase()==='random','AI did not preserve named random Magic Missile order');
+        harnessAssert(rest && normalizeCombatMovement(rest.movement,rest.action)==='approach' && normalizeMovementMode(rest.movementMode)==='together' && normalizeCombatAction(rest.action)==='melee','AI did not preserve remaining-party together melee approach');
+      }])},
+      {name:'AI: party-reference paraphrase',setup:()=>installHarnessFixture(),input:'Have Nemiriel use magic missile against whichever skeleton while everyone else closes as a group to attack the skeletons',check:intent=>actionPlanSemanticChecks(intent,[plan=>harnessAssert(plan.steps.length>=2,'AI did not preserve both actors')])},
+      {name:'AI: conditional wilderness travel',setup:()=>{installHarnessFixture();state.combat=null;},input:'Follow the road north until dusk, but stop if we see signs of goblins',check:intent=>actionPlanSemanticChecks(intent,[plan=>{
+        const t=plan.steps.find(s=>s.domain==='travel'); harnessAssert(t,'No travel step returned'); harnessAssert(Boolean(t.until||t.condition||t.constraints?.length),'Travel condition/stopping clause was lost');
+      }])},
+      {name:'AI: NPC inquiry remains semantic action',setup:()=>{installHarnessFixture();state.combat=null;},input:'Ask the innkeeper whether he has heard about people disappearing on the northern road',check:intent=>actionPlanSemanticChecks(intent,[plan=>{
+        const t=plan.steps.find(s=>s.domain==='social'); harnessAssert(t && ['ask','converse'].includes(t.verb),'NPC inquiry was not represented as social action');
+      }])},
+      {name:'AI: inventory transfer remains semantic action',setup:()=>{installHarnessFixture();state.combat=null;},input:'Give Nemiriel the spare torch',check:intent=>actionPlanSemanticChecks(intent,[plan=>{
+        const t=plan.steps.find(s=>s.domain==='inventory'); harnessAssert(t && ['give','use_item','equip'].includes(t.verb),'Inventory transfer was not represented semantically');
+      }])}
+    ];
+  }
+
+  async function runAiParserSmokeTests({display=true}={}){
+    const token=getStoredToken();
+    if(!token){ if(display) renderTerminalEntry('AI PARSER SMOKE TESTS require the saved Cloudflare GAME_TOKEN. Core self-tests do not require AI.','warning'); return null; }
+    const outerState=harnessClone(state), outerAiBusy=aiBusy;
+    const defs=aiParserSmokeTestDefinitions(); const results=[]; const started=Date.now();
+    testHarnessIsolationDepth++;
+    try{
+      for(const test of defs){
+        try{
+          test.setup?.();
+          beginParserTrace(test.input,'ai-smoke');
+          const t0=performance.now();
+          const intent=await interpretWithAi(test.input);
+          test.check(intent);
+          results.push({name:test.name,pass:true,ms:Math.round((performance.now()-t0)*10)/10,intent:safeTraceValue(intent,900)});
+        }catch(error){ results.push({name:test.name,pass:false,error:String(error?.message||error)}); }
+      }
+    }finally{
+      testHarnessIsolationDepth=Math.max(0,testHarnessIsolationDepth-1);
+      state=outerState; aiBusy=outerAiBusy; normalizeCombatState(); updatePanels(); refreshTokenUi();
+    }
+    const passed=results.filter(r=>r.pass).length;
+    const report={suite:'AI PARSER SMOKE TESTS',appVersion:APP_VERSION,specVersion:'1.0',timestamp:new Date().toISOString(),durationMs:Date.now()-started,total:results.length,passed,failed:results.length-passed,results};
+    lastAiParserTestReport=report;
+    updatePanels();
+    if(display){
+      renderTerminalEntry(`AI PARSER SMOKE TESTS — ${passed}/${results.length} PASS${report.failed?`; ${report.failed} FAIL`:''}. These tests exercise the live model/Worker and are reported separately from deterministic engine correctness.`,report.failed?'warning':'system');
+      for(const r of results.filter(x=>!x.pass)) renderTerminalEntry(`AI SMOKE FAIL — ${r.name}: ${r.error}`,'warning');
+    }
+    return report;
+  }
+
+  function combinedTestReport(){
+    return {appVersion:APP_VERSION,specVersion:'1.0',core:lastSelfTestReport,aiParser:lastAiParserTestReport,lastParserTrace:state.lastProblemParserTrace||state.lastActionParserTrace||state.lastParserTrace||null};
+  }
+
+  async function copyLastTestReport(){
+    const report=JSON.stringify(combinedTestReport(),null,2);
+    try{
+      if(navigator.clipboard?.writeText){ await navigator.clipboard.writeText(report); renderTerminalEntry('Test report copied to the clipboard.','system'); }
+      else { window.prompt('Copy the test report:',report); }
+    }catch{ window.prompt('Copy the test report:',report); }
+  }
+
+  window.KnownWorldTestHarness={
+    version:'1.0',
+    runCore:options=>runCoreSelfTests(options||{}),
+    runAiParser:options=>runAiParserSmokeTests(options||{}),
+    getReport:()=>combinedTestReport(),
+    parseCompoundCombat:text=>parseDeterministicCompoundCombatPlan(text),
+    inspectCompoundCombat:text=>{ const saved=harnessClone(state); try{ installHarnessFixture(); return {actorPattern:deterministicCombatActorPattern(),segments:deterministicCombatClauseSegments(text),plan:parseDeterministicCompoundCombatPlan(text)}; } finally { state=saved; normalizeCombatState(); updatePanels(); } },
+    validatePlan:plan=>validateActionPlan(plan)
+  };
+
   function boot(autoload=true) {
     if(autoload){
       const raw=localStorage.getItem(STORAGE.save);
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build adds the Universal Action Plan parser: ordinary tabletop language is interpreted across combat, travel, exploration, NPC/social interaction, commerce, and inventory; complete plans are validated before deterministic execution, with semantic repair and referee handoff when needed.','system');
+    write('This build adds the regression/specification harness around the Universal Action Plan and deterministic engine. Known parser/rules failures are now permanent tests; optional live-AI smoke tests remain separate.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
@@ -5859,6 +6448,9 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow('','all'); });
   if(openRefereeLogButton) openRefereeLogButton.addEventListener('click',()=>{ void openRefereeLog(''); });
+  if(runSelfTestsButton) runSelfTestsButton.addEventListener('click',()=>{ void runCoreSelfTests({display:true}); });
+  if(runAiParserTestsButton) runAiParserTestsButton.addEventListener('click',()=>{ void runAiParserSmokeTests({display:true}); });
+  if(copyTestReportButton) copyTestReportButton.addEventListener('click',()=>{ void copyLastTestReport(); });
   if(closeJournalButton) closeJournalButton.addEventListener('click',closeJournalWindow);
   if(journalSearchButton) journalSearchButton.addEventListener('click',()=>{ void runJournalSearch(); });
   if(journalRecentButton) journalRecentButton.addEventListener('click',()=>{ if(journalSearchInput) journalSearchInput.value=''; if(journalCategory) journalCategory.value='all'; void runJournalSearch('','all'); });
