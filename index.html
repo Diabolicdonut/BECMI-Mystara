@@ -385,7 +385,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.29';
+  const APP_VERSION = '0.3.30';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -3163,9 +3163,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(state.combat.awaitingWeaponChanges) return 'NEXT STEP: distance is resolved. Switch carried weapons now, then type “continue round”.';
     if(state.combat.initiative) return 'The round is currently resolving.';
     const progress=combatOrderProgress();
-    if(progress.complete) return 'NEXT STEP: all living adventurers have orders. Type “resolve round” or tap RESOLVE ROUND.';
+    if(progress.complete) return 'NEXT STEP: all living adventurers have orders. Type “resolve” / “resolve round” or tap RESOLVE ROUND.';
     const missing=progress.total-progress.ordered;
-    return `NEXT STEP: give ${missing} more order${missing===1?'':'s'}. When all orders are ready, type “resolve round” or tap RESOLVE ROUND.`;
+    return `NEXT STEP: give ${missing} more order${missing===1?'':'s'}. When all orders are ready, type “resolve” / “resolve round” or tap RESOLVE ROUND.`;
   }
 
   function announceCombatReady(){
@@ -4569,7 +4569,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function combatHelp(){
-    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — the PC side of that whole melee tries to shift one shared band inward\nAldric opens from goblin 1 — the PC side tries to shift the whole melee one shared band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nAldric advances toward the goblins — movement without an attack\nThe rest advance toward the goblins together — relative group movement at the same pace\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve through movement; the engine then pauses after melee distance is established\nAldric switches to dagger / equip Aldric with spear — change to an already-carried weapon during the post-movement weapon window\ncontinue round — finish Missile, Magic, and Hand-to-Hand after weapon choices\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nMELEE CONTACT: encounter-scale separation must reach 0 yd/ft before hand-to-hand attacks are legal. Once contact is established, every combatant in one connected melee shares the same Close/Normal/Far state. Separate melees may differ. Each side chooses Press/Hold/Open; initiative decides incompatible intentions.\nWEAPON SWITCHING: QUICK weapons keep attack initiative. Readying a CUMBERSOME weapon (normally Matrix Medium-Large or larger, including spears/polearms/two-handed swords) defers only that character's Missile or Hand-to-Hand attack until the end of that phase. Movement and other phases are unchanged. Matrix mode has no blanket initiative penalty simply for using a two-handed weapon.\nRAW mode: initiative winner completes its side sequence before the loser; post-movement weapon windows preserve that ordering, with deferred attacks held until the appropriate later attack opportunity.\nPHASED mode: initiative winner chooses which side moves first; after both sides move and shared melee distance is settled, weapon choices occur, then the initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase except deferred weapon-switch attacks resolve last.`,'system');
+    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — the PC side of that whole melee tries to shift one shared band inward\nAldric opens from goblin 1 — the PC side tries to shift the whole melee one shared band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nAldric advances toward the goblins — movement without an attack\nThe rest advance toward the goblins together — relative group movement at the same pace\nauto orders — fill reasonable orders for PCs who have none\nresolve / resolve round — roll initiative and resolve through movement; the engine then pauses after melee distance is established\nAldric switches to dagger / equip Aldric with spear — change to an already-carried weapon during the post-movement weapon window\ncontinue round — finish Missile, Magic, and Hand-to-Hand after weapon choices\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nMELEE CONTACT: encounter-scale separation must reach 0 yd/ft before hand-to-hand attacks are legal. Once contact is established, every combatant in one connected melee shares the same Close/Normal/Far state. Separate melees may differ. Each side chooses Press/Hold/Open; initiative decides incompatible intentions.\nWEAPON SWITCHING: QUICK weapons keep attack initiative. Readying a CUMBERSOME weapon (normally Matrix Medium-Large or larger, including spears/polearms/two-handed swords) defers only that character's Missile or Hand-to-Hand attack until the end of that phase. Movement and other phases are unchanged. Matrix mode has no blanket initiative penalty simply for using a two-handed weapon.\nRAW mode: initiative winner completes its side sequence before the loser; post-movement weapon windows preserve that ordering, with deferred attacks held until the appropriate later attack opportunity.\nPHASED mode: initiative winner chooses which side moves first; after both sides move and shared melee distance is settled, weapon choices occur, then the initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase except deferred weapon-switch attacks resolve last.`,'system');
   }
 
   function movementOrderChoiceFromText(text){
@@ -4609,7 +4609,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(normalized==='combat help'){combatHelp();return true;}
     let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(Number(m[1]),m[2]);return true;}
     m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(1,m[1]);return true;}
-    if(normalized==='resolve round' || normalized==='resolve combat round' || normalized==='roll initiative'){resolveCombatRound();return true;}
+    if(['resolve','resolve round','resolve the round','resolve this round','resolve combat','resolve combat round','resolve the combat round','resolve it','roll initiative'].includes(normalized)){resolveCombatRound();return true;}
     if(normalized==='auto orders' || normalized==='automatic orders'){autoPcOrders();return true;}
     if(['move us first','us first','we move first','we go first','pcs move first','party moves first','party first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='pc'?'winner':'loser');return true;}
     if(['make them move first','them first','they move first','they go first','foes move first','monsters move first','enemy moves first','enemies move first','foes first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='monster'?'winner':'loser');return true;}
@@ -6194,6 +6194,23 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const rest=state.party.filter(pc=>pc.name!=='Alysha').map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
         harnessAssert(rest.every(o=>o?.movement==='approach' && o?.movementMode==='together' && o?.action==='melee'),"Live textbox routing lost the remaining party's together approach+melee orders");
         harnessAssert(new Set(rest.map(o=>o.movementGroup)).size===1 && rest[0]?.movementGroup,'Live textbox routing did not create one shared movement group');
+      }},
+      {name:'Literal live workflow: compound orders then resolve shorthand',run:async()=>{
+        installHarnessFixture();
+        const original=state.party[0].name;
+        state.party[0].name='Alysha';
+        state.combat.positions.pcs.alysha=state.combat.positions.pcs[String(original).toLowerCase()];
+        delete state.combat.positions.pcs[String(original).toLowerCase()];
+        const text='Alysha casts magic missile on random skeleton while the rest of the party move as a group to attack.';
+        await handle(text);
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'Precondition failed: compound textbox order did not fill all six orders');
+        const beforeRound=Number(state.combat.round)||1;
+        const beforeEvents=state.eventLog.length;
+        await handle('resolve');
+        const newEvents=state.eventLog.slice(beforeEvents);
+        const resolutionStarted=newEvents.some(e=>/combat round\s+\d+\s+initiative/i.test(String(e))) || Number(state.combat?.round||0)>beforeRound || Boolean(state.combat?.initiative) || Boolean(state.combat?.awaitingMoveChoice) || Boolean(state.combat?.awaitingWeaponChanges);
+        harnessAssert(resolutionStarted,'Textbox shorthand “resolve” did not begin deterministic round resolution');
+        harnessAssert(!String(state.lastProblemParserTrace?.input||'').toLowerCase().includes('resolve'),'Resolve shorthand fell through to action parsing');
       }},
       {name:'Compound combat parser tolerates paraphrase and typo around meet',run:()=>{
         installHarnessFixture();
