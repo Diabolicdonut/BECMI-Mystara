@@ -171,7 +171,7 @@
 
       <section>
         <h2>WILDERNESS TRAVEL</h2>
-        <p>Speak naturally. The game first tries deterministic command parsing and then uses the AI only to interpret ambiguous or freeform intent. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The dedicated LOCAL MAP window shows only the current hex and one surrounding ring, or a compact list of known places when you are inside a settlement; you still maintain the campaign map yourself.</p>
+        <p>Speak naturally. Exact engine commands remain deterministic, while ordinary tabletop language is interpreted through a universal semantic Action Plan before the rules engine acts. The rules engine remains authoritative. Each wilderness move still crosses one six-mile hex. The dedicated LOCAL MAP window shows only the current hex and one surrounding ring, or a compact list of known places when you are inside a settlement; you still maintain the campaign map yourself.</p>
       </section>
 
       <section>
@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.25';
+  const APP_VERSION = '0.3.27';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1159,7 +1159,20 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     pendingMonsterXp:0,
     pendingClarification:null,
     lastParserTrace:null,
+    lastActionParserTrace:null,
     lastProblemParserTrace:null,
+    discourse:{
+      lastActionInput:null,
+      lastPlan:null,
+      lastSuccessfulPlan:null,
+      lastFailedPlan:null,
+      lastAddressee:null,
+      lastTopic:null,
+      lastTarget:null,
+      lastDestination:null,
+      recentEntities:[],
+      updatedAt:null
+    },
     combat:null,
     rules:{weaponDamageMode:'MATRIX',weaponAudit:true,weaponMastery:false,generalSkills:false,initiativeMode:'PHASED',retainerXpShare:0.5,developerMode:true},
     party:[]
@@ -1204,27 +1217,40 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     return hasActor && hasOrderVerb;
   }
 
+  function isLikelyActionInput(input){
+    const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    if(!q || isInformationRequest(q) || isRulesInformationRequest(q)) return false;
+    if(/^(?:hello|hi|hey|thanks|thank you|okay|ok|yes|no|sure|got it)[.! ]*$/.test(q)) return false;
+    const actionVerb=/\b(?:go|head|walk|travel|follow|leave|enter|return|camp|rest|wait|search|look|listen|inspect|open|close|light|extinguish|buy|sell|shop|equip|give|take|drop|use|ask|tell|speak|talk|question|negotiate|bargain|threaten|persuade|offer|show|attack|strike|fight|engage|shoot|fire|cast|advance|approach|move|press|withdraw|retreat|hold|stay|remain|charge|rush)\b/.test(q);
+    const actorish=Boolean(namedPcsInText(q).length) || /\b(?:i|we|us|party|group|everyone|everybody|someone|one of us|the rest|remaining|my character)\b/.test(q);
+    return actionVerb || actorish;
+  }
+
+  function looksLikeCompoundActionInstruction(input){
+    const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
+    return /[;]|\b(?:and then|then|while|whereas|after that|before that|until|unless)\b/.test(q) || /\band\s+(?:have|let|make|ask|tell|go|move|follow|buy|take|give|search|open|attack|cast|shoot|the rest|everyone|the party|the group)\b/.test(q);
+  }
+
   function looksLikeCompoundCombatInstruction(input){
     const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
     if(!q) return false;
-    // The fast per-PC parser is intentionally limited to one clause. Any obvious
-    // conjunction/second-clause marker is routed intact to the semantic parser so
-    // it cannot execute the first clause and silently discard the rest.
     return /[;]|\b(?:and then|then|while|whereas)\b/.test(q)
       || /\band\s+(?:have|let|make|the rest|rest of|everyone|everybody|the party|party|the group|group|remaining|everyone else|everybody else)\b/.test(q)
       || /,\s*(?:and\s+)?(?:have|let|make|the rest|rest of|everyone|everybody|the party|party|the group|group|remaining|everyone else|everybody else)\b/.test(q);
   }
 
-  function beginParserTrace(input,stage='combat'){
+  function beginParserTrace(input,stage='universal'){
     state.lastParserTrace={
       input:String(input||'').trim(),
       stage,
       combatRound:state.combat?.active?(Number(state.combat.round)||1):null,
+      actionLike:isLikelyActionInput(input),
       combatLike:isLikelyCombatOrderInput(input),
       localParser:'not tried',
       aiParser:'not tried',
       aiIntent:null,
       aiRepair:'not tried',
+      validation:'not attempted',
       execution:'not attempted',
       detail:null,
       createdAt:Date.now()
@@ -1235,31 +1261,34 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const trace=state.lastParserTrace;
     if(!trace || String(trace.input||'')!==String(input||'').trim()) return;
     Object.assign(trace,patch);
-    const execution=String(trace.execution||'').toLowerCase();
-    const problem=trace.combatLike && /(?:reject|fail|no executable|classified.*referee|fallback|could not|partial|clarif)/.test(execution);
+    if(trace.actionLike) state.lastActionParserTrace=JSON.parse(JSON.stringify(trace));
+    const combined=`${trace.validation||''} ${trace.execution||''} ${trace.detail||''}`.toLowerCase();
+    const problem=trace.actionLike && /(?:reject|fail|no executable|classified.*referee|fallback|could not|partial|clarif|unsupported|repair)/.test(combined);
     if(problem) state.lastProblemParserTrace=JSON.parse(JSON.stringify(trace));
   }
 
-  function parserTraceSummary(maxChars=2600){
+  function parserTraceSummary(maxChars=3000){
     const latest=state.lastParserTrace;
-    const t=(latest?.combatLike ? latest : state.lastProblemParserTrace) || latest;
-    if(!t || !t.input) return 'No parser trace is available for a previous natural-language combat command in this campaign.';
+    const t=(latest?.actionLike ? latest : (state.lastActionParserTrace||state.lastProblemParserTrace)) || latest;
+    if(!t || !t.input) return 'No parser trace is available for a previous natural-language action in this campaign.';
     const out={
       input:t.input,
       stage:t.stage,
       combatRound:t.combatRound,
+      actionLike:t.actionLike,
       localParser:t.localParser,
       aiParser:t.aiParser,
       aiIntent:t.aiIntent,
       aiRepair:t.aiRepair,
+      validation:t.validation,
       execution:t.execution,
       detail:t.detail
     };
-    return safeTraceValue(out,Math.max(600,Number(maxChars)||2600));
+    return safeTraceValue(out,Math.max(700,Number(maxChars)||3000));
   }
 
-  const AI_PROMPT_SOFT_LIMIT=5200;
-  const AI_PROMPT_RETRY_LIMIT=2400;
+  const AI_PROMPT_SOFT_LIMIT=4600;
+  const AI_PROMPT_RETRY_LIMIT=2100;
 
   function boundedAiPrompt(text,maxChars=AI_PROMPT_SOFT_LIMIT){
     const raw=String(text||'');
@@ -1303,7 +1332,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
 
   function buildParserDiagnosticPrompt(question){
-    return `You are the parser/debugging referee for Known World Referee. Explain exactly what happened to the most recent natural-language command using ONLY the diagnostic trace below. Do not guess about events that are absent from the trace. Distinguish: (1) what the player's English meant, (2) what the local parser did, (3) what the AI intent parser returned, and (4) whether the deterministic engine accepted or rejected it. If the command is now representable by the current combat schema, say so. Be concise and practical.\n\nCURRENT COMBAT INTENT MODEL:\n- movement is independent from attack: approach, hold, withdraw, retreat.\n- action is independent: none, melee, missile, spell.\n- movementMode may be together or individual.\n- random targeting is a selector over any eligible foe set.\n- relative party phrases resolve contextually (party, everyone, rest, remaining characters, everyone else, named exclusions).\n\nLAST PARSER TRACE:\n${parserTraceSummary(2200)}\n\nQUESTION:\n${question}`;
+    return `You are the parser/debugging referee for Known World Referee. Explain exactly what happened to the most recent natural-language action using ONLY the diagnostic trace below. Do not guess about events that are absent from the trace. Distinguish: (1) what the player's English meant, (2) what the local parser did, (3) what the AI intent parser returned, and (4) whether the deterministic engine accepted or rejected it. Explain whether the universal semantic plan was valid, what capability/validator decision was made, and whether execution or referee adjudication followed. Be concise and practical.\n\nCURRENT COMBAT INTENT MODEL:\n- movement is independent from attack: approach, hold, withdraw, retreat.\n- action is independent: none, melee, missile, spell.\n- movementMode may be together or individual.\n- random targeting is a selector over any eligible foe set.\n- relative party phrases resolve contextually (party, everyone, rest, remaining characters, everyone else, named exclusions).\n\nLAST PARSER TRACE:\n${parserTraceSummary(2200)}\n\nQUESTION:\n${question}`;
   }
 
   function rng(max) {
@@ -2756,6 +2785,7 @@ W: swollen wooden door · E: cellar`;
     c.halfDisabledTriggered=Boolean(c.halfDisabledTriggered);
     c.initialMonsterCount=Math.max(1,Number(c.initialMonsterCount)||c.monsters.length||1);
     c.auditCounter=Number(c.auditCounter)||0;
+    c.recentMeleeAttempts=Array.isArray(c.recentMeleeAttempts)?c.recentMeleeAttempts.slice(-24):[];
     c.distanceUnit=c.distanceUnit==='yd'?'yd':'ft';
     c.encounterDistance=Math.max(0,Number(c.encounterDistance)||0);
     c.positions=c.positions&&typeof c.positions==='object'?c.positions:{pcs:{},monsters:{}};
@@ -2841,7 +2871,7 @@ W: swollen wooden door · E: cellar`;
     const positions={pcs:{},monsters:{}};
     for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=encounterDistance;
-    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
     void refereeLog(`ENCOUNTER DISTANCE — ${outdoor?'wilderness':'dungeon/site'} test encounter: ${encounterDistanceTrace.dice} = ${distanceDice.join('+')} = ${distanceRoll}; ×10 = ${encounterDistance} ${distanceUnit}. ${encounterDistanceTrace.context}`,
       {type:'encounter_distance',source:'test',context:outdoor?'wilderness':'dungeon',dice:encounterDistanceTrace.dice,rolls:distanceDice.slice(),sum:distanceRoll,multiplier:10,result:encounterDistance,unit:distanceUnit,procedure:encounterDistanceTrace.procedure});
     addEvent(`Combat test encounter began: ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.`);
@@ -2851,14 +2881,30 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function engagementKey(pcName,monsterId){ return `${pcName.toLowerCase()}|${monsterId}`; }
-  function getEngagement(pc,monster){ return state.combat?.engagements?.[engagementKey(pc.name,monster.id)] || null; }
+  function atMeleeContact(pc,monster){ return Boolean(pc&&monster&&combatActive()&&combatSeparation(pc,monster)<=0); }
+  function getEngagement(pc,monster){
+    if(!pc||!monster||!combatActive()) return null;
+    const key=engagementKey(pc.name,monster.id);
+    const engagement=state.combat?.engagements?.[key] || null;
+    // Encounter-scale distance and melee-distance bands are deliberately separate.
+    // A Close/Normal/Far melee cannot exist until the two sides occupy the same
+    // encounter position (0 yd/ft separation). Remove any stale pair record that
+    // violates that invariant rather than allowing it to authorize an attack.
+    if(engagement && !atMeleeContact(pc,monster)){ delete state.combat.engagements[key]; return null; }
+    return engagement;
+  }
 
   // Pair records are retained for backward-compatible saves, but range belongs
   // to the entire connected melee. Every participant in one melee shares one
   // Close/Normal/Far state; separate disconnected melees may differ.
   function meleeGroups(){
     if(!combatActive()) return [];
-    const entries=Object.values(state.combat.engagements||{}).filter(e=>e&&e.pcName&&e.monsterId);
+    const entries=Object.values(state.combat.engagements||{}).filter(e=>{
+      if(!e||!e.pcName||!e.monsterId) return false;
+      const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName).toLowerCase());
+      const monster=state.combat.monsters.find(m=>m.id===e.monsterId);
+      return Boolean(pc&&monster&&atMeleeContact(pc,monster));
+    });
     const unseen=new Set(entries), groups=[];
     while(unseen.size){
       const seed=unseen.values().next().value; unseen.delete(seed);
@@ -2902,12 +2948,17 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function setEngagement(pc,monster,range='normal'){
-    if(!combatActive()) return;
+    if(!combatActive() || !pc || !monster) return false;
+    // In this engine, the tabletop ~5 ft adjacency abstraction is represented as
+    // encounter separation 0. Close/Normal/Far is an intra-melee Matrix state,
+    // not permission to attack across remaining missile-scale distance.
+    if(!atMeleeContact(pc,monster)) return false;
     const pcGroup=meleeGroupFor(pc,null), monsterGroup=meleeGroups().find(g=>g.monsterIds.includes(monster.id));
     const inherited=pcGroup?.range || monsterGroup?.range || (RANGE_ORDER.includes(range)?range:'normal');
     state.combat.engagements[engagementKey(pc.name,monster.id)]={pcName:pc.name,monsterId:monster.id,range:inherited};
     const merged=meleeGroupFor(pc,monster);
     if(merged){ setMeleeGroupRange(merged,inherited); syncMeleeGroupPositions(merged,combatPcPosition(pc)); }
+    return true;
   }
   function clearEngagement(pc,monster){ if(combatActive())delete state.combat.engagements[engagementKey(pc.name,monster.id)]; }
   function clearAllPcEngagements(pc){
@@ -3378,6 +3429,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function pcWeaponAttack(pc,monster,kind='melee',rangeBand='normal',phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && (pc.dead || pc.hp<=0)) || !monster || (!simultaneous && !monsterStillPresent(monster))) return;
+    if(kind==='melee' && combatActive() && combatSeparation(pc,monster)>0){
+      write(`${pc.name}'s hand-to-hand attack on ${monster.name} is blocked: encounter separation is ${combatDistanceLabel(Math.round(combatSeparation(pc,monster)))}; melee requires 0 ${combatDistanceUnit()}.`,'warning');
+      return;
+    }
     const baseItem=equippedWeaponItem(pc);
     const item=baseItem ? {...baseItem,itemId:pc.equippedWeapon.itemId} : null;
     if(!item && kind==='missile'){ write(`${pc.name} has no equipped missile weapon.`,'warning'); return; }
@@ -3413,6 +3468,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return;
+    if(combatActive() && combatSeparation(pc,monster)>0){
+      write(`${monster.name}'s hand-to-hand attack on ${pc.name} is blocked: ${combatDistanceLabel(Math.round(combatSeparation(pc,monster)))} remain.`,'warning');
+      return;
+    }
     const result=attackRoll(monster,pc,'melee',pc.retreatingThisRound?2:0);
     const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
     const weapon=monsterWeaponItem(monster);
@@ -4061,6 +4120,50 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     updatePanels();
   }
 
+
+  function recordMeleeAttempt(attacker,target,separation,allowed,side='unknown'){
+    if(!combatActive()) return;
+    const c=state.combat;
+    if(!Array.isArray(c.recentMeleeAttempts)) c.recentMeleeAttempts=[];
+    const rec={round:c.round,attacker:String(attacker||''),target:String(target||''),separation:Math.max(0,Number(separation)||0),unit:combatDistanceUnit(),allowed:Boolean(allowed),side};
+    c.recentMeleeAttempts.push(rec);
+    c.recentMeleeAttempts=c.recentMeleeAttempts.slice(-24);
+    void refereeLog(`MELEE CONTACT CHECK — round ${c.round}: ${rec.attacker} → ${rec.target}; encounter separation ${Math.round(rec.separation)} ${rec.unit}; ${rec.allowed?'CONTACT, attack eligible':'NOT IN CONTACT, attack blocked'}.`,{type:'melee_contact_check',...rec});
+  }
+
+  function isMeleeDistanceQuestion(input){
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+    if(!q) return false;
+    const melee=/(?:melee|hand[- ]to[- ]hand|close combat|attack(?:s|ed|ing)?|hit(?:ting)?|strike|striking)/.test(q);
+    const distance=/(?:distance|range|reach|away|yards?|yds?|feet|ft|contact)/.test(q);
+    return melee && distance;
+  }
+
+  function answerMeleeDistanceQuestion(input){
+    if(!isMeleeDistanceQuestion(input)) return false;
+    const unit=combatDistanceUnit();
+    const c=state.combat;
+    const attempts=Array.isArray(c?.recentMeleeAttempts)?c.recentMeleeAttempts.slice(-8):[];
+    const blocked=attempts.filter(a=>!a.allowed && Number(a.separation)>0);
+    const current=[];
+    if(combatActive()){
+      for(const pc of livingParty()) for(const m of livingHostiles()){
+        const sep=Math.round(combatSeparation(pc,m));
+        if(sep>0) current.push({pc:pc.name,monster:m.name,separation:sep});
+      }
+    }
+    let detail='';
+    if(blocked.length){
+      const last=blocked[blocked.length-1];
+      detail=` The most recent blocked melee attempt was ${last.attacker} against ${last.target} at ${Math.round(last.separation)} ${last.unit}.`;
+    }else if(current.length){
+      const nearest=current.sort((a,b)=>a.separation-b.separation)[0];
+      detail=` The nearest currently separated PC/foe pair is ${nearest.pc} and ${nearest.monster} at ${nearest.separation} ${unit}; they are not yet in melee.`;
+    }
+    renderTerminalEntry(`REFEREE (ENGINE): Hand-to-hand attacks require encounter separation 0 ${unit}. The normal tabletop idea of being within roughly 5 feet is collapsed to 0 in this position model so encounter/missile distance stays distinct from the Matrix melee bands. Close, Normal, and Far describe weapon distance only after a melee has formed; none of them permits an attack while encounter separation is still above 0.${detail}`,'ai');
+    return true;
+  }
+
   function missilePhase(side,eligibleIds=null,deferredMode='all'){
     if(side==='pc'){
       for(const pc of state.party){
@@ -4099,14 +4202,23 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='melee')continue;
         const target=resolveCombatOrderTarget(o,pc.name); if(!target)continue;
         const e=getEngagement(pc,target);
-        if(!e&&!eligibleIds){write(`${pc.name} cannot reach ${target.name} for a hand-to-hand attack this phase.`,'warning');continue;}
+        const separation=combatSeparation(pc,target);
+        if(!e && separation>0){
+          recordMeleeAttempt(pc.name,target.name,separation,false,'pc');
+          write(`${pc.name} cannot reach ${target.name} for a hand-to-hand attack: ${combatDistanceLabel(Math.round(separation))} remain. Melee begins only at 0 ${combatDistanceUnit()}.`,'warning');
+          continue;
+        }
+        recordMeleeAttempt(pc.name,target.name,separation,true,'pc');
         pcWeaponAttack(pc,target,'melee',e?.range||'normal',eligible,Boolean(eligibleIds));
       }
     } else {
       for(const m of state.combat.monsters){
         const eligible=!eligibleIds||eligibleIds.has(m.id), o=state.combat.monsterOrders[m.id];
         if(!o?.targetName)continue; const pc=findPc(o.targetName); if(!pc)continue;
-        if(!getEngagement(pc,m)&&!eligibleIds)continue; monsterAttack(m,pc,eligible,Boolean(eligibleIds));
+        const e=getEngagement(pc,m), separation=combatSeparation(pc,m);
+        if(!e && separation>0){ recordMeleeAttempt(m.name,pc.name,separation,false,'monster'); continue; }
+        recordMeleeAttempt(m.name,pc.name,separation,true,'monster');
+        monsterAttack(m,pc,eligible,Boolean(eligibleIds));
       }
     }
   }
@@ -4293,16 +4405,24 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function combatHelp(){
-    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — the PC side of that whole melee tries to shift one shared band inward\nAldric opens from goblin 1 — the PC side tries to shift the whole melee one shared band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nAldric advances toward the goblins — movement without an attack\nThe rest advance toward the goblins together — relative group movement at the same pace\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve through movement; the engine then pauses after melee distance is established\nAldric switches to dagger / equip Aldric with spear — change to an already-carried weapon during the post-movement weapon window\ncontinue round — finish Missile, Magic, and Hand-to-Hand after weapon choices\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nMELEE DISTANCE: every combatant in one connected melee shares the same Close/Normal/Far state. Separate melees may differ. Each side chooses Press/Hold/Open; initiative decides incompatible intentions.\nWEAPON SWITCHING: QUICK weapons keep attack initiative. Readying a CUMBERSOME weapon (normally Matrix Medium-Large or larger, including spears/polearms/two-handed swords) defers only that character's Missile or Hand-to-Hand attack until the end of that phase. Movement and other phases are unchanged. Matrix mode has no blanket initiative penalty simply for using a two-handed weapon.\nRAW mode: initiative winner completes its side sequence before the loser; post-movement weapon windows preserve that ordering, with deferred attacks held until the appropriate later attack opportunity.\nPHASED mode: initiative winner chooses which side moves first; after both sides move and shared melee distance is settled, weapon choices occur, then the initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase except deferred weapon-switch attacks resolve last.`,'system');
+    write(`CORE COMBAT COMMANDS\nencounter 4 goblins — start an explicit test fight (also kobolds, orcs, skeletons, wolves)\ncombat / combat status — show combat state plus party weapons, ammunition, spells, and position\ncombat map / position — redraw the current combat-position aid\ncombat party / combat gear / spells — quick party combat reference\nAldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur\nCorwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)\nElwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1\nAldric presses goblin 1 — the PC side of that whole melee tries to shift one shared band inward\nAldric opens from goblin 1 — the PC side tries to shift the whole melee one shared band outward\nAldric withdraws — fighting withdrawal\nAldric retreats — full retreat\nAldric advances toward the goblins — movement without an attack\nThe rest advance toward the goblins together — relative group movement at the same pace\nauto orders — fill reasonable orders for PCs who have none\nresolve round — roll initiative and resolve through movement; the engine then pauses after melee distance is established\nAldric switches to dagger / equip Aldric with spear — change to an already-carried weapon during the post-movement weapon window\ncontinue round — finish Missile, Magic, and Hand-to-Hand after weapon choices\nmove us first / make them move first — when PCs win initiative in PHASED mode\ninitiative mode raw / initiative mode phases\nmemorize Elwyn sleep — choose the spell to be ready after the next overnight camp\n\nMELEE CONTACT: encounter-scale separation must reach 0 yd/ft before hand-to-hand attacks are legal. Once contact is established, every combatant in one connected melee shares the same Close/Normal/Far state. Separate melees may differ. Each side chooses Press/Hold/Open; initiative decides incompatible intentions.\nWEAPON SWITCHING: QUICK weapons keep attack initiative. Readying a CUMBERSOME weapon (normally Matrix Medium-Large or larger, including spears/polearms/two-handed swords) defers only that character's Missile or Hand-to-Hand attack until the end of that phase. Movement and other phases are unchanged. Matrix mode has no blanket initiative penalty simply for using a two-handed weapon.\nRAW mode: initiative winner completes its side sequence before the loser; post-movement weapon windows preserve that ordering, with deferred attacks held until the appropriate later attack opportunity.\nPHASED mode: initiative winner chooses which side moves first; after both sides move and shared melee distance is settled, weapon choices occur, then the initiative winner acts first in Missile, Magic, and Hand-to-Hand. Tied initiative is simultaneous within each phase except deferred weapon-switch attacks resolve last.`,'system');
   }
 
   function parseMovementChoiceCommand(text){
     if(!combatActive() || !state.combat?.awaitingMoveChoice) return false;
     const n=String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
-    const pcFirst = ['move us first','us first','we move first','we go first','party first','pcs first','characters first','our side first'].includes(n) || /\b(us|we|party|pcs|characters|our side)\b.*\b(first|before them)\b/.test(n);
-    const foeFirst = ['make them move first','them first','they move first','they go first','foes first','monsters first','enemy first','enemies first','let them move first'].includes(n) || /\b(them|they|foes|monsters|enemy|enemies|their side)\b.*\b(first|before us)\b/.test(n);
-    if(pcFirst){ chooseMovementOrder(state.combat.initiative?.winner==='pc'?'winner':'loser'); return true; }
-    if(foeFirst){ chooseMovementOrder(state.combat.initiative?.winner==='monster'?'winner':'loser'); return true; }
+    const pcTerms='(?:us|we|the party|party|pcs?|player characters?|characters?|players?|our side)';
+    const foeTerms='(?:them|they|foes?|monsters?|enem(?:y|ies)|their side|opponents?)';
+    const pcFirst =
+      ['move us first','us first','we move first','we go first','party first','pcs first','characters first','our side first','foes move last','foes go last','monsters move last','enemies move last'].includes(n) ||
+      new RegExp(`\b${pcTerms}\b.*\b(?:first|before them|before the foes|before the monsters)\b`).test(n) ||
+      new RegExp(`\b${foeTerms}\b.*\b(?:last|second|after us|after the party|after the pcs)\b`).test(n);
+    const foeFirst =
+      ['make them move first','them first','they move first','they go first','foes first','monsters first','enemy first','enemies first','let them move first','pcs move last','pcs go last','party moves last','party goes last','we move last','we go last','our side moves last'].includes(n) ||
+      new RegExp(`\b${foeTerms}\b.*\b(?:first|before us|before the party|before the pcs)\b`).test(n) ||
+      new RegExp(`\b${pcTerms}\b.*\b(?:last|second|after them|after the foes|after the monsters)\b`).test(n);
+    if(pcFirst && !foeFirst){ chooseMovementOrder(state.combat.initiative?.winner==='pc'?'winner':'loser'); return true; }
+    if(foeFirst && !pcFirst){ chooseMovementOrder(state.combat.initiative?.winner==='monster'?'winner':'loser'); return true; }
     return false;
   }
 
@@ -4322,7 +4442,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(normalized==='initiative mode raw' || normalized==='initiative raw'){setInitiativeMode('RAW');return true;}
     if(normalized==='initiative mode phases' || normalized==='initiative mode phased' || normalized==='phase based initiative' || normalized==='phase-based initiative'){setInitiativeMode('PHASED');return true;}
     if(/^(memorize|prepare)\s+/i.test(input.trim())){prepareSpellCommand(input);return true;}
-    if(combatActive() && !looksLikeCompoundCombatInstruction(input) && parsePcCombatCommand(input))return true;
+    if(combatActive() && !getStoredToken() && !looksLikeCompoundCombatInstruction(input) && parsePcCombatCommand(input))return true;
     if(combatActive() && /^(everyone|everybody|all)\s+attacks?$/i.test(normalized)){autoPcOrders();return true;}
     return false;
   }
@@ -4638,6 +4758,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     merged.mounts=Array.isArray(loaded.mounts)?loaded.mounts:[];
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
     merged.pendingClarification=loaded.pendingClarification&&typeof loaded.pendingClarification==='object'?loaded.pendingClarification:null;
+    merged.discourse={...base.discourse,...(loaded.discourse&&typeof loaded.discourse==='object'?loaded.discourse:{})};
+    merged.discourse.recentEntities=Array.isArray(merged.discourse.recentEntities)?merged.discourse.recentEntities.slice(-12):[];
     if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
     merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
     state=merged; normalizeCombatState(); merged=state;
@@ -4698,7 +4820,7 @@ move us first / make them move first — movement-order choice after a PC initia
 memorize Elwyn sleep — selected spell becomes ready after the next full night's rest
 
 NATURAL-LANGUAGE INTENT
-Speak as you would to a referee: “head toward Stallanford”, “follow the river”, “let's resupply”, or a combat plan. The engine translates supported intent into deterministic actions and asks when meaning is ambiguous.
+Speak as you would to a referee. The Universal Action Plan parser preserves compound instructions across combat, travel, exploration, NPC/social interaction, commerce, and inventory. It validates the complete plan before deterministic execution; understood actions that need judgment are handed to the referee without losing their meaning.
 
 PENHALIGON & EQUIPMENT
 wares — list the current shop's stock
@@ -4744,6 +4866,410 @@ new game / clear`);
     return `Mode: keyed site or dungeon\nLocation: ${site.name}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}\nLocal services: ${(site.services||[]).join(', ')||'none'}\nShop type: ${site.shopType||'none'}\nWeapon damage mode: ${state.rules.weaponDamageMode}`;
   }
 
+
+  // --- Universal semantic action layer ------------------------------------
+  // The AI interprets meaning. This layer resolves references, validates the
+  // complete plan, and dispatches only supported operations to deterministic
+  // engine procedures. Unsupported but understood actions go to the bounded
+  // referee with the semantic plan intact instead of being treated as gibberish.
+
+  const UNIVERSAL_CAPABILITIES={
+    combat:{engine:['combat_order','resolve_round','combat_status'],referee:[]},
+    travel:{engine:['move','travel_to','follow','enter','leave','camp','wait'],referee:['conditional_travel','navigate_freeform','forage']},
+    exploration:{engine:['look','search','light_torch'],referee:['listen','inspect','open','close','manipulate','climb','hide','sneak','force']},
+    social:{engine:['rumors'],referee:['converse','ask','tell','offer','negotiate','bargain','threaten','persuade','deceive','hire']},
+    commerce:{engine:['shop','buy','service'],referee:['sell','trade']},
+    inventory:{engine:['inventory','equip'],referee:['give','drop','take','use_item','split','pack']},
+    meta:{engine:['status','party','create_party'],referee:[]}
+  };
+
+  function ensureDiscourse(){
+    if(!state.discourse || typeof state.discourse!=='object') state.discourse=initialState().discourse;
+    if(!Array.isArray(state.discourse.recentEntities)) state.discourse.recentEntities=[];
+    return state.discourse;
+  }
+
+  function discourseContextForParser(){
+    const d=ensureDiscourse();
+    return {
+      lastActionInput:d.lastActionInput||null,
+      lastPlan:d.lastPlan||null,
+      lastSuccessfulPlan:d.lastSuccessfulPlan||null,
+      lastAddressee:d.lastAddressee||null,
+      lastTopic:d.lastTopic||null,
+      lastTarget:d.lastTarget||null,
+      lastDestination:d.lastDestination||null,
+      recentEntities:(d.recentEntities||[]).slice(-8)
+    };
+  }
+
+  function rememberDiscoursePlan(input,plan,outcome='parsed'){
+    const d=ensureDiscourse();
+    d.lastActionInput=String(input||'').trim()||d.lastActionInput;
+    let snapshot=plan;
+    try{ snapshot=JSON.parse(JSON.stringify(plan)); }catch{}
+    d.lastPlan=snapshot;
+    if(outcome==='success') d.lastSuccessfulPlan=snapshot;
+    if(outcome==='failed') d.lastFailedPlan=snapshot;
+    const steps=Array.isArray(plan?.steps)?plan.steps:[];
+    const entities=[];
+    for(const step of steps){
+      const addressee=String(step.addressee||'').trim();
+      const topic=String(step.topic||'').trim();
+      const target=String(step.target||step.movementTarget||'').trim();
+      const destination=String(step.destination||'').trim();
+      if(addressee){ d.lastAddressee=addressee; entities.push(addressee); }
+      if(topic) d.lastTopic=topic;
+      if(target){ d.lastTarget=target; entities.push(target); }
+      if(destination){ d.lastDestination=destination; entities.push(destination); }
+      for(const pc of namedPcsInText(step.actor||'')) entities.push(pc.name);
+    }
+    d.recentEntities=[...(d.recentEntities||[]),...entities.filter(Boolean)].filter((v,i,a)=>a.lastIndexOf(v)===i).slice(-12);
+    d.updatedAt=Date.now();
+  }
+
+  function sceneNpcNames(){
+    const site=currentSite?.();
+    if(!site) return [];
+    const out=[];
+    const add=value=>{
+      if(!value) return;
+      if(typeof value==='string') out.push(value);
+      else if(Array.isArray(value)) value.forEach(add);
+      else if(typeof value==='object'){
+        if(value.name) out.push(String(value.name));
+        else Object.keys(value).forEach(k=>out.push(k));
+      }
+    };
+    add(site.npcs); add(site.people); add(site.characters);
+    return [...new Set(out)].slice(0,12);
+  }
+
+
+  function previousSuccessfulActionPlan(){
+    const value=ensureDiscourse().lastSuccessfulPlan;
+    if(!value) return null;
+    if(typeof value==='object'){
+      try{return JSON.parse(JSON.stringify(value));}catch{return value;}
+    }
+    if(typeof value==='string'){
+      try{const parsed=JSON.parse(value); return parsed&&typeof parsed==='object'?parsed:null;}catch{return null;}
+    }
+    return null;
+  }
+
+  function isRepeatPreviousActionInput(input){
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
+    return /^(?:do|try|perform|repeat)(?: the| that| it)? same(?: thing| action| order| orders| move)?(?: again)?$/.test(q) || /^(?:same again|again|repeat that|do that again|do it again|repeat the last (?:action|order|orders|move))$/.test(q);
+  }
+
+  async function repeatPreviousActionPlan(input){
+    const plan=previousSuccessfulActionPlan();
+    if(!plan){ write('There is no previous successful action plan to repeat.','warning'); return true; }
+    beginParserTrace(input,combatActive()?'combat-repeat':'universal-repeat');
+    patchParserTrace(input,{localParser:'repeat shorthand resolved from discourse memory',aiParser:'not needed'});
+    return executeActionPlan(plan,input,{allowRepair:true});
+  }
+
+  function semanticSceneContext(){
+    const known=knownPlaceIds().slice(0,20).map(id=>({id,name:sites[id]?.name||id,aliases:(sites[id]?.aliases||[]).slice(0,4)}));
+    const base={
+      mode:state.mode,
+      location:state.mode==='wilderness'?(currentHex()?.name||`hex ${state.hex.q},${state.hex.r}`):(currentSite()?.name||state.location),
+      party:livingParty().map(p=>({name:p.name,role:p.role,equipped:equippedWeaponItem(p)?.name||'unarmed',preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)})),
+      knownDestinations:known,
+      npcs:sceneNpcNames(),
+      discourse:discourseContextForParser()
+    };
+    if(state.mode==='wilderness'){
+      const hex=currentHex();
+      base.terrain=TERRAIN[hex.terrain]?.name||hex.terrain;
+      base.features={roads:featureDirections('road'),rivers:featureDirections('river'),trails:featureDirections('trail'),site:hex.site?(hex.siteLabel||sites[hex.site]?.name):null};
+    }else{
+      const site=currentSite();
+      base.services=site?.services||[];
+      base.exits=canSee()?visibleSiteExits():[];
+      base.shopType=site?.shopType||null;
+    }
+    if(combatActive()) base.combat={round:state.combat.round,foes:livingHostiles().map(m=>m.name),melees:meleeGroups().map((g,i)=>({id:i+1,pcs:g.pcNames,foes:g.monsterIds.map(id=>state.combat.monsters.find(m=>m.id===id)?.name||id),range:g.range}))};
+    return base;
+  }
+
+  function capabilityPromptText(){
+    return 'combat: combat_order, resolve_round, combat_status; travel: move, travel_to, follow, enter, leave, camp, wait; exploration: look, search(area), light_torch; social: rumors plus referee-adjudicated converse/ask/tell/negotiate/threaten/persuade; commerce: shop, buy, service; inventory: inventory, equip; meta: status, party, create_party. Other sensible actions may still be represented in ACTION_PLAN and will be sent to the referee/validator rather than discarded.';
+  }
+
+  function normalizeUniversalDomain(value,step={}){
+    let d=String(value||'').trim().toLowerCase();
+    if(['combat','travel','exploration','social','commerce','inventory','meta'].includes(d)) return d;
+    const v=String(step.verb||step.intent||step.operation||'').toLowerCase();
+    if(step.movement || step.spell || ['combat_order','attack','melee','missile','cast','shoot'].includes(v)) return 'combat';
+    if(['move','travel','travel_to','follow','enter','leave','camp','wait','navigate','forage'].includes(v)) return 'travel';
+    if(['look','search','listen','inspect','open','close','manipulate','climb','hide','sneak','light_torch'].includes(v)) return 'exploration';
+    if(['converse','talk','speak','ask','tell','offer','negotiate','bargain','threaten','persuade','deceive','hire','rumors'].includes(v)) return 'social';
+    if(['shop','buy','sell','trade','service'].includes(v)) return 'commerce';
+    if(['inventory','equip','give','drop','take','use_item','split','pack'].includes(v)) return 'inventory';
+    if(['status','party','create_party','resolve_round','combat_status'].includes(v)) return 'meta';
+    return d||'exploration';
+  }
+
+  function normalizeUniversalVerb(value,domain,step={}){
+    let v=String(value||step.intent||step.operation||'').trim().toLowerCase().replace(/[ -]+/g,'_');
+    const aliases={
+      go:'move',walk:'move',head:'move',move_direction:'move',
+      travel:'travel_to',go_to:'travel_to',head_to:'travel_to',journey_to:'travel_to',
+      follow_feature:'follow',follow_road:'follow',follow_river:'follow',
+      exit:'leave',return_to_wilderness:'leave',make_camp:'camp',rest:'wait',
+      examine:'inspect',check:'inspect',listen_at:'listen',light:'light_torch',
+      talk:'converse',speak:'converse',speak_to:'converse',talk_to:'converse',question:'ask',inquire:'ask',
+      purchase:'buy',wares:'shop',resupply:'service',
+      attack:'combat_order',melee:'combat_order',missile:'combat_order',cast:'combat_order',shoot:'combat_order',
+      combat:'combat_order',order:'combat_order',resolve:'resolve_round'
+    };
+    v=aliases[v]||v;
+    if(domain==='combat' && !v) v='combat_order';
+    return v;
+  }
+
+  function normalizeActionStep(raw,index=0){
+    const step=raw&&typeof raw==='object'?{...raw}:{};
+    step.domain=normalizeUniversalDomain(step.domain||step.type||step.category,step);
+    step.verb=normalizeUniversalVerb(step.verb||step.intent||step.operation,step.domain,step);
+    step.id=String(step.id||`step-${index+1}`);
+    if(step.actor==null && step.actors!=null) step.actor=Array.isArray(step.actors)?step.actors.join(', '):step.actors;
+    if(step.destination==null && step.place!=null) step.destination=step.place;
+    if(step.addressee==null && step.npc!=null) step.addressee=step.npc;
+    if(step.topic==null && step.subject!=null) step.topic=step.subject;
+    if(step.targetSelection==null && step.selector!=null) step.targetSelection=step.selector;
+    if(step.movementMode==null && step.formation!=null) step.movementMode=step.formation;
+    if(step.item==null && step.object!=null && step.domain==='commerce') step.item=step.object;
+    if(step.durationMinutes==null && Number(step.minutes)>0) step.durationMinutes=Number(step.minutes);
+    return step;
+  }
+
+  function normalizeActionPlan(raw,originalInput=''){
+    if(!raw || typeof raw!=='object') return {kind:'ACTION_PLAN',confidence:0,summary:'',steps:[],source:String(originalInput||'')};
+    let steps=raw.steps||raw.actions||raw.plan||[];
+    if(!Array.isArray(steps)) steps=[];
+    return {
+      kind:'ACTION_PLAN',
+      confidence:Number(raw.confidence??1),
+      summary:String(raw.summary||raw.goal||'').trim(),
+      steps:steps.map(normalizeActionStep),
+      source:String(originalInput||raw.source||'').trim(),
+      clarification:raw.clarification||null
+    };
+  }
+
+  function resolveSemanticDestination(value){
+    const q=String(value||'').trim().toLowerCase();
+    if(!q) return {id:null,matches:[]};
+    const ids=knownPlaceIds();
+    if(ids.includes(q)) return {id:q,matches:[q]};
+    const matches=ids.filter(id=>siteAliases(id).includes(q) || String(sites[id]?.name||'').toLowerCase()===q || siteAliases(id).some(a=>q.includes(a)||a.includes(q)));
+    return {id:matches.length===1?matches[0]:null,matches};
+  }
+
+  function actionPlanExecutionClass(step){
+    const domain=step.domain,verb=step.verb;
+    const group=UNIVERSAL_CAPABILITIES[domain];
+    if(!group) return 'referee';
+    if(group.engine.includes(verb)) return 'engine';
+    if(group.referee.includes(verb)) return 'referee';
+    return 'referee';
+  }
+
+  function validateActionPlan(plan){
+    const normalized=normalizeActionPlan(plan,plan?.source||'');
+    const issues=[]; const refereeReasons=[]; const warnings=[];
+    if(!normalized.steps.length) issues.push('The semantic plan contains no action steps.');
+    normalized.steps.forEach((step,i)=>{
+      const label=`Step ${i+1}`;
+      if(!step.verb){ issues.push(`${label} has no action verb.`); return; }
+      if(step.domain==='combat'){
+        if(!combatActive()) issues.push(`${label} is a combat order but no combat is active.`);
+        if(step.verb==='combat_order'){
+          const action=normalizeCombatAction(step.action||'none');
+          const movement=normalizeCombatMovement(step.movement,step.action||'');
+          if(!action) issues.push(`${label} has unsupported combat action “${String(step.action||'')}”.`);
+          if(!movement) issues.push(`${label} has unsupported combat movement “${String(step.movement||'')}”.`);
+          if(!step.actor) issues.push(`${label} does not identify an acting PC or party group.`);
+        }
+      }
+      if(step.domain==='travel'){
+        if(step.verb==='move'){
+          const dir=normalizeDirection(String(step.direction||''));
+          if(!dir) issues.push(`${label} needs a valid direction.`); else step.direction=dir;
+        }
+        if(step.verb==='travel_to'){
+          const r=resolveSemanticDestination(step.destination||step.target);
+          if(!r.id){
+            if(r.matches.length>1) issues.push(`${label} destination is ambiguous: ${r.matches.map(id=>sites[id]?.name||id).join(' or ')}.`);
+            else issues.push(`${label} destination “${String(step.destination||step.target||'')}” is not a currently known mapped destination.`);
+          } else step.destination=r.id;
+        }
+        if(step.verb==='follow' && !step.feature) issues.push(`${label} needs the feature to follow (road, river, trail, etc.).`);
+        if(step.until || step.condition || step.stopWhen || step.unless) refereeReasons.push(`${label} includes a conditional/stopping instruction that the current deterministic travel loop does not yet model generically.`);
+      }
+      if(step.domain==='exploration' && step.verb==='search'){
+        const target=String(step.target||'').trim().toLowerCase();
+        if(target && !/^(?:area|room|place|surroundings|here|everything|the area|the room)$/.test(target)) refereeReasons.push(`${label} is a targeted search (“${step.target}”); the current deterministic search procedure searches the whole current area.`);
+      }
+      if(step.domain==='commerce' && step.verb==='buy' && !step.item && !step.purchase) issues.push(`${label} does not identify what to buy.`);
+      if(step.domain==='inventory' && step.verb==='equip' && (!step.actor || !step.item)) issues.push(`${label} needs both an adventurer and an item to equip.`);
+      if(actionPlanExecutionClass(step)==='referee') refereeReasons.push(`${label} (${step.domain}:${step.verb}) is understood semantically but requires referee adjudication or a procedure not yet implemented deterministically.`);
+    });
+    if(combatActive() && normalized.steps.some(s=>s.domain!=='combat' && !['meta'].includes(s.domain))) refereeReasons.push('The plan mixes active combat with a noncombat procedure; the engine will not partially execute that mixed plan.');
+    return {ok:issues.length===0,plan:normalized,issues:[...new Set(issues)],refereeReasons:[...new Set(refereeReasons)],warnings};
+  }
+
+  function actionPlanToCombatOrders(plan){
+    return plan.steps.filter(s=>s.domain==='combat'&&s.verb==='combat_order').map(step=>({
+      actor:step.actor,
+      movement:step.movement,
+      movementTarget:step.movementTarget||step.target,
+      movementMode:step.movementMode,
+      movementGroup:step.movementGroup,
+      action:step.action||'none',
+      target:step.target,
+      spell:step.spell,
+      rangeIntent:step.rangeIntent,
+      rangeBand:step.rangeBand,
+      targetSelection:step.targetSelection
+    }));
+  }
+
+  function actionPlanSummary(plan,maxChars=2200){
+    return safeTraceValue({summary:plan?.summary||'',steps:(plan?.steps||[]).map(s=>({domain:s.domain,verb:s.verb,actor:s.actor||null,target:s.target||null,destination:s.destination||null,feature:s.feature||null,movement:s.movement||null,movementMode:s.movementMode||null,action:s.action||null,spell:s.spell||null,addressee:s.addressee||null,topic:s.topic||null,condition:s.condition||s.until||s.stopWhen||null}))},Math.max(600,Number(maxChars)||2200));
+  }
+
+  async function executeUniversalEngineStep(step,originalInput){
+    switch(`${step.domain}:${step.verb}`){
+      case 'combat:resolve_round': resolveCombatRound(); return true;
+      case 'combat:combat_status': combatStatus(); return true;
+      case 'travel:move': return Boolean(move(step.direction));
+      case 'travel:travel_to': return Boolean(travelToSite(step.destination,{enter:step.enter!==false}));
+      case 'travel:follow': return Boolean(followFeature(step.feature||'road',step.direction||null));
+      case 'travel:enter': return Boolean(enterSite());
+      case 'travel:leave': { const before=`${state.mode}:${state.location||''}`; leaveSite(); return before!==`${state.mode}:${state.location||''}`; }
+      case 'travel:camp': camp(); return true;
+      case 'travel:wait': {
+        const minutes=Math.max(10,Math.round(Number(step.durationMinutes)||10));
+        if(state.mode==='wilderness') advanceClock(minutes,`Party waited ${minutes} minutes in the wilderness.`);
+        else advanceExploration(minutes,`Party waited ${minutes} minutes.`);
+        write(`${minutes} minutes pass.`); return true;
+      }
+      case 'exploration:look': look(); return true;
+      case 'exploration:search': search(); return true;
+      case 'exploration:light_torch': lightTorch(); return true;
+      case 'social:rumors': hearRumor(); return true;
+      case 'commerce:shop': listWares(); return true;
+      case 'commerce:buy': {
+        const phrase=step.purchase || `buy ${step.quantity?`${step.quantity} `:''}${step.item||''}${step.recipient?` for ${step.recipient}`:''}`;
+        return Boolean(buyCommand(phrase));
+      }
+      case 'commerce:service': return Boolean(goForService(step.service||step.target||'resupply'));
+      case 'inventory:inventory': inventory(); return true;
+      case 'inventory:equip': equipCommand(`equip ${step.actor} with ${step.item}`); return true;
+      case 'meta:status': status(); return true;
+      case 'meta:party': party(); return true;
+      case 'meta:create_party': openPartyCreator(false); return true;
+      case 'meta:resolve_round': resolveCombatRound(); return true;
+      case 'meta:combat_status': combatStatus(); return true;
+      default: return false;
+    }
+  }
+
+  function semanticPlanRefereePrompt(playerInput,plan,reasons=[]){
+    return `You are the bounded tabletop referee for Known World Referee. The universal semantic parser has ALREADY understood the player's in-world action. Do not reinterpret it as a different command and do not say the English was unclear unless the plan itself contains an actual ambiguity. JavaScript remains authoritative for state and dice.\n\nSEMANTIC ACTION PLAN:\n${actionPlanSummary(plan,1300)}\n\nWHY THIS REACHED THE REFEREE:\n${safeTraceValue(reasons.join(' | ')||'The action requires referee judgment.',600)}\n\nVISIBLE SCENE:\n${safeTraceValue(semanticSceneContext(),900)}\n\nPLAYER WORDING:\n${String(playerInput||'').slice(0,600)}\n\nRespond as a concise 1980s-style referee. If the loaded scene supplies enough facts to answer an NPC/social interaction, respond naturally without inventing hidden facts. If a deterministic procedure is genuinely missing, say exactly which procedure is missing and preserve the understood intent. Never claim to change game state, roll dice, move characters, spend resources, reveal secrets, or create NPC facts that the engine did not supply.`;
+  }
+
+  async function callSemanticPlanReferee(playerInput,plan,reasons=[]){
+    return callReferee(playerInput,{semanticPlan:plan,semanticReasons:reasons});
+  }
+
+  function universalRepairPrompt(playerInput,previousIntent,validationReasons=[]){
+    return `You are a REPAIR PASS for the universal intent parser of a deterministic BECMI game. Return ONE raw JSON object only. The player's wording is authoritative. Produce kind ACTION_PLAN whenever the player is describing an in-world action, even if that action may require referee adjudication. Do NOT use REFEREE merely because the engine lacks a procedure; the validator decides that. Preserve every clause, actor, target, sequencing word, condition, exclusion, random selector, formation instruction, destination, topic, and stopping condition.\n\nACTION_PLAN shape: {"kind":"ACTION_PLAN","confidence":0.0,"summary":"...","steps":[{"id":"1","domain":"combat|travel|exploration|social|commerce|inventory|meta","verb":"...","actor":null,"target":null,"destination":null,"direction":null,"feature":null,"movement":null,"movementTarget":null,"movementMode":null,"movementGroup":null,"action":null,"spell":null,"targetSelection":null,"rangeIntent":null,"rangeBand":null,"addressee":null,"topic":null,"speechAct":null,"item":null,"quantity":null,"recipient":null,"service":null,"durationMinutes":null,"until":null,"condition":null,"constraints":[]}]}. Combat movement=approach|hold|withdraw|retreat; combat action=none|melee|missile|spell.\n\nCAPABILITIES/ONTOLOGY: ${capabilityPromptText()}\nSCENE: ${safeTraceValue(semanticSceneContext(),850)}\nPREVIOUS RESULT: ${safeTraceValue(previousIntent,600)}\nVALIDATOR NOTES: ${validationReasons.join(' | ').slice(0,500)}\nPLAYER: ${String(playerInput||'').slice(0,750)}`;
+  }
+
+  async function repairUniversalPlanWithAi(playerInput,previousIntent,validationReasons=[]){
+    const token=getStoredToken();
+    if(!token || aiBusy) return null;
+    aiBusy=true; enterButton.disabled=true; testAiButton.disabled=true; setAiStatus('off','repairing semantic plan…');
+    try{
+      const req=await workerRequest(universalRepairPrompt(playerInput,previousIntent,validationReasons),token,compactIntentInterpreterPrompt(playerInput));
+      const {response,data}=req;
+      if(!response.ok){ patchParserTrace(playerInput,{aiRepair:`HTTP ${response.status}`,detail:safeTraceValue(data.error||data.text||'Worker error',700)}); return null; }
+      const intent=extractJsonObject(data.text);
+      if(!intent || typeof intent.kind!=='string'){ patchParserTrace(playerInput,{aiRepair:'invalid JSON/intent'}); return null; }
+      patchParserTrace(playerInput,{aiRepair:safeTraceValue(intent,2400)});
+      setAiStatus('good','connected'); return intent;
+    }catch(error){ console.error('Universal intent repair failed',error); patchParserTrace(playerInput,{aiRepair:'request failed',detail:safeTraceValue(error?.message||error,700)}); return null; }
+    finally{ aiBusy=false; enterButton.disabled=false; testAiButton.disabled=false; }
+  }
+
+  async function executeActionPlan(rawPlan,originalInput,{allowRepair=true}={}){
+    let validation=validateActionPlan(normalizeActionPlan(rawPlan,originalInput));
+    patchParserTrace(originalInput,{validation:validation.ok?`valid semantic plan (${validation.plan.steps.length} step${validation.plan.steps.length===1?'':'s'})`:`validation failed: ${validation.issues.join(' | ')}`,detail:validation.refereeReasons.length?validation.refereeReasons.join(' | '):null});
+    rememberDiscoursePlan(originalInput,validation.plan,'parsed');
+
+    if(!validation.ok){
+      if(allowRepair && getStoredToken()){
+        const repaired=await repairUniversalPlanWithAi(originalInput,rawPlan,validation.issues);
+        if(repaired && String(repaired.kind||'').toUpperCase()==='ACTION_PLAN') return executeActionPlan(repaired,originalInput,{allowRepair:false});
+      }
+      rememberDiscoursePlan(originalInput,validation.plan,'failed');
+      const question=validation.issues[0] || 'I need one more detail before I can carry out that plan.';
+      rememberPendingClarification(originalInput,question);
+      patchParserTrace(originalInput,{execution:'semantic plan needs clarification'});
+      write(question,'warning'); return true;
+    }
+
+    if(validation.refereeReasons.length){
+      rememberDiscoursePlan(originalInput,validation.plan,'failed');
+      patchParserTrace(originalInput,{execution:'semantic plan understood; routed intact to referee because one or more procedures require adjudication'});
+      await callSemanticPlanReferee(originalInput,validation.plan,validation.refereeReasons);
+      return true;
+    }
+
+    const combatSteps=validation.plan.steps.filter(s=>s.domain==='combat'&&s.verb==='combat_order');
+    const nonCombatSteps=validation.plan.steps.filter(s=>!(s.domain==='combat'&&s.verb==='combat_order'));
+    if(combatSteps.length){
+      if(nonCombatSteps.length){
+        const reasons=['The plan mixes combat orders with other deterministic procedures; this build will not partially execute a mixed-domain action plan.'];
+        rememberDiscoursePlan(originalInput,validation.plan,'failed');
+        patchParserTrace(originalInput,{execution:'mixed-domain plan routed to referee rather than partially executed'});
+        await callSemanticPlanReferee(originalInput,validation.plan,reasons); return true;
+      }
+      const result=applyCombatPlan(actionPlanToCombatOrders(validation.plan),originalInput);
+      patchParserTrace(originalInput,{execution:result.ok?`universal combat plan applied (${result.applied} PC orders)`:'universal combat plan rejected',detail:result.issues?.join(' | ')||null});
+      if(!result.ok){
+        if(allowRepair && getStoredToken()){
+          const repaired=await repairUniversalPlanWithAi(originalInput,rawPlan,result.issues||[]);
+          if(repaired && String(repaired.kind||'').toUpperCase()==='ACTION_PLAN') return executeActionPlan(repaired,originalInput,{allowRepair:false});
+        }
+        rememberDiscoursePlan(originalInput,validation.plan,'failed');
+        write(`I understood the complete combat plan, but the deterministic engine rejected it${result.issues?.length?`: ${result.issues.join(' ')}`:'.'}`,'warning'); return true;
+      }
+      rememberDiscoursePlan(originalInput,validation.plan,'success'); clearPendingClarification(); return true;
+    }
+
+    // All semantic validation completes before the first deterministic mutation.
+    // Straightforward supported sequential steps are then executed in order.
+    for(let i=0;i<validation.plan.steps.length;i++){
+      const step=validation.plan.steps[i];
+      const ok=await executeUniversalEngineStep(step,originalInput);
+      if(!ok){
+        rememberDiscoursePlan(originalInput,validation.plan,'failed');
+        patchParserTrace(originalInput,{execution:`engine step ${i+1} could not complete`,detail:`${step.domain}:${step.verb}`});
+        write(`The plan was understood, but step ${i+1} (${step.verb.replace(/_/g,' ')}) could not be completed from the current game state. Later steps were not attempted.`,'warning'); return true;
+      }
+    }
+    rememberDiscoursePlan(originalInput,validation.plan,'success'); clearPendingClarification();
+    patchParserTrace(originalInput,{execution:`universal action plan executed (${validation.plan.steps.length} step${validation.plan.steps.length===1?'':'s'})`});
+    return true;
+  }
+
   function parseLocalIntent(input) {
     const normalized = input.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
 
@@ -4783,11 +5309,26 @@ new game / clear`);
   }
 
   function intentInterpreterPrompt(playerInput) {
-    const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
-    const pending=pendingClarificationPrompt();
-    return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, COMBAT_PLAN, COMBAT_STATUS, RESOLVE_ROUND, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"orders\":[],\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
-- BUY means the player is actually purchasing something; copy their requested purchase phrase into purchase.
-- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, ordinary language should be interpreted as combat intent whenever reasonably possible; do not treat combat movement as wilderness MOVE. COMBAT_PLAN may include orders:[{actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement is approach, hold, withdraw, or retreat. action is none, melee, missile, or spell. movement and action are INDEPENDENT: a character may approach without attacking, stay put and cast, withdraw and shoot if legal, etc. movementMode is together or individual. Use movementMode="together" when the player says the actors stay together, keep formation, move at the same pace, maintain the same distance from the foe while advancing, or an equivalent idea. If one together-moving formation is expanded into multiple orders, give every member the same movementGroup value; do not create a different one-person group for each character. movementTarget names the foe or foe group being approached. rangeIntent is ONLY for an already-formed melee's shared Close/Normal/Far state and is press, hold, or open. Do not confuse "stay together / maintain the same distance while advancing" with melee rangeIntent=hold. Use only visible PC and foe names/types or semantic group references. RESOLVE_ROUND resolves declared orders.\n- Area/group spells such as Sleep preserve the foe set or area named by the player. “Cast sleep on the skeletons” means the skeleton group; do NOT collapse that wording to Skeleton 1 or ask for a numbered individual target.\n- Random targeting is semantic and applies to ANY eligible foe set, not to particular creature names. If the player says “random”, “randomly”, “at random”, “whichever”, or an equivalent phrase (for example “a random goblin”, “one of the orcs at random”, “a random enemy”, or “pick whichever wolf”), that is a COMPLETE targeting instruction. Preserve the described foe set in target and set targetSelection to "random". Never replace it with a numbered foe and never ask which member of that set they mean. The deterministic engine selects the actual eligible foe when the action resolves.\n- Party/group references are semantic, not exact-keyword matches. Whole-group phrases such as “the party”, “our group”, “everyone”, “everybody”, “all of us”, “we”, “the characters”, or natural paraphrases mean all living PCs. Relative phrases such as “the rest of the party”, “the rest”, “the rest of them”, “everyone else”, “the remaining characters”, “remaining adventurers”, “the others”, or natural paraphrases mean every living PC except PC(s) given a distinct action elsewhere in the same instruction. Named exclusions such as “everyone except Luis”, including multiple named exclusions, must also be preserved correctly. You may leave these natural group phrases in actor; the engine resolves them contextually. Do not spend a prepared spell unless the player actually says to cast it.\n- Example semantic decomposition: ‘Luis casts Magic Missile at a random skeleton and the rest advance toward the skeletons together’ => one order for Luis with movement=hold, action=spell, target='skeletons', targetSelection='random'; one order for 'the rest' with movement=approach, movementTarget='skeletons', movementMode='together', action=none. This pattern is generic: do not hard-code these names or creature types.\n- If PENDING CLARIFICATION below is not “none”, treat the current PLAYER INPUT primarily as the player's answer to that immediately preceding question unless it clearly starts a new unrelated command. Reconstruct the COMPLETE intended engine intent from the original instruction plus the current reply. A fragment such as “a random skeleton” is valid when it answers a target question; do not ask who should act again.\n- Use CLARIFY only when two materially different interpretations remain plausible after applying any pending clarification context. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>({name:m.name,equipped:equippedWeaponItem(m)?.name||'unarmed',missile:Boolean(equippedWeaponItem(m)?.missile),preparedSpell:spellReadyName(m)||null,spellReady:Boolean(m.spellReady)}))}) : 'none'}\nPENDING CLARIFICATION: ${pending}\n\nPLAYER INPUT:\n${playerInput}`;
+    const pending=safeTraceValue(pendingClarificationPrompt(),500);
+    return `You are the UNIVERSAL SEMANTIC PARSER for a deterministic Mentzer BECMI game. Return ONE raw JSON object only. Never narrate, roll, or change state.
+
+KINDS: ACTION_PLAN for ANY in-world action (even if not implemented); CLARIFY only for material ambiguity; REFEREE only for questions/table talk.
+ACTION_PLAN={"kind":"ACTION_PLAN","confidence":0.0,"summary":"...","steps":[{"id":"1","domain":"combat|travel|exploration|social|commerce|inventory|meta","verb":"...","actor":null,"target":null,"destination":null,"direction":null,"feature":null,"movement":null,"movementTarget":null,"movementMode":null,"movementGroup":null,"action":null,"spell":null,"targetSelection":null,"rangeIntent":null,"rangeBand":null,"addressee":null,"topic":null,"speechAct":null,"item":null,"quantity":null,"recipient":null,"service":null,"durationMinutes":null,"until":null,"condition":null,"constraints":[]}]}
+
+RULES:
+- Preserve EVERY clause and its order. Keep then/while/before/after/until/unless/if, exclusions, quantities, topics, route preferences, stopping conditions and constraints. Never parse only the first recognizable clause.
+- Use scene + discourse to resolve pronouns and short clarification answers when reasonably clear. Never discard already-understood parts of the prior instruction. Phrases such as ‘do the same again’, ‘repeat that’, or ‘do it again’ mean repeat the last successful ACTION_PLAN when one exists; do not ask the player to restate it merely because the wording is shorthand.
+- Do not invent named entities. Descriptive referents (innkeeper, door, river, skeletons) are valid targets/addressees.
+- Party/everyone/we = whole party; rest/remaining/everyone else = party minus separately ordered actors. Preserve named exclusions.
+- random/whichever/at random => targetSelection="random" over the described eligible set; never choose the individual.
+- Combat step verb=combat_order; movement=approach|hold|withdraw|retreat and action=none|melee|missile|spell are independent. together/as a group/same pace => movementMode="together" and one shared movementGroup when useful. rangeIntent=press|hold|open is only the shared Close/Normal/Far melee state. Area spells such as Sleep keep the group target.
+- Travel keeps destination/direction/feature AND conditions/stopping instructions. Social actions remain ACTION_PLAN with addressee/topic/speechAct; do not punt them to REFEREE just because adjudication may be needed.
+- Unknown-but-reasonable physical actions are still ACTION_PLAN; the validator decides capability.
+
+VOCABULARY: ${capabilityPromptText()}
+SCENE/DISCOURSE: ${safeTraceValue(semanticSceneContext(),1150)}
+PENDING: ${pending}
+PLAYER: ${String(playerInput||'').slice(0,800)}`;
   }
 
   function extractJsonObject(text) {
@@ -4799,12 +5340,7 @@ new game / clear`);
   }
 
   function compactIntentInterpreterPrompt(playerInput){
-    const combat=state.combat?.active?{
-      round:state.combat.round,
-      foes:livingHostiles().map(m=>m.name),
-      pcs:livingParty().map(p=>({name:p.name,preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}))
-    }:null;
-    return `Return ONE raw JSON object only. Interpret the player's command for a deterministic BECMI engine. During combat use COMBAT_PLAN whenever the request can be represented. Each order may contain actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection. movement=approach|hold|withdraw|retreat; action=none|melee|missile|spell; movementMode=together|individual. Movement and action are independent. Relative party phrases such as rest, remaining characters, everyone else are valid actor expressions. Random/whichever is a complete random target selector. A spellcaster may hold and cast while the remaining party approaches a foe group together. Use REFEREE only for an action genuinely outside this model. Combat=${JSON.stringify(combat)}. Player=${playerInput}`;
+    return `ONE raw JSON only. In-world action=>ACTION_PLAN; question/table talk=>REFEREE; CLARIFY only for material ambiguity. Preserve ALL clauses, sequence, conditions, exclusions, group/relative references, random selectors and formation. steps use domain combat|travel|exploration|social|commerce|inventory|meta plus verb and relevant fields. Combat: verb=combat_order, movement=approach|hold|withdraw|retreat, action=none|melee|missile|spell, movementMode=together|individual. Social actions are ACTION_PLAN even if referee adjudication is needed. Scene=${safeTraceValue(semanticSceneContext(),650)} Pending=${safeTraceValue(pendingClarificationPrompt(),300)} Player=${String(playerInput||'').slice(0,550)}`;
   }
 
   function combatRepairPrompt(playerInput,previousIntent){
@@ -4874,6 +5410,7 @@ new game / clear`);
     }
     if(kind!=='REFEREE') clearPendingClarification();
     switch (kind) {
+      case 'ACTION_PLAN': return executeActionPlan(intent,originalInput,{allowRepair:true});
       case 'MOVE': {
         const direction = normalizeDirection(String(intent.direction || ''));
         if (!direction) { write('Which direction do you want to go?','warning'); return true; }
@@ -4955,7 +5492,7 @@ new game / clear`);
       `Current initiative mode: ${state.rules?.initiativeMode||'RAW'}. RAW is side initiative; PHASED is the explicit house/alternative phase-based mode.`,
       'Retainer XP rule for this game: adventuring retainers count as 1/2 share; ordinary hirelings/mercenaries/specialists normally do not receive adventuring XP unless they have effectively become retainers.',
       'Monster morale policy in this build: morale events can apply to a group, but each affected monster makes its own morale check so some may flee while others hold.',
-      'Combat position uses exact encounter distance until melee engagement. Each connected melee has one shared Close/Normal/Far state for every participant; separate melees can have different states.',
+      'Combat position uses exact encounter distance until melee engagement. In this build, hand-to-hand contact is represented by encounter separation exactly 0 yd/ft (the tabletop ~5 ft adjacency is collapsed to 0 so it stays distinct from missile-scale distance). Only after contact exists does each connected melee use one shared Close/Normal/Far state; separate melees can have different states.',
       'Custom melee-distance procedure in this build: each side of a melee chooses Press, Hold, or Open. The shared state is settled after movement; when intentions conflict, initiative determines which side imposes its intention.',
       'Weapon switching in combat: after melee distance is settled, a character may switch to a weapon already carried. Quick weapons do not alter initiative. Readying a Cumbersome weapon defers only that character’s attack in the applicable Missile or Hand-to-Hand phase; movement, morale, magic, and melee-distance control are unaffected. Cumbersome normally means Matrix size Medium-Large or larger unless a weapon overrides its handling.',
       'Matrix weapon mode does not use the Rules Cyclopedia blanket initiative-loss rule merely because a weapon is two-handed; two-handed weapons still require both hands and normally preclude shield use.'
@@ -5042,7 +5579,7 @@ ${playerInput}`;
   }
 
   function compactParserDiagnosticPrompt(question){
-    return `Explain this parser failure concisely using only this trace. State what the player meant, what parser/repair returned, and why the engine accepted or rejected it. Do not invent facts. Schema: movement approach|hold|withdraw|retreat; action none|melee|missile|spell; movementMode together|individual; relative party actors and random target selectors are supported. TRACE=${parserTraceSummary(1200)} QUESTION=${String(question||'').slice(0,500)}`;
+    return `Explain this universal parser trace concisely. State what the player meant, what semantic plan/repair returned, what validator decided, and whether deterministic execution or referee adjudication followed. Do not invent facts. ACTION_PLAN spans combat/travel/exploration/social/commerce/inventory/meta and preserves compound clauses, conditions, groups and selectors. TRACE=${parserTraceSummary(1150)} QUESTION=${String(question||'').slice(0,350)}`;
   }
 
   async function callParserDiagnosticReferee(question){
@@ -5066,12 +5603,17 @@ ${playerInput}`;
   }
 
   function buildParserFallbackPrompt(playerInput){
-    return `You are the bounded referee for a deterministic BECMI browser game. The player issued a combat action that the intent layer handed to referee judgment instead of an executable COMBAT_PLAN. Explain the action plainly. If it can be represented by the CURRENT COMBAT INTENT MODEL below, give the semantic decomposition the parser should have produced; do not narrate that the action happened and do not alter state. If it truly requires an unimplemented procedure, say exactly what is missing.\n\nCURRENT COMBAT INTENT MODEL:\nmovement: approach | hold | withdraw | retreat\naction: none | melee | missile | spell\nmovementMode: together | individual\nrandom targeting: semantic selector over any eligible foe set\nrelative party actors: whole party, rest/remaining/everyone else, named exclusions\nmelee rangeIntent: press | hold | open, only for shared Close/Normal/Far melee state\n\nCURRENT VISIBLE COMBAT:\n${state.combat?.active?JSON.stringify({round:state.combat.round,pcs:livingParty().map(p=>p.name),foes:livingHostiles().map(m=>m.name)}):'none'}\n\nPARSER TRACE:\n${parserTraceSummary(1800)}\n\nPLAYER ACTION:\n${playerInput}`;
+    return `You are the bounded parser-fallback referee for a deterministic BECMI browser game. The player gave an in-world action, but the semantic parser/repair did not produce an executable or structured plan. Use ONLY the trace and visible scene below. Explain what the player appears to mean and whether it should fit the Universal Action Plan ontology. Do not narrate execution or alter state. If a deterministic procedure is missing, identify that procedure precisely rather than calling the English unclear.
+
+UNIVERSAL ONTOLOGY: ${capabilityPromptText()}
+VISIBLE SCENE: ${safeTraceValue(semanticSceneContext(),900)}
+PARSER TRACE: ${parserTraceSummary(1300)}
+PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   }
 
   function buildUltraCompactRefereePrompt(playerInput,options={}){
     if(options.connectionTest) return 'Connection test. Reply exactly: The referee is listening.';
-    if(options.parserFallback) return `Combat parser fallback. Explain briefly whether this action fits the schema and give the intended decomposition; do not narrate execution. Schema movement=approach|hold|withdraw|retreat; action=none|melee|missile|spell; movementMode=together|individual; relative party actors and random targets supported. Trace=${parserTraceSummary(900)} Action=${String(playerInput||'').slice(0,700)}`;
+    if(options.parserFallback) return `Universal parser fallback. Explain the intended ACTION_PLAN from this trace; do not narrate execution or invent state. Ontology spans combat/travel/exploration/social/commerce/inventory/meta. Trace=${parserTraceSummary(800)} Action=${String(playerInput||'').slice(0,500)}`;
     const combat=state.combat?.active?{round:state.combat.round,foes:livingHostiles().map(m=>m.name),orders:state.combat.pcOrders}:null;
     const party=livingParty().map(p=>({name:p.name,role:p.role,hp:`${p.hp}/${p.maxHp}`,ac:p.ac,spell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}));
     return `You are the bounded referee for a deterministic Mentzer BECMI browser game. JavaScript owns state and dice; answer only the player's question and do not invent missing facts. DeveloperMode=${Boolean(state.rules?.developerMode)}. Rules=${JSON.stringify(state.rules)}. Location=${safeTraceValue(locationContext(),500)}. Party=${JSON.stringify(party)}. Combat=${safeTraceValue(combat,800)}. Question=${String(playerInput||'').slice(0,900)}`;
@@ -5097,18 +5639,27 @@ ${playerInput}`;
     if (!options.silent) write('The referee considers the situation…','system');
 
     try {
-      const journalContext = options.connectionTest || options.parserFallback ? '' : await journalContextFor(playerInput);
-      const refereeContext = options.connectionTest || options.parserFallback || !state.rules?.developerMode ? '' : await refereeContextFor(playerInput);
-      const requestPrompt=options.parserFallback?buildParserFallbackPrompt(playerInput):buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext,refereeContext);
-      const req=await workerRequest(requestPrompt,token,buildUltraCompactRefereePrompt(playerInput,options));
+      const semanticMode=Boolean(options.semanticPlan);
+      const journalContext = options.connectionTest || options.parserFallback || semanticMode ? '' : await journalContextFor(playerInput);
+      const refereeContext = options.connectionTest || options.parserFallback || semanticMode || !state.rules?.developerMode ? '' : await refereeContextFor(playerInput);
+      const requestPrompt=semanticMode?semanticPlanRefereePrompt(playerInput,options.semanticPlan,options.semanticReasons||[]):options.parserFallback?buildParserFallbackPrompt(playerInput):buildRefereePrompt(playerInput,Boolean(options.connectionTest),journalContext,refereeContext);
+      const retryPrompt=semanticMode?`Semantic referee. Preserve the parsed action; do not invent state changes. Plan=${actionPlanSummary(options.semanticPlan,700)} Reasons=${safeTraceValue(options.semanticReasons||[],300)} Scene=${safeTraceValue(semanticSceneContext(),450)} Player=${String(playerInput||'').slice(0,350)}`:buildUltraCompactRefereePrompt(playerInput,options);
+      const req=await workerRequest(requestPrompt,token,retryPrompt);
       const {response,data}=req;
       if (!response.ok) {
         const error = new Error(data.error || `Worker returned HTTP ${response.status}.`);
         error.status = response.status;
         throw error;
       }
-      const text = typeof data.text === 'string' ? data.text.trim() : '';
-      if (!text) throw new Error('The Worker returned no referee text.');
+      let text = typeof data.text === 'string' ? data.text.trim() : '';
+      if(!text || /(?:referee )?returned no narration/i.test(text)){
+        if(isMeleeDistanceQuestion(playerInput)){
+          setAiStatus('good','connected');
+          answerMeleeDistanceQuestion(playerInput);
+          return 'Answered from deterministic combat state.';
+        }
+        if(!text) throw new Error('The Worker returned no referee text.');
+      }
       setAiStatus('good','connected');
       if (options.connectionTest) write(`AI connection successful: ${text}`,'ai');
       else {
@@ -5157,17 +5708,13 @@ ${playerInput}`;
     const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
-    // Campaign lifecycle commands must remain available regardless of the current
-    // encounter/combat state. In particular, NEW GAME already has its own
-    // destructive-action confirmation and must never be mistaken for a combat order.
+    // Explicit engine/UI commands remain deterministic and bypass AI.
     if (normalized === 'new game' || normalized === 'restart') return newGame();
     if (normalized === 'load') return load();
-
     if (handleCombatDirect(input,normalized)) return;
-
     if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
     if (normalized === 'wares' || normalized === 'shop' || normalized === 'list wares') return listWares();
-    if (normalized.startsWith('buy ')) return buyCommand(input);
+    if (normalized.startsWith('buy ') && !looksLikeCompoundActionInstruction(input)) return buyCommand(input);
     if (normalized === 'rumor' || normalized === 'rumors' || normalized === 'gossip' || normalized.includes("what's the talk") || normalized.includes('whats the talk')) return hearRumor();
     if (normalized === 'funds' || normalized === 'money' || normalized === 'treasury') return funds();
     if (normalized.startsWith('equip ')) return equipCommand(input);
@@ -5183,16 +5730,15 @@ ${playerInput}`;
       if(shorthand && !shorthand.includes('/')) return explainWeaponMatrix(shorthand);
       write('Use: matrix dagger / medium / hard / close','warning'); return;
     }
-    // Matrix-reference questions have a deterministic local answer.
     if(isNaturalMatrixQuestion(input)) return explainWeaponMatrix(input,{natural:true});
-
-    // Parser/execution questions use a compact diagnostic trace instead of the
-    // full referee context. This prevents Developer Mode from obscuring the actual
-    // parser failure or overflowing the Worker request.
     if(isParserDiagnosticQuestion(input)) return callParserDiagnosticReferee(input);
+    if(isRepeatPreviousActionInput(input)) return repeatPreviousActionPlan(input);
 
-    // Informational questions are never combat orders. Route them before the
-    // party/combat guards so rules and referee questions work at any time.
+    // Deterministic engine-mechanics questions should be answerable from the
+    // authoritative state even if the AI referee is unavailable or returns no prose.
+    if(answerMeleeDistanceQuestion(input)) return;
+
+    // Informational questions/table talk are routed to the referee before action parsing.
     if(isInformationRequest(input) || isRulesInformationRequest(input)){
       if(state.rules?.developerMode && isDeveloperAuditQuestion(input) && await developerAuditAnswer(input)) return;
       return callReferee(input);
@@ -5200,58 +5746,18 @@ ${playerInput}`;
 
     const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
-      write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning');
-      return;
+      write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning'); return;
     }
 
-    // Layer 1: explicit engine commands remain deterministic and require no AI call.
-    // During combat, natural-language orders must reach the combat parser instead of
-    // being rejected by the exploration-command guard.
-    if (combatActive()) {
-      const safeDuringCombat=['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','party','inventory','supplies','status','events','log','journal','save','help','?','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ');
-      if(!safeDuringCombat){
-        if(state.combat?.awaitingMoveChoice){
-          if(parseMovementChoiceCommand(input)) return;
-          write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning');
-          return;
-        }
-        beginParserTrace(input,'combat');
-        if(parseLocalGroupCombat(input)){ patchParserTrace(input,{localParser:'local group parser handled command',execution:'handled locally'}); return; }
-        const localCombatIntent=parseLocalIntent(input);
-        patchParserTrace(input,{localParser:localCombatIntent?safeTraceValue(localCombatIntent,1800):'no local intent match'});
-        if(localCombatIntent && ['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(String(localCombatIntent.kind||'').toUpperCase()) && await executeIntent(localCombatIntent,input)) return;
-        const aiCombatIntent=await interpretWithAi(input);
-        if(aiCombatIntent){
-          const combatKind=String(aiCombatIntent.kind||'').toUpperCase();
-          if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(combatKind) && await executeIntent(aiCombatIntent,input)) return;
-          if(combatKind==='REFEREE'){
-            // Conversational input during combat ("hello", ordinary questions, table talk)
-            // should go to the normal referee. Only likely combat orders get the repair /
-            // parser-fallback treatment.
-            if(!isLikelyCombatOrderInput(input)){
-              patchParserTrace(input,{execution:'Conversational input routed to normal referee.'});
-              return callReferee(input);
-            }
-            patchParserTrace(input,{execution:'First AI pass classified likely combat order as REFEREE; attempting structured combat repair.'});
-            const repaired=await repairCombatIntentWithAi(input,aiCombatIntent);
-            if(repaired){
-              const repairedKind=String(repaired.kind||'').toUpperCase();
-              if(['COMBAT_PLAN','COMBAT_STATUS','RESOLVE_ROUND','CLARIFY'].includes(repairedKind) && await executeIntent(repaired,input)){
-                patchParserTrace(input,{execution:'Structured combat repair produced an executable intent.'});
-                return;
-              }
-              if(repairedKind==='REFEREE') patchParserTrace(input,{execution:'Both AI passes classified the likely combat order as referee judgment.'});
-            }
-            return callReferee(input,{parserFallback:true});
-          }
-        }
-        patchParserTrace(input,{execution:'no executable combat intent returned'});
-        write('I could not turn that into executable combat orders. Type “why did that command fail?” for the parser trace, or rephrase the action.','warning');
-        return;
-      }
+    // Combat movement-order choice is a special engine handshake and must be answered directly.
+    if(combatActive() && state.combat?.awaitingMoveChoice){
+      if(parseMovementChoiceCommand(input)) return;
+      write('Movement order is waiting. Say “us first” / “we move first” or “them first” / “make them move first”.','warning'); return;
     }
+
+    // Remaining exact/simple commands continue to work offline and without parser latency.
     if (directDirection) return move(directDirection);
-    if (naturalDirection) return move(naturalDirection);
+    if (naturalDirection && !combatActive()) return move(naturalDirection);
     if (normalized === 'look' || normalized === 'l' || normalized === 'look around') return look();
     if (normalized === 'map' || normalized === 'local map') { showAsciiMap(); return; }
     if (normalized === 'hex view' || normalized === 'wilderness map') { showAsciiMap('hex'); return; }
@@ -5260,23 +5766,10 @@ ${playerInput}`;
     if (normalized === 'enter' || normalized === 'enter site' || normalized === 'enter town' || normalized === 'enter village' || normalized === 'enter building') return enterSite();
     if (normalized === 'leave' || normalized === 'exit' || normalized === 'return to wilderness') return leaveSite();
     if (normalized === 'camp' || normalized === 'make camp' || normalized === 'camp overnight') return camp();
-    if (normalized === 'search' || normalized.startsWith('search ')) return search();
-    if (normalized === 'wait' || normalized === 'rest 10 minutes') {
-      if (state.mode === 'wilderness') advanceClock(10,'Party waited ten minutes in the wilderness.');
-      else advanceExploration(10,'Party waited one exploration turn.');
-      write('Ten minutes pass.');
-      return;
-    }
+    if (normalized === 'search') return search();
+    if (normalized === 'wait' || normalized === 'rest 10 minutes') { if(state.mode==='wilderness') advanceClock(10,'Party waited ten minutes in the wilderness.'); else advanceExploration(10,'Party waited one exploration turn.'); write('Ten minutes pass.'); return; }
     if (normalized === 'light torch' || normalized === 'torch') return lightTorch();
-    if (normalized === 'extinguish torch' || normalized === 'put out torch') {
-      if (state.torchLit) {
-        state.torchLit = false;
-        addEvent('Torch extinguished.');
-        write('The torch is extinguished.');
-        updatePanels();
-      } else write('No torch is burning.');
-      return;
-    }
+    if (normalized === 'extinguish torch' || normalized === 'put out torch') { if(state.torchLit){ state.torchLit=false; addEvent('Torch extinguished.'); write('The torch is extinguished.'); updatePanels(); } else write('No torch is burning.'); return; }
     if (normalized === 'party') return party();
     if (normalized === 'inventory' || normalized === 'supplies') return inventory();
     if (normalized === 'status') return status();
@@ -5290,27 +5783,51 @@ ${playerInput}`;
     if (normalized === 'events') return events();
     if (normalized === 'save') return save();
     if (normalized === 'help' || normalized === '?') return help();
-    if (normalized === 'clear') { terminal.innerHTML = ''; return; }
+    if (normalized === 'clear') { terminal.innerHTML=''; return; }
     if (normalized.startsWith('roll ')) return roll(input.slice(5));
     if (normalized === 'test ai' || normalized === 'test referee') return callReferee('connection test',{connectionTest:true});
     if (normalized.startsWith('referee ')) { const q=input.slice(8); if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
-    if (normalized.startsWith('ask referee ')) {
-      const q=input.slice(12);
-      if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q);
-      if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return;
-      return callReferee(q);
+    if (normalized.startsWith('ask referee ')) { const q=input.slice(12); if(isParserDiagnosticQuestion(q)) return callParserDiagnosticReferee(q); if(state.rules?.developerMode && isDeveloperAuditQuestion(q) && await developerAuditAnswer(q)) return; return callReferee(q); }
+
+    // Universal semantic pipeline. Natural language reaches the AI FIRST when an
+    // access token exists. Local regex parsers are compatibility/offline fallback,
+    // never the primary owner of a compound instruction.
+    beginParserTrace(input,combatActive()?'combat':'universal');
+    const token=getStoredToken();
+    if(token){
+      const aiIntent=await interpretWithAi(input);
+      if(aiIntent){
+        const kind=String(aiIntent.kind||'').toUpperCase();
+        if(await executeIntent(aiIntent,input)) return;
+        if(kind==='REFEREE' && isLikelyActionInput(input)){
+          patchParserTrace(input,{execution:'AI classified an action as REFEREE; universal repair pass started.'});
+          const repaired=await repairUniversalPlanWithAi(input,aiIntent,['In-world actions should be ACTION_PLAN, not REFEREE.']);
+          if(repaired && await executeIntent(repaired,input)) return;
+          patchParserTrace(input,{execution:'universal repair could not produce an executable/structured action plan'});
+          return callReferee(input,{parserFallback:true});
+        }
+        if(kind==='REFEREE') return callReferee(input);
+      }
     }
 
-    // Layer 2: fast local semantic parsing for common table-language instructions.
-    const localIntent = parseLocalIntent(input);
-    if (localIntent && await executeIntent(localIntent,input)) return;
+    // Offline / AI-failure compatibility path. These parsers are intentionally
+    // secondary so they cannot steal the first clause of a richer instruction.
+    if(combatActive()){
+      if(!looksLikeCompoundCombatInstruction(input) && parseLocalGroupCombat(input)){ patchParserTrace(input,{localParser:'local combat fallback handled command',execution:'handled locally after AI unavailable/failed'}); return; }
+      const localCombatIntent=parseLocalIntent(input);
+      patchParserTrace(input,{localParser:localCombatIntent?safeTraceValue(localCombatIntent,1400):'no local combat fallback match'});
+      if(localCombatIntent && await executeIntent(localCombatIntent,input)) return;
+      patchParserTrace(input,{execution:'no executable semantic or local combat intent returned'});
+      write('I could not turn that into executable combat orders. Type “why did that command fail?” for the parser trace.','warning'); return;
+    }
 
-    // Layer 3: bounded AI intent parsing. The model may choose an engine intent,
-    // ask for clarification, or hand the action to the referee. It never edits state.
-    const aiIntent = await interpretWithAi(input);
-    if (aiIntent && await executeIntent(aiIntent,input)) return;
+    const localIntent=parseLocalIntent(input);
+    patchParserTrace(input,{localParser:localIntent?safeTraceValue(localIntent,1400):'no local fallback match'});
+    if(localIntent && await executeIntent(localIntent,input)) return;
 
-    // Layer 4: genuine freeform referee/adjudication request.
+    // A non-question that remains unmatched is still passed to the referee as a
+    // freeform attempted action/conversation, with the trace preserved.
+    patchParserTrace(input,{execution:'no executable universal/local intent; routed to referee'});
     return callReferee(input);
   }
 
@@ -5320,7 +5837,7 @@ ${playerInput}`;
       if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
-    write('This build keeps the persistent transcript/autosave and adds semantic combat movement, two-pass intent repair, parser diagnostics, and hard-capped AI requests with automatic compact retry.','system');
+    write('This build adds the Universal Action Plan parser: ordinary tabletop language is interpreted across combat, travel, exploration, NPC/social interaction, commerce, and inventory; complete plans are validated before deterministic execution, with semantic repair and referee handoff when needed.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');
     if(!state.party.length){
