@@ -379,7 +379,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.20';
+  const APP_VERSION = '0.3.22';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1157,6 +1157,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     rumorsHeard:[],
     campaignCreated:false,
     pendingMonsterXp:0,
+    pendingClarification:null,
     combat:null,
     rules:{weaponDamageMode:'RAW',weaponAudit:false,weaponMastery:false,generalSkills:false,initiativeMode:'RAW',retainerXpShare:0.5,developerMode:false},
     party:[]
@@ -1164,6 +1165,27 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   let state = initialState();
   let aiBusy = false;
+
+  function clearPendingClarification(){
+    state.pendingClarification=null;
+  }
+
+  function rememberPendingClarification(originalInput,question){
+    state.pendingClarification={
+      originalInput:String(originalInput||'').trim(),
+      question:String(question||'').trim(),
+      combat:Boolean(state.combat?.active),
+      combatRound:state.combat?.active?Number(state.combat.round)||1:null,
+      createdAt:Date.now()
+    };
+  }
+
+  function pendingClarificationPrompt(){
+    const p=state.pendingClarification;
+    if(!p || typeof p!=='object' || !p.originalInput || !p.question) return 'none';
+    if(p.combat && (!state.combat?.active || Number(state.combat.round)!==Number(p.combatRound))){ clearPendingClarification(); return 'none'; }
+    return JSON.stringify({originalInstruction:p.originalInput,questionAsked:p.question});
+  }
 
   function rng(max) {
     state.seed = (Math.imul(1664525, state.seed) + 1013904223) >>> 0;
@@ -2983,9 +3005,13 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function combatOrderText(o){
     if(!o) return 'none';
     const target=o.targetId?state.combat?.monsters.find(m=>m.id===o.targetId)?.name||o.targetId:null;
+    const randomTarget=String(o.targetSelection||'').toLowerCase()==='random'
+      ? `random ${String(o.targetQuery||'foe').replace(/^(?:a|an|the)\s+/i,'').trim()||'foe'}`
+      : null;
     const pieces=[o.action];
     if(o.spell) pieces.push(o.spell);
     if(target) pieces.push(`→ ${target}`);
+    else if(randomTarget) pieces.push(`→ ${randomTarget}`);
     if(o.rangeBand) pieces.push(`(${o.rangeBand} range)`);
     if(o.rangeIntent) pieces.push(`[${o.rangeIntent}]`);
     return pieces.join(' ');
@@ -3292,7 +3318,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(!canCastPrepared(pc,spell)){ write(`${pc.name} does not have ${spell} memorized and ready. Prepared spell: ${spellReadyName(pc)||'none'}${pc.spellReady?'':' (spent)'}.`,'warning'); return; }
     const lower=spell.toLowerCase();
     if(lower==='magic missile'){
-      const target=state.combat.monsters.find(m=>m.id===order.targetId) || livingHostiles()[0]; if(!target){return;}
+      const target=resolveCombatOrderTarget(order,pc.name) || (order.targetSelection?null:livingHostiles()[0]); if(!target){ write(`${pc.name} has no eligible target for ${spell}.`,'warning'); return; }
       pc.spellReady=false; const dmg=rollDamageExpression('1d6+1').total; write(`${pc.name} casts Magic Missile at ${target.name}. It strikes automatically for ${dmg} damage.`,'system'); damageMonster(target,dmg,'Magic Missile');
     } else if(lower==='sleep'){
       pc.spellReady=false; const budgetRoll=rollDice(2,8); let budget=budgetRoll.total; const affected=[];
@@ -3302,7 +3328,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     } else if(lower==='shield'){
       pc.spellReady=false; pc.shieldSpellRounds=120; write(`${pc.name} casts Shield. For 2 turns, ${pc.name}'s AC is no worse than 2 against missiles and 4 against other attacks; Shield may also stop Magic Missile with a saving throw.`,'system');
     } else if(lower==='charm person'){
-      const target=state.combat.monsters.find(m=>m.id===order.targetId) || livingHostiles()[0]; if(!target){return;}
+      const target=resolveCombatOrderTarget(order,pc.name) || (order.targetSelection?null:livingHostiles()[0]); if(!target){ write(`${pc.name} has no eligible target for ${spell}.`,'warning'); return; }
       if(target.immuneCharm || target.kind!=='humanoid'){ write(`${pc.name} casts Charm Person, but ${target.name} is not a valid creature for that spell.`,'warning'); return; }
       pc.spellReady=false; const save=monsterSavingThrow(target,'spells',0);
       write(`${pc.name} casts Charm Person on ${target.name}. ${save.success?`${target.name} resists the enchantment.`:`${target.name}'s hostility suddenly falters.`}`,'system');
@@ -3334,6 +3360,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(!pc || pc.dead || pc.hp<=0){ write('That adventurer cannot act.','warning'); return false; }
     if(state.combat.initiative){ write(state.combat.awaitingWeaponChanges?'Orders are locked. Distance is resolved; only weapon changes are accepted before continuing the round.':'The round is already being resolved; orders are locked until it ends.','warning'); return false; }
     state.combat.pcOrders[pc.name.toLowerCase()]={...(state.combat.pcOrders[pc.name.toLowerCase()]||{}),...order};
+    clearPendingClarification();
     write(`${pc.name}: ${combatOrderText(state.combat.pcOrders[pc.name.toLowerCase()])}.`,'system'); updatePanels(); announceCombatReady(); return true;
   }
 
@@ -3376,50 +3403,181 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const current=state.combat.pcOrders[pc.name.toLowerCase()]||{action:'hold'};
       if(target) current.targetId=target.id; current.rangeIntent='open'; if(/and\s+attacks?/i.test(r)) current.action='melee'; return setPcCombatOrder(pc,current);
     }
-    const cast=/^(?:cast|casts)\s+(charm person|magic missile|sleep|shield)(?:\s+(?:at|on)\s+(.+))?$/i.exec(r);
-    if(cast){ const spell=cast[1].replace(/\b\w/g,c=>c.toUpperCase()).replace('Magic Missile','Magic Missile').replace('Charm Person','Charm Person'); const target=cast[2]?combatTargetFromText(cast[2]):null; return setPcCombatOrder(pc,{action:'spell',spell,targetId:target?.id||null}); }
+    const cast=/^(?:cast|casts|use|uses)\s+(charm person|magic missile|sleep|shield)(?:\s+(?:at|on|against)\s+(.+))?$/i.exec(r);
+    if(cast){
+      const spell=cast[1].replace(/\b\w/g,c=>c.toUpperCase()).replace('Magic Missile','Magic Missile').replace('Charm Person','Charm Person');
+      const random=cast[2]?randomTargetSpec(cast[2]):null;
+      if(random) return setPcCombatOrder(pc,{action:'spell',spell,targetId:null,...random});
+      const target=cast[2]?combatTargetFromText(cast[2]):null;
+      return setPcCombatOrder(pc,{action:'spell',spell,targetId:target?.id||null});
+    }
     const missile=/^(?:shoot|shoots|fire|fires)\s+(?:at\s+)?(.+)$/i.exec(r);
-    if(missile){ const band=/\b(short|medium|long)\s+range\b/i.exec(missile[1])?.[1]?.toLowerCase()||'medium'; const target=combatTargetFromText(missile[1]); if(!target){write('Which foe is the missile target?','warning');return true;} return setPcCombatOrder(pc,{action:'missile',targetId:target.id,rangeBand:band}); }
+    if(missile){
+      const band=/\b(short|medium|long)\s+range\b/i.exec(missile[1])?.[1]?.toLowerCase()||'medium';
+      const random=randomTargetSpec(missile[1]);
+      if(random) return setPcCombatOrder(pc,{action:'missile',targetId:null,rangeBand:band,...random});
+      const target=combatTargetFromText(missile[1]); if(!target){write('Which foe is the missile target?','warning');return true;}
+      return setPcCombatOrder(pc,{action:'missile',targetId:target.id,rangeBand:band});
+    }
     const melee=/^(?:attack|attacks|strike|strikes|fight|fights)\s+(?:at\s+)?(.+)$/i.exec(r);
-    if(melee){ const target=combatTargetFromText(melee[1]); if(!target){write('Which foe is the melee target?','warning');return true;} return setPcCombatOrder(pc,{action:'melee',targetId:target.id}); }
+    if(melee){
+      const random=randomTargetSpec(melee[1]);
+      if(random) return setPcCombatOrder(pc,{action:'melee',targetId:null,...random});
+      const target=combatTargetFromText(melee[1]); if(!target){write('Which foe is the melee target?','warning');return true;}
+      return setPcCombatOrder(pc,{action:'melee',targetId:target.id});
+    }
     return false;
   }
 
-  function combatTargetsFromText(text){
-    const q=String(text||'').toLowerCase().replace(/[^a-z0-9\s-]/g,' ').replace(/\b(the|those|these|all|remaining)\b/g,' ').replace(/\s+/g,' ').trim();
-    const foes=livingHostiles();
-    if(!q) return foes;
-    const exact=foes.find(m=>m.name.toLowerCase()===q); if(exact) return [exact];
-    const singular=q.endsWith('s')?q.slice(0,-1):q;
-    const matches=foes.filter(m=>{
-      const n=m.name.toLowerCase();
-      const base=n.replace(/\s+\d+$/,'');
-      return n===q || base===q || base===singular || n.startsWith(q+' ') || n.startsWith(singular+' ');
-    });
-    return matches.length?matches:foes;
+  function normalizeCombatTargetQuery(text){
+    return String(text||'').toLowerCase().replace(/[’]/g,"'").replace(/[_-]+/g,' ').replace(/[^a-z0-9'\s]/g,' ')
+      .replace(/\b(?:at|on|against|toward|towards|from|a|an|the|those|these|all|remaining|random|randomly|any|one|some|either|whichever|of|among|group|one of)\b/g,' ')
+      .replace(/\s+/g,' ').trim();
   }
 
-  function groupCombatActors(actor){
-    const a=String(actor||'').toLowerCase().trim();
-    if(['party','the party','everyone','everybody','all','all of us','we','pcs','characters'].includes(a)) return livingParty();
+  function singularizeCombatQuery(text){
+    const words=String(text||'').trim().split(/\s+/).filter(Boolean);
+    if(!words.length) return '';
+    let w=words[words.length-1];
+    if(w==='wolves') w='wolf';
+    else if(w.endsWith('ies') && w.length>3) w=w.slice(0,-3)+'y';
+    else if(/(?:ches|shes|xes|zes|ses)$/.test(w) && w.length>3) w=w.slice(0,-2);
+    else if(w.endsWith('s') && !w.endsWith('ss') && w.length>2) w=w.slice(0,-1);
+    words[words.length-1]=w;
+    return words.join(' ');
+  }
+
+  function combatTargetCandidates(text,{fallbackAll=false}={}){
+    const foes=livingHostiles();
+    const raw=String(text||'').trim();
+    const rawNorm=raw.toLowerCase().replace(/[^a-z0-9\s_-]/g,' ').replace(/\s+/g,' ').trim();
+    if(rawNorm){
+      const exact=foes.find(m=>m.id===rawNorm || m.name.toLowerCase()===rawNorm);
+      if(exact) return [exact];
+    }
+    const q=normalizeCombatTargetQuery(raw);
+    const generic=!q || /^(?:foe|foes|enemy|enemies|monster|monsters|opponent|opponents|target|targets|them|one)$/.test(q);
+    if(generic) return foes;
+    const singular=singularizeCombatQuery(q);
+    const knownType=monsterTypeKey(q);
+    const matches=foes.filter(m=>{
+      const name=normalizeCombatTargetQuery(String(m.name||'').replace(/\s+\d+$/,''));
+      const fullName=normalizeCombatTargetQuery(m.name||'');
+      const type=normalizeCombatTargetQuery(m.type||'');
+      const profileName=normalizeCombatTargetQuery(COMBAT_MONSTERS[m.type]?.name||'');
+      const fields=[name,fullName,type,profileName].filter(Boolean);
+      if(knownType && m.type===knownType) return true;
+      return fields.some(field=>field===q || field===singular || singularizeCombatQuery(field)===singular || field.startsWith(q+' ') || field.startsWith(singular+' '));
+    });
+    return matches.length?matches:(fallbackAll?foes:[]);
+  }
+
+  function combatTargetsFromText(text){
+    return combatTargetCandidates(text,{fallbackAll:true});
+  }
+
+  function strictCombatTargetsFromText(text){
+    return combatTargetCandidates(text,{fallbackAll:false});
+  }
+
+  function randomTargetSpec(text){
+    const raw=String(text||'').trim();
+    if(!/\b(?:random|randomly|at random|whichever|pick (?:one|a target) at random)\b/i.test(raw)) return null;
+    const query=raw.replace(/\bpick (?:one|a target) at random\b/ig,' foe ').replace(/\bat random\b/ig,' ').replace(/\brandom(?:ly)?\b/ig,' ').replace(/\bwhichever\b/ig,' ')
+      .replace(/^(?:at|on|against|the|a|an)\s+/i,'').replace(/\s+/g,' ').trim();
+    return {targetSelection:'random',targetQuery:query||'foe'};
+  }
+
+  function resolveCombatOrderTarget(order,actorLabel='The action'){
+    if(!order) return null;
+    const existing=order.targetId?state.combat?.monsters.find(m=>m.id===order.targetId):null;
+    if(existing && monsterStillPresent(existing)) return existing;
+    if(String(order.targetSelection||'').toLowerCase()!=='random') return existing||null;
+    const candidates=strictCombatTargetsFromText(order.targetQuery||'');
+    if(!candidates.length) return null;
+    const target=candidates[rng(candidates.length)-1];
+    order.targetId=target.id;
+    const label=String(actorLabel||'The action').trim();
+    write(`${label}'s random target is ${target.name}.`,'system');
+    void refereeLog(`RANDOM TARGET — round ${state.combat?.round||'?'}: ${label} selected ${target.name} from [${candidates.map(m=>m.name).join(', ')}].`,{type:'random_target',round:state.combat?.round||null,actor:label,targetId:target.id,candidates:candidates.map(m=>m.id),query:order.targetQuery||''});
+    return target;
+  }
+
+  function namedPcsInText(text){
+    const q=String(text||'').toLowerCase();
+    return livingParty().filter(pc=>{
+      const name=pc.name.toLowerCase();
+      return q===name || new RegExp(`(^|[^a-z0-9])${name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}([^a-z0-9]|$)`,'i').test(q);
+    });
+  }
+
+  function isRelativePartyActor(text){
+    const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
+    return /^(?:the )?(?:rest(?: of (?:the party|them|us))?|remaining (?:party|characters?|adventurers?|members?)|everyone else|everybody else|all others?|the others?|others?|everyone remaining|everybody remaining)$/.test(a);
+  }
+
+  function isWholePartyActor(text){
+    const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
+    return /^(?:the |our )?(?:party|group|adventurers?|characters?)$/.test(a) || /^(?:everyone|everybody|all|all of us|we|us|pcs|all characters|all adventurers)$/.test(a);
+  }
+
+  function isPartyGroupActorExpression(text){
+    const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
+    if(isWholePartyActor(a) || isRelativePartyActor(a)) return true;
+    const exclusion=/^(.*?)(?:\s+)(?:except|but not|but|other than|excluding|minus|leaving out|not including)(?:\s+)(.+)$/i.exec(a);
+    return Boolean(exclusion && (isWholePartyActor(exclusion[1]) || isRelativePartyActor(exclusion[1]) || /^(?:everyone|everybody|all|we|us)$/.test(exclusion[1])));
+  }
+
+  function groupCombatActors(actor,context={}){
+    const raw=String(actor||'').trim();
+    const a=raw.toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
+    const living=livingParty();
+    const assigned=context.assigned instanceof Set?context.assigned:new Set();
+    const explicitlyAssigned=context.explicitlyAssigned instanceof Set?context.explicitlyAssigned:new Set();
+    if(isRelativePartyActor(a)) return living.filter(pc=>!assigned.has(pc.name.toLowerCase()) && !explicitlyAssigned.has(pc.name.toLowerCase()));
+    const exclusion=/^(.*?)(?:\s+)(?:except|but not|but|other than|excluding|minus|leaving out|not including)(?:\s+)(.+)$/i.exec(a);
+    if(exclusion && (isWholePartyActor(exclusion[1]) || isRelativePartyActor(exclusion[1]) || /^(?:everyone|everybody|all|we|us)$/.test(exclusion[1]))){
+      const excluded=new Set(namedPcsInText(exclusion[2]).map(pc=>pc.name.toLowerCase()));
+      let base=isRelativePartyActor(exclusion[1])?living.filter(pc=>!assigned.has(pc.name.toLowerCase())&&!explicitlyAssigned.has(pc.name.toLowerCase())):living;
+      return base.filter(pc=>!excluded.has(pc.name.toLowerCase()));
+    }
+    if(isWholePartyActor(a)) return living;
+    const named=namedPcsInText(raw);
+    if(named.length) return named;
     const pc=findPc(actor); return pc?[pc]:[];
   }
 
   function applyCombatPlan(orders){
     if(!combatActive() || !Array.isArray(orders)) return false;
     let any=false, targetIndex=0;
+    const explicitlyAssigned=new Set();
     for(const entry of orders){
-      const actors=groupCombatActors(entry.actor); if(!actors.length) continue;
+      if(isPartyGroupActorExpression(entry?.actor)) continue;
+      for(const pc of namedPcsInText(entry?.actor)) explicitlyAssigned.add(pc.name.toLowerCase());
+    }
+    const assigned=new Set();
+    for(const entry of orders){
+      const actors=groupCombatActors(entry.actor,{assigned,explicitlyAssigned}); if(!actors.length) continue;
       const action=String(entry.action||'').toLowerCase();
       if(!['melee','missile','spell','withdraw','retreat','hold'].includes(action)) continue;
-      const targets=combatTargetsFromText(entry.target);
+      const isRandom=String(entry.targetSelection||'').toLowerCase()==='random' || /\b(?:random|randomly|at random|whichever)\b/i.test(String(entry.target||''));
+      const targets=isRandom?[]:combatTargetsFromText(entry.target);
       for(const pc of actors){
-        const target=(action==='withdraw'||action==='retreat'||action==='hold')?null:targets[targetIndex++%Math.max(1,targets.length)];
-        const order={action,targetId:target?.id||null};
+        const order={action,targetId:null};
+        if(!['withdraw','retreat','hold'].includes(action)){
+          if(isRandom){
+            const spec=randomTargetSpec(entry.target)||{targetSelection:'random',targetQuery:String(entry.target||'foe')};
+            order.targetSelection='random'; order.targetQuery=spec.targetQuery;
+          } else {
+            const target=targets[targetIndex++%Math.max(1,targets.length)];
+            order.targetId=target?.id||null;
+          }
+        }
         if(entry.spell) order.spell=entry.spell;
         if(entry.rangeIntent && ['press','hold','open'].includes(String(entry.rangeIntent).toLowerCase())) order.rangeIntent=String(entry.rangeIntent).toLowerCase();
         if(entry.rangeBand && ['short','medium','long'].includes(String(entry.rangeBand).toLowerCase())) order.rangeBand=String(entry.rangeBand).toLowerCase();
         any=setPcCombatOrder(pc,order)||any;
+        assigned.add(pc.name.toLowerCase());
       }
     }
     return any;
@@ -3554,7 +3712,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
           clearAllPcEngagements(pc);
           write(`${pc.name} makes a fighting withdrawal ${combatDistanceLabel(speed)}.`,'system'); continue;
         }
-        const target=o.targetId?state.combat.monsters.find(m=>m.id===o.targetId):null;
+        // Do not force a random missile/spell target during movement. Random
+        // selection belongs to the phase in which the action actually resolves,
+        // unless this order needs a target now for melee movement/range control.
+        if(o.action!=='melee' && !o.rangeIntent) continue;
+        const target=resolveCombatOrderTarget(o,pc.name);
         if(!target || !monsterStillPresent(target)) continue;
         const engagement=getEngagement(pc,target);
         if(engagement){
@@ -3586,7 +3748,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         if(deferredMode==='normal'&&deferred)continue;
         if(deferredMode==='deferred'&&!deferred)continue;
         const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='missile')continue;
-        const target=state.combat.monsters.find(m=>m.id===o.targetId); if(!target)continue;
+        const target=resolveCombatOrderTarget(o,pc.name); if(!target)continue;
         const info=missileRangeInfo(pc,target);
         if(info.outOfRange){
           const item=equippedWeaponItem(pc);
@@ -3614,7 +3776,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         if(deferredMode==='normal'&&deferred)continue;
         if(deferredMode==='deferred'&&!deferred)continue;
         const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='melee')continue;
-        const target=state.combat.monsters.find(m=>m.id===o.targetId); if(!target)continue;
+        const target=resolveCombatOrderTarget(o,pc.name); if(!target)continue;
         const e=getEngagement(pc,target);
         if(!e&&!eligibleIds){write(`${pc.name} cannot reach ${target.name} for a hand-to-hand attack this phase.`,'warning');continue;}
         pcWeaponAttack(pc,target,'melee',e?.range||'normal',eligible,Boolean(eligibleIds));
@@ -3769,7 +3931,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       write(`COMBAT ENDS — opposition neutralized.${killed.length?` Killed: ${killed.length}.`:''}${fled.length?` Fled: ${fled.length}.`:''}${neutralized.length?` Asleep/charmed: ${neutralized.length}.`:''} XP is not distributed at combat end; adventure-end XP will be handled by the campaign/company system.`,'system');
       addEvent('Combat ended; XP distribution deferred to adventure-end company accounting.');
     }
-    c.active=false; c.initiative=null; c.awaitingMoveChoice=false; c.awaitingWeaponChanges=false; c.pendingResolution=null; c.moveOrder=null; updatePanels(); return true;
+    c.active=false; c.initiative=null; c.awaitingMoveChoice=false; c.awaitingWeaponChanges=false; c.pendingResolution=null; c.moveOrder=null; clearPendingClarification(); updatePanels(); return true;
   }
 
   function finishCombatRound(){
@@ -4154,6 +4316,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     merged.partyInventory=Array.isArray(loaded.partyInventory)?loaded.partyInventory:[];
     merged.mounts=Array.isArray(loaded.mounts)?loaded.mounts:[];
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
+    merged.pendingClarification=loaded.pendingClarification&&typeof loaded.pendingClarification==='object'?loaded.pendingClarification:null;
     if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
     merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
     state=merged; normalizeCombatState(); merged=state;
@@ -4300,9 +4463,10 @@ new game / clear`);
 
   function intentInterpreterPrompt(playerInput) {
     const known = knownPlaceIds().map(id => ({id,name:sites[id].name,aliases:sites[id].aliases || [],services:sites[id].services || []}));
+    const pending=pendingClarificationPrompt();
     return `You are ONLY an intent parser for Known World Referee. Do not narrate and do not resolve rules. Convert the player's ordinary-language instruction into one bounded engine intent. Return ONE raw JSON object and nothing else.\n\nVALID kinds:\nMOVE, TRAVEL_TO, FOLLOW_FEATURE, SERVICE, SHOP, BUY, RUMORS, CREATE_PARTY, ENTER, LEAVE, SEARCH, CAMP, WAIT, LIGHT_TORCH, STATUS, INVENTORY, PARTY, COMBAT_PLAN, COMBAT_STATUS, RESOLVE_ROUND, REFEREE, CLARIFY, UNSUPPORTED.\n\nJSON shape:\n{\"kind\":\"...\",\"direction\":null,\"target\":null,\"feature\":null,\"service\":null,\"orders\":[],\"confidence\":0.0,\"clarification\":null,\"reply\":null}\n\nRules:\n- direction, if used, must be one of north,northeast,southeast,south,southwest,northwest,east,west,up,down.\n- TRAVEL_TO target must be one of the exact known destination IDs listed below. Never invent a destination.\n- SERVICE should use resupply, provisions, weapons, armor, or mounts when the player wants to go to the relevant kind of shop.
 - BUY means the player is actually purchasing something; copy their requested purchase phrase into purchase.
-- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, ordinary language should be interpreted as combat intent whenever reasonably possible; do not treat combat movement as wilderness MOVE. COMBAT_PLAN may include orders:[{actor,action,target,spell,rangeIntent,rangeBand}]. action is melee, missile, spell, withdraw, retreat, or hold. rangeIntent is press, hold, or open. Use only the visible PC and foe names. RESOLVE_ROUND resolves declared orders.\n- Group subjects such as “the party”, “everyone”, “everybody”, “all of us”, or “we” must be expanded into individual PC orders. “The party moves in to attack the goblins” means the living PCs close for melee and attack the visible goblins, distributing targets as needed. Do not spend a prepared spell unless the player actually says to cast it.\n- Use CLARIFY when two materially different interpretations are plausible. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>({name:m.name,equipped:equippedWeaponItem(m)?.name||'unarmed',missile:Boolean(equippedWeaponItem(m)?.missile),preparedSpell:spellReadyName(m)||null,spellReady:Boolean(m.spellReady)}))}) : 'none'}\n\nPLAYER INPUT:\n${playerInput}`;
+- SHOP means list wares at the current shop. RUMORS means listen for local talk. CREATE_PARTY opens party creation.\n- FOLLOW_FEATURE should use road, river, stream, trail, path, duke's road, or old cart track.\n- During combat, ordinary language should be interpreted as combat intent whenever reasonably possible; do not treat combat movement as wilderness MOVE. COMBAT_PLAN may include orders:[{actor,action,target,spell,rangeIntent,rangeBand,targetSelection}]. action is melee, missile, spell, withdraw, retreat, or hold. rangeIntent is press, hold, or open. Use only the visible PC and foe names. RESOLVE_ROUND resolves declared orders.\n- Random targeting is semantic and applies to ANY eligible foe set, not to particular creature names. If the player says “random”, “randomly”, “at random”, “whichever”, or an equivalent phrase (for example “a random goblin”, “one of the orcs at random”, “a random enemy”, or “pick whichever wolf”), that is a COMPLETE targeting instruction. Preserve the described foe set in target and set targetSelection to "random". Never replace it with a numbered foe and never ask which member of that set they mean. The deterministic engine selects the actual eligible foe when the action resolves.\n- Party/group references are semantic, not exact-keyword matches. Whole-group phrases such as “the party”, “our group”, “everyone”, “everybody”, “all of us”, “we”, “the characters”, or natural paraphrases mean all living PCs. Relative phrases such as “the rest of the party”, “the rest”, “the rest of them”, “everyone else”, “the remaining characters”, “remaining adventurers”, “the others”, or natural paraphrases mean every living PC except PC(s) given a distinct action elsewhere in the same instruction. Named exclusions such as “everyone except Luis”, including multiple named exclusions, must also be preserved correctly. You may leave these natural group phrases in actor; the engine resolves them contextually. Do not spend a prepared spell unless the player actually says to cast it.\n- If PENDING CLARIFICATION below is not “none”, treat the current PLAYER INPUT primarily as the player's answer to that immediately preceding question unless it clearly starts a new unrelated command. Reconstruct the COMPLETE intended engine intent from the original instruction plus the current reply. A fragment such as “a random skeleton” is valid when it answers a target question; do not ask who should act again.\n- Use CLARIFY only when two materially different interpretations remain plausible after applying any pending clarification context. Put the short question in clarification.\n- Use REFEREE for conversational questions or described actions that require referee judgment rather than a listed engine action. Do not provide the answer; reply must be null.\n- If confidence is below 0.65, use CLARIFY.\n\nGAME CONTEXT:\n${locationContext()}\nKnown destinations: ${JSON.stringify(known)}\nCombat: ${state.combat?.active ? JSON.stringify({round:state.combat.round,foes:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>m.name),pcs:livingParty().map(m=>({name:m.name,equipped:equippedWeaponItem(m)?.name||'unarmed',missile:Boolean(equippedWeaponItem(m)?.missile),preparedSpell:spellReadyName(m)||null,spellReady:Boolean(m.spellReady)}))}) : 'none'}\nPENDING CLARIFICATION: ${pending}\n\nPLAYER INPUT:\n${playerInput}`;
   }
 
   function extractJsonObject(text) {
@@ -4347,9 +4511,19 @@ new game / clear`);
     if (!intent) return false;
     const kind = String(intent.kind || '').toUpperCase();
     if (Number(intent.confidence ?? 1) < 0.65 && kind !== 'CLARIFY') {
-      write('I am not sure what you want the party to do. Can you phrase that another way?','warning');
+      const question='I am not sure what you want the party to do. Can you phrase that another way?';
+      rememberPendingClarification(originalInput,question);
+      write(question,'warning');
       return true;
     }
+    if(kind==='CLARIFY'){
+      const question=intent.clarification || 'What exactly do you want the party to do?';
+      const previous=state.pendingClarification?.originalInput;
+      rememberPendingClarification(previous || originalInput,question);
+      write(question,'warning');
+      return true;
+    }
+    if(kind!=='REFEREE') clearPendingClarification();
     switch (kind) {
       case 'MOVE': {
         const direction = normalizeDirection(String(intent.direction || ''));
@@ -4382,7 +4556,6 @@ new game / clear`);
       case 'COMBAT_STATUS': combatStatus(); return true;
       case 'RESOLVE_ROUND': resolveCombatRound(); return true;
       case 'COMBAT_PLAN': return applyCombatPlan(intent.orders||[]);
-      case 'CLARIFY': write(intent.clarification || 'What exactly do you want the party to do?','warning'); return true;
       case 'REFEREE': return false;
       case 'UNSUPPORTED': write(intent.clarification || 'That action is not yet implemented in this prototype.','warning'); return true;
       default: return false;
