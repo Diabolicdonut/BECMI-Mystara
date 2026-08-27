@@ -385,7 +385,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.28';
+  const APP_VERSION = '0.3.29';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -3942,7 +3942,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     })||null;
   }
 
-  function parseDeterministicCombatClause(actor,body){
+  function parseDeterministicCombatClause(actor,body,context={}){
     const text=String(body||'').trim();
     const lower=text.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
     if(!text) return null;
@@ -3953,7 +3953,14 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)) movement='hold';
 
     const movementMode=/\b(?:together|as (?:a )?group|as one|in formation|keep formation|stay together|keep together|same pace|same distance|abreast)\b/.test(lower)?'together':'individual';
-    const target=inferCurrentFoeQuery(text);
+    // Resolve an explicitly named foe/group first. In a compound tabletop order,
+    // a later clause may naturally omit the target ("while the rest advance to
+    // attack") because it is still talking about the foe set established by the
+    // preceding clause. Preserve that same-utterance referent instead of forcing
+    // the player to repeat the noun.
+    const explicitTarget=inferCurrentFoeQuery(text);
+    const inheritedTarget=String(context?.fallbackTarget||'').trim();
+    const target=explicitTarget || inheritedTarget;
     const spell=knownCombatSpellMention(actor,text);
     let action='none';
     if(spell && /\b(?:cast|casts|casting|use|uses|using)\b/.test(lower)) action='spell';
@@ -3982,11 +3989,17 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const segments=deterministicCombatClauseSegments(input);
     if(segments.length<2) return null;
     const steps=[];
+    let discourseTarget='';
     for(const seg of segments){
-      const step=parseDeterministicCombatClause(seg.actor,seg.body);
+      const step=parseDeterministicCombatClause(seg.actor,seg.body,{fallbackTarget:discourseTarget});
       if(!step) return null; // full-consumption rule: never claim only part of the command.
       step.id=String(steps.length+1);
       steps.push(step);
+      // Same-command discourse memory: once a hostile target/group is established,
+      // later coordinated clauses may omit it in ordinary English. An explicit
+      // target in a later clause replaces the carried referent.
+      if(step.target) discourseTarget=String(step.target);
+      else if(step.movementTarget) discourseTarget=String(step.movementTarget);
     }
     if(steps.length<2) return null;
     return {kind:'ACTION_PLAN',confidence:1,summary:'Deterministic full-input combat interpretation',steps,source:String(input||'')};
@@ -6156,6 +6169,31 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(Object.keys(state.combat.pcOrders).length===6,'End-to-end semantic execution did not assign six PC orders');
         harnessAssert(state.combat.pcOrders.nemiriel?.action==='spell','End-to-end semantic execution lost the caster order');
         harnessAssert(state.party.filter(pc=>pc.name!=='Nemiriel').every(pc=>state.combat.pcOrders[pc.name.toLowerCase()]?.movementMode==='together'),'End-to-end semantic execution lost group formation');
+      }},
+      {name:'Implicit hostile target carries across compound combat clauses',run:()=>{
+        installHarnessFixture();
+        const text='Nemiriel casts magic missile on random skeleton while the rest of the party move as a group to attack.';
+        const plan=parseDeterministicCompoundCombatPlan(text);
+        harnessAssert(plan?.steps?.length===2,'Implicit-target compound sentence did not preserve both clauses');
+        const caster=plan.steps[0],rest=plan.steps[1];
+        harnessAssert(caster.action==='spell' && caster.targetSelection==='random' && /skeleton/i.test(caster.target||''),'Caster/random target clause parsed incorrectly');
+        harnessAssert(rest.action==='melee' && rest.movement==='approach' && rest.movementMode==='together','Rest-of-party attack clause parsed incorrectly');
+        harnessAssert(/skeleton/i.test(rest.target||'') && /skeleton/i.test(rest.movementTarget||''),'Second clause did not inherit the skeleton target from the first clause');
+      }},
+      {name:'Literal live textbox route: caster spell + rest advance/attack',run:async()=>{
+        installHarnessFixture();
+        const original=state.party[0].name;
+        state.party[0].name='Alysha';
+        state.combat.positions.pcs.alysha=state.combat.positions.pcs[String(original).toLowerCase()];
+        delete state.combat.positions.pcs[String(original).toLowerCase()];
+        const text='Alysha casts magic missile on random skeleton while the rest of the party move as a group to attack.';
+        await handle(text);
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'Live textbox routing did not assign all six orders');
+        const caster=state.combat.pcOrders.alysha;
+        harnessAssert(caster?.action==='spell' && caster?.spell==='Magic Missile' && caster?.targetSelection==='random',"Live textbox routing lost Alysha's random Magic Missile order");
+        const rest=state.party.filter(pc=>pc.name!=='Alysha').map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
+        harnessAssert(rest.every(o=>o?.movement==='approach' && o?.movementMode==='together' && o?.action==='melee'),"Live textbox routing lost the remaining party's together approach+melee orders");
+        harnessAssert(new Set(rest.map(o=>o.movementGroup)).size===1 && rest[0]?.movementGroup,'Live textbox routing did not create one shared movement group');
       }},
       {name:'Compound combat parser tolerates paraphrase and typo around meet',run:()=>{
         installHarnessFixture();
