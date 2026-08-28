@@ -389,7 +389,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.33';
+  const APP_VERSION = '0.3.34';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1874,13 +1874,11 @@ W: swollen wooden door · E: cellar`;
       const entries=bands.get(pos);
       lines.push(entries.map(x=>`[${x.label}]`).join(' '));
       const annotations=[];
-      for(const engagement of Object.values(c.engagements||{})){
-        const pc=state.party.find(p=>p.name.toLowerCase()===String(engagement.pcName||'').toLowerCase());
-        const mon=c.monsters.find(m=>m.id===engagement.monsterId);
-        if(!pc||!mon||!monsterStillPresent(mon)||pc.dead||pc.hp<=0) continue;
-        if(Math.abs(combatPcPosition(pc)-pos)<0.001 && Math.abs(combatMonsterPosition(mon)-pos)<0.001){
-          annotations.push(`${mapMonsterToken(mon)} ↔ ${pc.name}: ${String(engagement.range||'normal').toUpperCase()}`);
-        }
+      for(const group of meleeGroups()){
+        if(Math.abs(Number(group.position)-pos)>=0.001) continue;
+        const pcLabels=group.pcNames.map(n=>state.party.find(p=>p.name.toLowerCase()===n)?.name||n).join(', ');
+        const foeLabels=group.monsterIds.map(id=>mapMonsterToken(c.monsters.find(m=>m.id===id))).join(', ');
+        annotations.push(`MELEE: ${pcLabels} ↔ ${foeLabels} — ${String(group.range||'far').toUpperCase()}`);
       }
       if(annotations.length) lines.push(`  ${annotations.join(' · ')}`);
       if(index<positions.length-1){
@@ -2888,7 +2886,7 @@ W: swollen wooden door · E: cellar`;
     kobold:{name:'Kobold',ac:7,hd:0.5,hpKind:'1d4',move:30,thac0:19,morale:6,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',armorDesc:'light leather armor',saveSpells:16,kind:'humanoid',weaponId:'spear',damageMod:-1,daylightPenalty:0},
     orc:{name:'Orc',ac:6,hd:1,hpKind:'1d8',move:40,thac0:19,morale:8,intelligence:7,alignment:'Chaotic',xp:10,size:'medium',protection:'soft',armorDesc:'hide and leather armor with a shield',saveSpells:16,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:-1},
     skeleton:{name:'Skeleton',ac:7,hd:1,hpKind:'1d8',move:20,thac0:19,morale:12,intelligence:0,alignment:'Chaotic',xp:10,size:'medium',protection:'hard',armorDesc:'exposed rigid bone with scraps of old gear',saveSpells:16,kind:'undead',weaponId:'sword_normal',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true},
-    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:16,kind:'animal',naturalDamage:'1d6',damageMod:0,daylightPenalty:0}
+    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:16,kind:'animal',naturalDamage:'1d6',meleeRangePreference:'close',damageMod:0,daylightPenalty:0}
   };
 
   const AMMO_RULES = {
@@ -2950,6 +2948,7 @@ W: swollen wooden door · E: cellar`;
     c.pcOrders=c.pcOrders&&typeof c.pcOrders==='object'?c.pcOrders:{};
     c.monsterOrders=c.monsterOrders&&typeof c.monsterOrders==='object'?c.monsterOrders:{};
     c.engagements=c.engagements&&typeof c.engagements==='object'?c.engagements:{};
+    c.meleeSites=c.meleeSites&&typeof c.meleeSites==='object'?c.meleeSites:{};
     c.initiative=c.initiative||null;
     c.awaitingMoveChoice=Boolean(c.awaitingMoveChoice);
     c.awaitingWeaponChanges=Boolean(c.awaitingWeaponChanges);
@@ -2975,6 +2974,18 @@ W: swollen wooden door · E: cellar`;
       const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName||'').toLowerCase());
       const m=c.monsters.find(mon=>mon.id===e.monsterId);
       if(pc&&m){ c.positions.pcs[pc.name.toLowerCase()]=c.positions.monsters[m.id]; }
+    }
+    // Migrate older pair-based melee ranges into one authoritative site range per
+    // physical encounter position. Multiple pair links at the same coordinate are
+    // one melee, not separate Close/Normal/Far contests.
+    for(const e of Object.values(c.engagements)){
+      const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName||'').toLowerCase());
+      const m=c.monsters.find(mon=>mon.id===e.monsterId);
+      if(!pc||!m) continue;
+      const pos=Number(c.positions.pcs[pc.name.toLowerCase()])||0;
+      const key=meleePositionKey(pos);
+      if(!c.meleeSites[key]) c.meleeSites[key]={position:pos,range:RANGE_ORDER.includes(e.range)?e.range:'far',formedRound:Math.max(1,c.round-1),reason:'migrated pair engagement'};
+      e.range=c.meleeSites[key].range; e.siteKey=key;
     }
   }
 
@@ -3018,7 +3029,7 @@ W: swollen wooden door · E: cellar`;
 
   function createCombatMonster(type,index){
     const p=COMBAT_MONSTERS[type]; const hp=rollMonsterHp(p);
-    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
+    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,meleeRangePreference:p.meleeRangePreference||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
   }
 
   function archiveCombatEncounterRoster(combat){
@@ -3062,7 +3073,7 @@ W: swollen wooden door · E: cellar`;
     const positions={pcs:{},monsters:{}};
     for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=encounterDistance;
-    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
     archiveCombatEncounterRoster(state.combat);
     void refereeLog(`ENCOUNTER DISTANCE — ${outdoor?'wilderness':'dungeon/site'} test encounter: ${encounterDistanceTrace.dice} = ${distanceDice.join('+')} = ${distanceRoll}; ×10 = ${encounterDistance} ${distanceUnit}. ${encounterDistanceTrace.context}`,
       {type:'encounter_distance',source:'test',context:outdoor?'wilderness':'dungeon',dice:encounterDistanceTrace.dice,rolls:distanceDice.slice(),sum:distanceRoll,multiplier:10,result:encounterDistance,unit:distanceUnit,procedure:encounterDistanceTrace.procedure});
@@ -3073,48 +3084,104 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function engagementKey(pcName,monsterId){ return `${pcName.toLowerCase()}|${monsterId}`; }
+  function meleePositionKey(position){
+    const n=Number(position)||0;
+    return String(Math.round(n*1000)/1000);
+  }
   function atMeleeContact(pc,monster){ return Boolean(pc&&monster&&combatActive()&&combatSeparation(pc,monster)<=0); }
+
+  function activeEngagementEntriesAtPosition(position){
+    if(!combatActive()) return [];
+    const key=meleePositionKey(position);
+    return Object.values(state.combat.engagements||{}).filter(e=>{
+      if(!e||!e.pcName||!e.monsterId) return false;
+      const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName).toLowerCase());
+      const monster=state.combat.monsters.find(m=>m.id===e.monsterId);
+      if(!pc||pc.dead||Number(pc.hp)<=0||!monsterStillPresent(monster)||!atMeleeContact(pc,monster)) return false;
+      return meleePositionKey(combatPcPosition(pc))===key && meleePositionKey(combatMonsterPosition(monster))===key;
+    });
+  }
+
+  function initialMeleeRangeForContact(pc,monster){
+    const c=state.combat||{};
+    const explicit=String(c.contactContext?.initialMeleeRange||c.initialMeleeRange||'').toLowerCase();
+    if(RANGE_ORDER.includes(explicit)) return explicit;
+    // Default tabletop judgment: when two opposing groups meet in ordinary open
+    // combat, first contact begins at the outer edge of melee. Longer weapons get
+    // their reach advantage before the fight can collapse inward on later rounds.
+    return 'far';
+  }
+
+  function opposingCombatantsAtPosition(position){
+    if(!combatActive()) return false;
+    const key=meleePositionKey(position);
+    const hasPc=livingParty().some(pc=>meleePositionKey(combatPcPosition(pc))===key);
+    const hasFoe=livingHostiles().some(m=>meleePositionKey(combatMonsterPosition(m))===key);
+    return hasPc&&hasFoe;
+  }
+
+  function pruneInactiveMeleeSites(){
+    if(!combatActive()||!state.combat.meleeSites) return;
+    for(const [key,site] of Object.entries(state.combat.meleeSites)) if(!opposingCombatantsAtPosition(site.position??Number(key))) delete state.combat.meleeSites[key];
+  }
+
+  function meleeSiteAtPosition(position,{create=false,initialRange='far',reason='contact'}={}){
+    if(!combatActive()) return null;
+    const c=state.combat;
+    if(!c.meleeSites||typeof c.meleeSites!=='object') c.meleeSites={};
+    const key=meleePositionKey(position);
+    let site=c.meleeSites[key]||null;
+    if(!site && create){
+      const range=RANGE_ORDER.includes(initialRange)?initialRange:'far';
+      site=c.meleeSites[key]={position:Number(position)||0,range,formedRound:c.round,reason:String(reason||'contact')};
+    }
+    return site;
+  }
+
   function getEngagement(pc,monster){
     if(!pc||!monster||!combatActive()) return null;
     const key=engagementKey(pc.name,monster.id);
     const engagement=state.combat?.engagements?.[key] || null;
-    // Encounter-scale distance and melee-distance bands are deliberately separate.
-    // A Close/Normal/Far melee cannot exist until the two sides occupy the same
-    // encounter position (0 yd/ft separation). Remove any stale pair record that
-    // violates that invariant rather than allowing it to authorize an attack.
     if(engagement && !atMeleeContact(pc,monster)){ delete state.combat.engagements[key]; return null; }
+    if(engagement){
+      const site=meleeSiteAtPosition(combatPcPosition(pc),{create:true,initialRange:engagement.range||'far',reason:'existing engagement'});
+      engagement.siteKey=meleePositionKey(combatPcPosition(pc)); engagement.range=site?.range||engagement.range||'far';
+    }
     return engagement;
   }
 
-  // Pair records are retained for backward-compatible saves, but range belongs
-  // to the entire connected melee. Every participant in one melee shares one
-  // Close/Normal/Far state; separate disconnected melees may differ.
+  // One physical encounter position = one melee. Pair records remain only as
+  // target links. The site persists even if a particular opponent dies, so target
+  // changes cannot split one scrum into multiple distance states.
   function meleeGroups(){
     if(!combatActive()) return [];
-    const entries=Object.values(state.combat.engagements||{}).filter(e=>{
-      if(!e||!e.pcName||!e.monsterId) return false;
+    const c=state.combat;
+    if(!c.meleeSites||typeof c.meleeSites!=='object') c.meleeSites={};
+    // Any valid legacy/current pair establishes a site if one is not already stored.
+    for(const e of Object.values(c.engagements||{})){
+      if(!e||!e.pcName||!e.monsterId) continue;
       const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName).toLowerCase());
-      const monster=state.combat.monsters.find(m=>m.id===e.monsterId);
-      return Boolean(pc&&monster&&atMeleeContact(pc,monster));
-    });
-    const unseen=new Set(entries), groups=[];
-    while(unseen.size){
-      const seed=unseen.values().next().value; unseen.delete(seed);
-      const members=[seed], pcs=new Set([String(seed.pcName).toLowerCase()]), monsters=new Set([seed.monsterId]);
-      let changed=true;
-      while(changed){
-        changed=false;
-        for(const e of [...unseen]){
-          if(pcs.has(String(e.pcName).toLowerCase()) || monsters.has(e.monsterId)){
-            unseen.delete(e); members.push(e); pcs.add(String(e.pcName).toLowerCase()); monsters.add(e.monsterId); changed=true;
-          }
-        }
-      }
-      const range=RANGE_ORDER.includes(seed.range)?seed.range:'normal';
-      for(const e of members) e.range=range;
-      groups.push({entries:members,pcNames:[...pcs],monsterIds:[...monsters],range});
+      const monster=c.monsters.find(m=>m.id===e.monsterId);
+      if(!pc||pc.dead||Number(pc.hp)<=0||!monsterStillPresent(monster)||!atMeleeContact(pc,monster)) continue;
+      const pos=combatPcPosition(pc), key=meleePositionKey(pos);
+      if(!c.meleeSites[key]) c.meleeSites[key]={position:pos,range:RANGE_ORDER.includes(e.range)?e.range:'far',formedRound:c.round,reason:'pair-established melee'};
     }
-    return groups;
+    const groups=[];
+    for(const [key,site] of Object.entries(c.meleeSites)){
+      const position=Number(site.position)||Number(key)||0;
+      const pcs=livingParty().filter(pc=>meleePositionKey(combatPcPosition(pc))===key);
+      const monsters=livingHostiles().filter(m=>meleePositionKey(combatMonsterPosition(m))===key);
+      if(!pcs.length||!monsters.length) continue;
+      const entries=Object.values(c.engagements||{}).filter(e=>{
+        const pc=state.party.find(p=>p.name.toLowerCase()===String(e.pcName||'').toLowerCase());
+        const monster=c.monsters.find(m=>m.id===e.monsterId);
+        return Boolean(pc&&monster&&!pc.dead&&Number(pc.hp)>0&&monsterStillPresent(monster)&&atMeleeContact(pc,monster)&&meleePositionKey(combatPcPosition(pc))===key);
+      });
+      const range=RANGE_ORDER.includes(site.range)?site.range:'far'; site.range=range;
+      for(const e of entries){ e.range=range; e.siteKey=key; }
+      groups.push({entries,pcNames:pcs.map(pc=>pc.name.toLowerCase()),monsterIds:monsters.map(m=>m.id),range,position,siteKey:key,formedRound:Number(site.formedRound)||c.round});
+    }
+    return groups.sort((a,b)=>b.position-a.position);
   }
 
   function meleeGroupFor(pc,monster=null){
@@ -3124,12 +3191,16 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function setMeleeGroupRange(group,range){
     if(!group || !RANGE_ORDER.includes(range)) return;
-    group.range=range; for(const e of group.entries)e.range=range;
+    group.range=range;
+    const site=meleeSiteAtPosition(group.position,{create:true,initialRange:range,reason:'range contest'});
+    if(site) site.range=range;
+    for(const e of group.entries){ e.range=range; e.siteKey=group.siteKey||meleePositionKey(group.position); }
   }
 
   function syncMeleeGroupPositions(group,anchor=null){
     if(!group || !combatActive()) return;
     let position=Number(anchor);
+    if(!Number.isFinite(position)) position=Number(group.position);
     if(!Number.isFinite(position)){
       const firstPc=state.party.find(p=>group.pcNames.includes(p.name.toLowerCase()));
       const firstMonster=state.combat.monsters.find(m=>group.monsterIds.includes(m.id));
@@ -3137,19 +3208,22 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
     for(const name of group.pcNames){ const pc=state.party.find(p=>p.name.toLowerCase()===name); if(pc)setCombatPcPosition(pc,position); }
     for(const id of group.monsterIds){ const m=state.combat.monsters.find(x=>x.id===id); if(m)setCombatMonsterPosition(m,position); }
+    group.position=position;
+    const site=meleeSiteAtPosition(position,{create:true,initialRange:group.range||'far',reason:'position sync'}); if(site) site.position=position;
   }
 
-  function setEngagement(pc,monster,range='normal'){
+  function setEngagement(pc,monster,range=null){
     if(!combatActive() || !pc || !monster) return false;
-    // In this engine, the tabletop ~5 ft adjacency abstraction is represented as
-    // encounter separation 0. Close/Normal/Far is an intra-melee Matrix state,
-    // not permission to attack across remaining missile-scale distance.
     if(!atMeleeContact(pc,monster)) return false;
-    const pcGroup=meleeGroupFor(pc,null), monsterGroup=meleeGroups().find(g=>g.monsterIds.includes(monster.id));
-    const inherited=pcGroup?.range || monsterGroup?.range || (RANGE_ORDER.includes(range)?range:'normal');
-    state.combat.engagements[engagementKey(pc.name,monster.id)]={pcName:pc.name,monsterId:monster.id,range:inherited};
+    const pos=combatPcPosition(pc);
+    const existingAtSite=activeEngagementEntriesAtPosition(pos);
+    const requested=RANGE_ORDER.includes(range)?range:initialMeleeRangeForContact(pc,monster);
+    const site=meleeSiteAtPosition(pos,{create:true,initialRange:existingAtSite.length?(state.combat.meleeSites?.[meleePositionKey(pos)]?.range||requested):requested,reason:existingAtSite.length?'joining existing melee':'new opposing contact'});
+    const inherited=site?.range||requested;
+    const siteKey=meleePositionKey(pos);
+    state.combat.engagements[engagementKey(pc.name,monster.id)]={pcName:pc.name,monsterId:monster.id,range:inherited,siteKey};
     const merged=meleeGroupFor(pc,monster);
-    if(merged){ setMeleeGroupRange(merged,inherited); syncMeleeGroupPositions(merged,combatPcPosition(pc)); }
+    if(merged){ setMeleeGroupRange(merged,inherited); syncMeleeGroupPositions(merged,pos); }
     return true;
   }
   function clearEngagement(pc,monster){ if(combatActive())delete state.combat.engagements[engagementKey(pc.name,monster.id)]; }
@@ -3195,25 +3269,25 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function movePcTowardMonster(pc,monster){
     const start=combatPcPosition(pc), target=combatMonsterPosition(monster), gap=Math.abs(target-start), speed=pcEncounterSpeed(pc);
-    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal'); return true; }
+    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster); return true; }
     if(speed<=0){ write(`${pc.name} is too encumbered to close the distance.`,'warning'); return false; }
     const step=Math.min(speed,gap);
     const next=start+(target>start?step:-step);
     setCombatPcPosition(pc,next);
     const remain=Math.abs(target-next);
-    if(remain<=0){ setEngagement(pc,monster,'normal'); write(`${pc.name} closes ${combatDistanceLabel(step)} and engages ${monster.name} at NORMAL melee distance.`,'system'); return true; }
+    if(remain<=0){ setEngagement(pc,monster); write(`${pc.name} closes ${combatDistanceLabel(step)} and engages ${monster.name} at ${String(meleeGroupFor(pc,monster)?.range||'far').toUpperCase()} melee distance.`,'system'); return true; }
     write(`${pc.name} advances ${combatDistanceLabel(step)} toward ${monster.name}; ${combatDistanceLabel(remain)} remain.`,'system');
     return false;
   }
 
   function moveMonsterTowardPc(monster,pc){
     const start=combatMonsterPosition(monster), target=combatPcPosition(pc), gap=Math.abs(target-start), speed=Math.max(0,Number(monster.move)||0);
-    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster,'normal'); return true; }
+    if(gap<=0){ if(!getEngagement(pc,monster)) setEngagement(pc,monster); return true; }
     const step=Math.min(speed,gap);
     const next=start+(target>start?step:-step);
     setCombatMonsterPosition(monster,next);
     const remain=Math.abs(target-next);
-    if(remain<=0){ setEngagement(pc,monster,'normal'); write(`${monster.name} closes ${combatDistanceLabel(step)} and engages ${pc.name}.`,'system'); return true; }
+    if(remain<=0){ setEngagement(pc,monster); write(`${monster.name} closes ${combatDistanceLabel(step)} and engages ${pc.name}.`,'system'); return true; }
     write(`${monster.name} advances ${combatDistanceLabel(step)} toward ${pc.name}; ${combatDistanceLabel(remain)} remain.`,'system');
     return false;
   }
@@ -3462,6 +3536,52 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return {raw,matrix};
   }
 
+  function averageDamageExpression(expression){
+    let source=String(expression??'').trim().toLowerCase();
+    if(!source || source==='none' || source==='nil') return 0;
+    if(source==='1 dmg' || source==='1 damage') return 1;
+    source=source.replace(/\([^)]*\)/g,'').replace(/\s+/g,'').replace(/−/g,'-');
+    const pieces=source.match(/[+-]?[^+-]+/g)||[];
+    let total=0;
+    for(const raw of pieces){
+      let piece=raw, sign=1;
+      if(piece[0]==='+') piece=piece.slice(1); else if(piece[0]==='-'){ sign=-1; piece=piece.slice(1); }
+      const dice=/^(\d*)d(\d+)$/.exec(piece);
+      if(dice){ const count=Math.max(1,Number(dice[1]||1)), sides=Number(dice[2]); total+=sign*count*(sides+1)/2; }
+      else if(/^\d+(?:\.\d+)?$/.test(piece)) total+=sign*Number(piece);
+    }
+    return Math.max(0,total);
+  }
+
+  function monsterPreferredMeleeRange(monster,target,currentRange='far'){
+    if(!monster) return RANGE_ORDER.includes(currentRange)?currentRange:'far';
+    const explicit=String(monster.meleeRangePreference||COMBAT_MONSTERS[monster.type]?.meleeRangePreference||'').toLowerCase();
+    if(RANGE_ORDER.includes(explicit)) return explicit;
+    if(monster.naturalDamage && !monster.weaponId) return 'close';
+    const weapon=monsterWeaponItem(monster);
+    const profile=weaponMatrixProfile(weapon);
+    if(weapon && profile && target){
+      const scores=Object.fromEntries(RANGE_ORDER.map(band=>[band,averageDamageExpression(weaponDamageExpressions(weapon,target,band).matrix)]));
+      const best=Math.max(...Object.values(scores));
+      const winners=RANGE_ORDER.filter(b=>Math.abs(scores[b]-best)<1e-9);
+      if(winners.includes(currentRange)) return currentRange;
+      if(winners.length){
+        const currentIndex=Math.max(0,RANGE_ORDER.indexOf(currentRange));
+        return winners.slice().sort((a,b)=>Math.abs(RANGE_ORDER.indexOf(a)-currentIndex)-Math.abs(RANGE_ORDER.indexOf(b)-currentIndex))[0];
+      }
+    }
+    const size=String(profile?.size||weapon?.size||'').toLowerCase();
+    if(/large/.test(size)) return 'far';
+    if(/small/.test(size)) return 'close';
+    return RANGE_ORDER.includes(currentRange)?currentRange:'normal';
+  }
+
+  function rangeIntentToward(current,preferred){
+    const ci=RANGE_ORDER.indexOf(current), pi=RANGE_ORDER.indexOf(preferred);
+    if(ci<0||pi<0||ci===pi) return 'hold';
+    return pi<ci?'press':'open';
+  }
+
   function rollComparedWeaponDamage(item,target,range,modifier=0){
     const expr=weaponDamageExpressions(item,target,range); const active=state.rules.weaponDamageMode||'RAW';
     const seedBefore=state.seed>>>0;
@@ -3632,7 +3752,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(!item && kind==='missile'){ write(`${pc.name} has no equipped missile weapon.`,'warning'); return; }
     if(kind==='missile'){
       if(!missileCapable(item)){ write(`${pc.name}'s ${item.name} is not currently being treated as a missile weapon in this core pass.`, 'warning'); return; }
-      if(engagementsForPc(pc).length){ write(`${pc.name} is engaged hand-to-hand and cannot make that missile attack in the current abstract positioning.`,'warning'); return; }
+      if(pcCurrentlyEngaged(pc)){ write(`${pc.name} is engaged hand-to-hand and cannot make that missile attack in the current abstract positioning.`,'warning'); return; }
       if(item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18 && pc.heavyCrossbowNeedsReload){
         pc.heavyCrossbowNeedsReload=false;
         write(`${pc.name} spends the missile action reloading the heavy crossbow; Strength below 18 limits it to one shot every two rounds.`,'system'); return;
@@ -3923,7 +4043,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function pcCurrentlyEngaged(pc){
-    return Boolean(pc && !pc.dead && Number(pc.hp)>0 && engagementsForPc(pc).length);
+    return Boolean(pc && !pc.dead && Number(pc.hp)>0 && meleeGroups().some(g=>g.pcNames.includes(pc.name.toLowerCase())));
   }
 
   function isPartyGroupActorExpression(text){
@@ -4051,7 +4171,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
 
     for(const pc of active){
-      if(combatSeparation(pc,target)<=0 && !getEngagement(pc,target)) setEngagement(pc,target,'normal');
+      if(combatSeparation(pc,target)<=0 && !getEngagement(pc,target)) setEngagement(pc,target);
     }
     const finalPositions=active.map(pc=>combatPcPosition(pc));
     const formed=finalPositions.every(pos=>Math.abs(pos-finalPositions[0])<1e-9);
@@ -4422,9 +4542,13 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     for(const m of livingHostiles()){
       const engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean);
       const target=engaged[0]||pcs[i++%pcs.length];
+      const group=engaged.length?meleeGroupFor(target,m):null;
+      const currentRange=group?.range||'far';
+      const preferredRange=monsterPreferredMeleeRange(m,target,currentRange);
+      const rangeIntent=rangeIntentToward(currentRange,preferredRange);
       const reason=engaged.length?`already engaged with ${target.name}`:'round-robin target among living PCs';
-      state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name,rangeIntent:'hold'};
-      audit.push(`${m.name}: MELEE ${target.name} (${reason})`);
+      state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name,rangeIntent,preferredRange};
+      audit.push(`${m.name}: MELEE ${target.name} (${reason}); prefers ${preferredRange.toUpperCase()}${rangeIntent!=='hold'?` → ${rangeIntent.toUpperCase()}`:' → HOLD'}`);
     }
     if(audit.length) void refereeLog(`ROUND ${state.combat.round} — MONSTER ORDERS\n${audit.join('\n')}`,{type:'monster_orders',round:state.combat.round,orders:{...state.combat.monsterOrders}});
   }
@@ -4459,6 +4583,12 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const winner=c.initiative?.winner||null;
     for(const group of meleeGroups()){
       const before=group.range, pcIntent=meleeSideIntent(group,'pc'), foeIntent=meleeSideIntent(group,'monster');
+      if(Number(group.formedRound)===Number(c.round)){
+        setMeleeGroupRange(group,before); syncMeleeGroupPositions(group);
+        write(`MELEE DISTANCE — ${meleeGroupNames(group)}: new contact begins at ${before.toUpperCase()}. The melee-distance contest begins next round.`,'system');
+        void refereeLog(`MELEE DISTANCE — round ${c.round}: ${meleeGroupNames(group)}; NEW MELEE at position ${group.position} ${combatDistanceUnit()}; initial shared range ${before.toUpperCase()}; first contest deferred until next round.`,{type:'melee_distance',round:c.round,pcNames:group.pcNames.slice(),monsterIds:group.monsterIds.slice(),position:group.position,before,pcIntent,foeIntent,winner,after:before,newMelee:true});
+        continue;
+      }
       let applied='hold', reason='opposed intentions cancel';
       if(pcIntent===foeIntent){ applied=pcIntent; reason=pcIntent==='hold'?'both sides hold':`both sides ${pcIntent}`; }
       else if(winner==='pc'){ applied=pcIntent; reason='PCs won initiative'; }
@@ -4480,7 +4610,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     let group=meleeGroupFor(pc,monster);
     if(!group){
       if(combatSeparation(pc,monster)>0){ write(`${pc.name} is not yet in melee with ${monster.name}; close the encounter distance first.`,'warning'); return; }
-      setEngagement(pc,monster,'normal'); group=meleeGroupFor(pc,monster); write(`${pc.name} and ${monster.name} establish NORMAL melee distance.`); return;
+      setEngagement(pc,monster); group=meleeGroupFor(pc,monster); write(`${pc.name} and ${monster.name} establish NORMAL melee distance.`); return;
     }
     const idx=RANGE_ORDER.indexOf(group.range); let next=idx;
     if(intent==='press')next=Math.max(0,idx-1); else if(intent==='open')next=Math.min(RANGE_ORDER.length-1,idx+1); else return;
@@ -4537,7 +4667,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         // resolved after physical encounter movement, never by individual reach.
         if(o.rangeIntent){
           const target=resolveCombatOrderTarget(o,pc.name) || resolveMovementOrderTarget(o,pc);
-          if(target && combatSeparation(pc,target)<=0 && !getEngagement(pc,target)) setEngagement(pc,target,'normal');
+          if(target && combatSeparation(pc,target)<=0 && !getEngagement(pc,target)) setEngagement(pc,target);
         }
       }
     } else {
@@ -4551,6 +4681,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         }
       }
     }
+    pruneInactiveMeleeSites();
     updatePanels();
   }
 
@@ -4698,8 +4829,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         if(deferredMode==='deferred'&&!deferred)continue;
         const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action!=='melee')continue;
         const target=resolveCombatOrderTarget(o,pc.name); if(!target)continue;
-        const e=getEngagement(pc,target);
+        let e=getEngagement(pc,target);
         const separation=combatSeparation(pc,target);
+        if(!e && separation<=0){ setEngagement(pc,target); e=getEngagement(pc,target); }
         if(!e && separation>0){
           recordMeleeAttempt(pc.name,target.name,separation,false,'pc');
           write(`${pc.name} cannot reach ${target.name} for a hand-to-hand attack: ${combatDistanceLabel(Math.round(separation))} remain. Melee begins only at 0 ${combatDistanceUnit()}.`,'warning');
@@ -4712,7 +4844,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       for(const m of state.combat.monsters){
         const eligible=!eligibleIds||eligibleIds.has(m.id), o=state.combat.monsterOrders[m.id];
         if(!o?.targetName)continue; const pc=findPc(o.targetName); if(!pc)continue;
-        const e=getEngagement(pc,m), separation=combatSeparation(pc,m);
+        let e=getEngagement(pc,m); const separation=combatSeparation(pc,m);
+        if(!e && separation<=0){ setEngagement(pc,m); e=getEngagement(pc,m); }
         if(!e && separation>0){ recordMeleeAttempt(m.name,pc.name,separation,false,'monster'); continue; }
         recordMeleeAttempt(m.name,pc.name,separation,true,'monster');
         monsterAttack(m,pc,eligible,Boolean(eligibleIds));
@@ -4818,7 +4951,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     moralePhase(side); if(combatConcluded())return finishCombatRound();
     write('MOVEMENT','system'); movementPhase(side); if(combatConcluded())return finishCombatRound();
     // Resolve the custom shared melee-distance contest once per round. Any melee
-    // first formed later in the RAW side sequence simply begins at Normal.
+    // first formed later in the RAW side sequence begins at the contextual initial range (normally Far).
     resolveMeleeDistanceContests();
     openWeaponChangeWindow({mode:'RAW_SIDE',side,nextSide});
   }
@@ -6064,7 +6197,7 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
       `Current initiative mode: ${state.rules?.initiativeMode||'RAW'}. RAW is side initiative; PHASED is the explicit house/alternative phase-based mode.`,
       'Retainer XP rule for this game: adventuring retainers count as 1/2 share; ordinary hirelings/mercenaries/specialists normally do not receive adventuring XP unless they have effectively become retainers.',
       'Monster morale policy in this build: morale events can apply to a group, but each affected monster makes its own morale check so some may flee while others hold.',
-      'Combat position uses exact encounter distance until melee engagement. In this build, hand-to-hand contact is represented by encounter separation exactly 0 yd/ft (the tabletop ~5 ft adjacency is collapsed to 0 so it stays distinct from missile-scale distance). Only after contact exists does each connected melee use one shared Close/Normal/Far state; separate melees can have different states.',
+      'Combat position uses exact encounter distance until melee engagement. In this build, hand-to-hand contact is represented by encounter separation exactly 0 yd/ft (the tabletop ~5 ft adjacency is collapsed to 0 so it stays distinct from missile-scale distance). Only after contact exists does everyone fighting at the same encounter position use one shared Close/Normal/Far state; separate melees at different positions can have different states. Ordinary first contact begins at Far unless encounter circumstances specify otherwise.',
       'Custom melee-distance procedure in this build: each side of a melee chooses Press, Hold, or Open. The shared state is settled after movement; when intentions conflict, initiative determines which side imposes its intention.',
       'Weapon switching in combat: after melee distance is settled, a character may switch to a weapon already carried. Quick weapons do not alter initiative. Readying a Cumbersome weapon defers only that character’s attack in the applicable Missile or Hand-to-Hand phase; movement, morale, magic, and melee-distance control are unaffected. Cumbersome normally means Matrix size Medium-Large or larger unless a weapon overrides its handling.',
       'Matrix weapon mode does not use the Rules Cyclopedia blanket initiative-loss rule merely because a weapon is two-handed; two-handed weapons still require both hands and normally preclude shield use.'
@@ -6451,12 +6584,12 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     const monsters=[];
     for(let i=1;i<=count;i++){
       const p=COMBAT_MONSTERS[type]||COMBAT_MONSTERS.skeleton;
-      monsters.push({id:`${type}-${i}`,name:`${p.name} ${i}`,type,hp:8,maxHp:8,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false});
+      monsters.push({id:`${type}-${i}`,name:`${p.name} ${i}`,type,hp:8,maxHp:8,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,meleeRangePreference:p.meleeRangePreference||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false});
     }
     const positions={pcs:{},monsters:{}};
     for(const pc of state.party) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=distance;
-    return {active:true,round:1,source:'harness',monsters,pcOrders:{},monsterOrders:{},engagements:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance:distance,distanceUnit:'yd',encounterDistanceTrace:null,positions};
+    return {active:true,round:1,source:'harness',monsters,pcOrders:{},monsterOrders:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance:distance,distanceUnit:'yd',encounterDistanceTrace:null,positions};
   }
 
   function installHarnessFixture(options={}){
@@ -6662,7 +6795,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         installHarnessFixture({distance:0});
         const pc=findPc('Tyree'),target=livingHostiles()[0];
         harnessAssert(atMeleeContact(pc,target),'Zero separation did not count as melee contact');
-        harnessAssert(setEngagement(pc,target,'normal'),'Could not establish melee at zero separation');
+        harnessAssert(setEngagement(pc,target),'Could not establish melee at zero separation');
         harnessAssert(Boolean(getEngagement(pc,target)),'Zero-distance melee engagement was not retained');
       }},
       {name:'Combat-plan staging is transactional on invalid later clause',run:()=>{
@@ -6843,6 +6976,50 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         askForActionClarification('the invisible reserves attack',['No living PC matched actor “the invisible reserves”.'],{kind:'ACTION_PLAN',steps:[{domain:'combat',verb:'combat_order',actor:'the invisible reserves',movement:'hold',action:'melee'}]});
         harnessAssert(/which characters do you mean/i.test(state.pendingClarification?.question||''),'Clarification did not identify the unresolved actor');
         harnessAssert(state.pendingClarification?.understoodContext?.partialPlan?.steps?.length===1,'Partial understood plan was not preserved with clarification');
+      }},
+      {name:'Same physical position is one shared melee regardless of pair links',run:()=>{
+        installHarnessFixture({distance:0});
+        const tyree=findPc('Tyree'), karson=findPc('Karson');
+        const s1=state.combat.monsters[0], s2=state.combat.monsters[1];
+        setEngagement(tyree,s1,'far');
+        setEngagement(karson,s2,'close');
+        const groups=meleeGroups();
+        harnessAssert(groups.length===1,`Expected one melee at one physical position, got ${groups.length}`);
+        harnessAssert(groups[0].pcNames.includes('tyree')&&groups[0].pcNames.includes('karson')&&groups[0].monsterIds.includes(s1.id)&&groups[0].monsterIds.includes(s2.id),'Same-position participants were not merged into one melee');
+        harnessAssert(new Set(groups[0].entries.map(e=>e.range)).size===1,'One physical melee retained contradictory pair ranges');
+      }},
+      {name:'Ordinary first contact begins FAR and first contest waits one round',run:()=>{
+        installHarnessFixture({distance:0,type:'goblin',count:1});
+        const tyree=findPc('Tyree'), foe=state.combat.monsters[0];
+        setEngagement(tyree,foe);
+        let group=meleeGroupFor(tyree,foe);
+        harnessAssert(group?.range==='far','New open melee did not begin at FAR');
+        state.combat.monsterOrders[foe.id]={action:'melee',targetName:'Tyree',rangeIntent:'press',preferredRange:'close'};
+        state.combat.pcOrders.tyree={action:'melee',targetId:foe.id,rangeIntent:'hold'};
+        state.combat.initiative={pc:1,monster:6,winner:'monster'};
+        resolveMeleeDistanceContests();
+        group=meleeGroupFor(tyree,foe);
+        harnessAssert(group?.range==='far','New melee distance was contested before its first attack phase');
+        state.combat.round=2; state.combat.meleeDistanceResolvedRound=0;
+        resolveMeleeDistanceContests();
+        group=meleeGroupFor(tyree,foe);
+        harnessAssert(group?.range==='normal','Foe press did not move FAR → NORMAL on the following round');
+      }},
+      {name:'Enemy distance preference follows weapon matrix and natural behavior',run:()=>{
+        installHarnessFixture({distance:0,type:'kobold',count:1});
+        const target=findPc('Tyree'), kobold=state.combat.monsters[0];
+        harnessAssert(monsterPreferredMeleeRange(kobold,target,'normal')==='far','Spear-armed kobold did not prefer FAR');
+        installHarnessFixture({distance:0,type:'wolf',count:1});
+        const wolf=state.combat.monsters[0], target2=findPc('Tyree');
+        harnessAssert(monsterPreferredMeleeRange(wolf,target2,'far')==='close','Natural-attacking predator did not prefer CLOSE');
+      }},
+      {name:'Combat map renders one shared melee annotation at one position',run:()=>{
+        installHarnessFixture({distance:0});
+        const tyree=findPc('Tyree'), karson=findPc('Karson');
+        const s1=state.combat.monsters[0], s2=state.combat.monsters[1];
+        setEngagement(tyree,s1,'far'); setEngagement(karson,s2,'far');
+        const map=renderCombatAsciiMap();
+        harnessAssert((map.match(/MELEE:/g)||[]).length===1,'Combat map rendered multiple melee distance annotations at one physical position');
       }},
       {name:'Clarification state preserves the original instruction',run:()=>{
         installHarnessFixture();
