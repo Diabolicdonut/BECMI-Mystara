@@ -389,7 +389,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.34';
+  const APP_VERSION = '0.3.35';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1247,8 +1247,8 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   async function migrateLegacyJournal(){
     const key=`knownWorldRefereeJournalMigration:${state.campaignId}`;
-    if(localStorage.getItem(key)) return;
     try{
+      if(localStorage.getItem(key)) return;
       const rows=await getCampaignJournalEntries(state.campaignId,{audience:null});
       if(!rows.length && Array.isArray(state.eventLog) && state.eventLog.length){
         const legacy=state.eventLog.map(text=>({...journalSnapshot(),campaignId:state.campaignId,category:'legacy_engine',audience:'referee',text:String(text),searchText:String(text).toLowerCase(),meta:{legacy:true}}));
@@ -1278,6 +1278,9 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     treasuryCp:0,
     partyInventory:[],
     mounts:[],
+    // Persistent player-defined marching/combat groups. These are organizational
+    // labels, not separate game entities; membership survives rounds and saves.
+    partyGroups:{},
     seed:(Date.now()>>>0),
     eventLog:[],
     searched:{},
@@ -2051,7 +2054,8 @@ W: swollen wooden door · E: cellar`;
   }
 
   function getStoredToken() {
-    return (localStorage.getItem(STORAGE.token) || '').trim();
+    try{return (localStorage.getItem(STORAGE.token) || '').trim();}
+    catch{return '';}
   }
 
   function refreshTokenUi() {
@@ -3444,7 +3448,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const randomTarget=String(o.targetSelection||'').toLowerCase()==='random'
       ? `random ${String(o.targetQuery||'foe').replace(/^(?:a|an|the)\s+/i,'').trim()||'foe'}`
       : null;
-    const movementTarget=o.movementTargetId?state.combat?.monsters.find(m=>m.id===o.movementTargetId)?.name||o.movementTargetId:String(o.movementTargetQuery||'').trim();
+    const movementTarget=o.movementTargetId?state.combat?.monsters.find(m=>m.id===o.movementTargetId)?.name||o.movementTargetId:String(o.regroupTargetQuery||o.movementTargetQuery||'').trim();
     const pieces=[];
     const movement=String(o.movement||'hold').toLowerCase();
     if(movement!=='hold') pieces.push(`${movement}${movementTarget?` → ${movementTarget}`:''}${o.movementMode==='together'?' [together]':''}`);
@@ -4022,6 +4026,54 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     });
   }
 
+  function normalizePartyGroupKey(value){
+    return String(value||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9_' -]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  function partyGroupRecord(value){
+    const key=normalizePartyGroupKey(value);
+    if(!key) return null;
+    const groups=state.partyGroups&&typeof state.partyGroups==='object'?state.partyGroups:{};
+    if(groups[key]) return groups[key];
+    // Accept harmless article variants: “the group 1” -> “group 1”.
+    const bare=key.replace(/^the\s+/,'');
+    return groups[bare]||null;
+  }
+
+  function partyGroupActorNames(){
+    const groups=state.partyGroups&&typeof state.partyGroups==='object'?state.partyGroups:{};
+    return Object.values(groups).map(g=>String(g?.name||'').trim()).filter(Boolean);
+  }
+
+  function partyGroupMembers(value,{livingOnly=true}={}){
+    const group=partyGroupRecord(value);
+    if(!group) return [];
+    const wanted=new Set((Array.isArray(group.memberNames)?group.memberNames:[]).map(n=>String(n).toLowerCase()));
+    return state.party.filter(pc=>wanted.has(pc.name.toLowerCase()) && (!livingOnly || (!pc.dead&&Number(pc.hp)>0)));
+  }
+
+  function definePartyGroup(name,members,{announce=true}={}){
+    const display=String(name||'').trim().replace(/^the\s+/i,'');
+    const key=normalizePartyGroupKey(display);
+    const pcs=(Array.isArray(members)?members:[]).filter(pc=>pc&&state.party.includes(pc));
+    if(!key || !pcs.length) return null;
+    if(!state.partyGroups||typeof state.partyGroups!=='object') state.partyGroups={};
+    const now=Date.now();
+    const record=state.partyGroups[key]={name:display,memberNames:[...new Set(pcs.map(pc=>pc.name))],createdAt:state.partyGroups[key]?.createdAt||now,updatedAt:now};
+    if(announce) write(`${record.name.toUpperCase()}: ${record.memberNames.join(', ')}. This group will move together when ordered by group name.`,'system');
+    persistStateSilently(); updatePanels();
+    return record;
+  }
+
+  function disbandPartyGroup(name,{announce=true}={}){
+    const group=partyGroupRecord(name); if(!group) return false;
+    const key=normalizePartyGroupKey(group.name); delete state.partyGroups[key];
+    if(announce) write(`${group.name} is disbanded.`,'system');
+    persistStateSilently(); updatePanels(); return true;
+  }
+
+  function isNamedPartyGroupActor(text){ return Boolean(partyGroupRecord(text)); }
+
   function isRelativePartyActor(text){
     const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
     return /^(?:the )?(?:rest(?: of (?:the party|the group|them|us))?|remaining (?:party|party members?|group|group members?|characters?|adventurers?|members?|ones?)|all remaining(?: characters| adventurers| members| ones)?|everyone else|everybody else|all others?|the others?|others?|everyone remaining|everybody remaining|anyone else|whoever else|everyone not (?:named|mentioned|already mentioned)|all not (?:named|mentioned|already mentioned))$/.test(a);
@@ -4048,7 +4100,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function isPartyGroupActorExpression(text){
     const a=String(text||'').toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim();
-    if(isWholePartyActor(a) || isRelativePartyActor(a) || partyActorStateSelector(a)) return true;
+    if(isWholePartyActor(a) || isRelativePartyActor(a) || partyActorStateSelector(a) || isNamedPartyGroupActor(a)) return true;
     const exclusion=/^(.*?)(?:\s+)(?:except|but not|but|other than|excluding|minus|leaving out|not including)(?:\s+)(.+)$/i.exec(a);
     return Boolean(exclusion && (isWholePartyActor(exclusion[1]) || isRelativePartyActor(exclusion[1]) || /^(?:everyone|everybody|all|we|us)$/.test(exclusion[1])));
   }
@@ -4060,6 +4112,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const assigned=context.assigned instanceof Set?context.assigned:new Set();
     const explicitlyAssigned=context.explicitlyAssigned instanceof Set?context.explicitlyAssigned:new Set();
     const stateSelector=partyActorStateSelector(a);
+    const namedGroup=partyGroupRecord(raw);
+    if(namedGroup) return partyGroupMembers(namedGroup.name);
     if(stateSelector==='engaged') return living.filter(pc=>pcCurrentlyEngaged(pc));
     if(stateSelector==='unengaged') return living.filter(pc=>!pcCurrentlyEngaged(pc));
     if(isRelativePartyActor(a)) return living.filter(pc=>!assigned.has(pc.name.toLowerCase()) && !explicitlyAssigned.has(pc.name.toLowerCase()));
@@ -4069,10 +4123,59 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       let base=isRelativePartyActor(exclusion[1])?living.filter(pc=>!assigned.has(pc.name.toLowerCase())&&!explicitlyAssigned.has(pc.name.toLowerCase())):living;
       return base.filter(pc=>!excluded.has(pc.name.toLowerCase()));
     }
-    if(isWholePartyActor(a)) return living;
+    // A broad whole-party clause should not overwrite a PC who has a
+    // separate named instruction elsewhere in the same plan. This is the
+    // semantic meaning of ordinary commands such as “Jaylin casts Sleep while
+    // the party attacks”: Jaylin's specific order wins and the broad party
+    // order applies to everyone else.
+    if(isWholePartyActor(a)) return living.filter(pc=>!explicitlyAssigned.has(pc.name.toLowerCase()));
     const named=namedPcsInText(raw);
     if(named.length) return named;
     const pc=findPc(actor); return pc && !pc.dead && Number(pc.hp)>0 ? [pc] : [];
+  }
+
+  function resolvePartyFormationTarget(query){
+    const raw=String(query||'').trim();
+    const q=raw.toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9_' -]/g,' ').replace(/\s+/g,' ').trim();
+    if(!q) return null;
+    if(/\b(?:the )?(?:lead|leaders?|front|front rank|characters?(?: that are| who are)? in the lead|those in the lead|furthest ahead|farthest ahead)\b/.test(q)){
+      const living=livingParty(); if(!living.length) return null;
+      const pos=Math.max(...living.map(pc=>combatPcPosition(pc)));
+      const pcs=living.filter(pc=>Math.abs(combatPcPosition(pc)-pos)<1e-9);
+      return {kind:'lead',label:'the characters in the lead',pcs,position:pos};
+    }
+    const group=partyGroupRecord(raw);
+    if(group){
+      const pcs=partyGroupMembers(group.name); if(!pcs.length) return null;
+      const positions=pcs.map(pc=>combatPcPosition(pc));
+      const position=Math.max(...positions);
+      return {kind:'group',label:group.name,pcs,position};
+    }
+    const pcs=namedPcsInText(raw);
+    if(pcs.length){
+      const positions=pcs.map(pc=>combatPcPosition(pc));
+      const position=positions.reduce((a,b)=>a+b,0)/positions.length;
+      return {kind:'pcs',label:pcs.map(pc=>pc.name).join(', '),pcs,position};
+    }
+    return null;
+  }
+
+  function movePcTowardPartyReference(pc,order){
+    const target=resolvePartyFormationTarget(order?.regroupTargetQuery||order?.movementTargetQuery||'');
+    if(!target) return false;
+    const start=combatPcPosition(pc), destination=Number(target.position)||0;
+    if(target.pcs.some(x=>x.name.toLowerCase()===pc.name.toLowerCase()) && Math.abs(start-destination)<1e-9){
+      write(`${pc.name} holds the lead position while the others form up.`,'system'); return true;
+    }
+    const gap=Math.abs(destination-start), speed=pcEncounterSpeed(pc);
+    const distance=Math.min(gap,speed);
+    const next=start + Math.sign(destination-start)*distance;
+    setCombatPcPosition(pc,next);
+    const remain=Math.max(0,Math.round(Math.abs(destination-next)));
+    if(remain<=0) write(`${pc.name} joins ${target.label} and forms up at their position.`,'system');
+    else write(`${pc.name} moves ${combatDistanceLabel(distance)} to join ${target.label}; ${combatDistanceLabel(remain)} remain.`,'system');
+    void refereeLog(`REGROUP — round ${state.combat?.round||'?'}: ${pc.name} toward ${target.label}; start ${start}; target ${destination}; end ${next}.`,{type:'regroup',round:state.combat?.round||null,pc:pc.name,target:target.label,start,targetPosition:destination,end:next});
+    return true;
   }
 
   function normalizeCombatMovement(value,legacyAction=''){
@@ -4084,6 +4187,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       return 'hold';
     }
     if(['approach','advance','close','move in','move toward','move towards','engage','charge','rush','move to melee','close to melee','meet in melee','move up'].includes(m)) return 'approach';
+    if(['regroup','join','join up','form up','rally','catch up'].includes(m)) return 'regroup';
     if(['hold','stay','remain','stationary','none','stay put','hold position','remain in place','stay back'].includes(m)) return 'hold';
     if(['withdraw','fighting withdrawal','fall back','back away','give ground'].includes(m)) return 'withdraw';
     if(['retreat','flee','run away','full retreat'].includes(m)) return 'retreat';
@@ -4187,14 +4291,45 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   }
 
+  function extractPartyGroupDefinition(input){
+    const source=String(input||'');
+    const patterns=[
+      /\bgroup\s+(.+?)\s+(?:into|as)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
+      /\bput\s+(.+?)\s+(?:into|in)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
+      /\b(?:make|form)\s+(.+?)\s+(?:into\s+|as\s+)?((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i
+    ];
+    let match=null;
+    for(const re of patterns){ const m=re.exec(source); if(m && (!match || m.index<match.index)) match=m; }
+    if(!match) return null;
+    const memberExpression=String(match[1]||'').trim();
+    const groupName=String(match[2]||'').trim();
+    const explicitlyNamed=new Set(namedPcsInText(source).filter(pc=>!new RegExp(`(?:^|[^a-z0-9])${escapeRegexText(pc.name)}(?:[^a-z0-9]|$)`,'i').test(memberExpression)).map(pc=>pc.name.toLowerCase()));
+    const members=groupCombatActors(memberExpression,{assigned:new Set(),explicitlyAssigned:explicitlyNamed});
+    let before=source.slice(0,match.index).replace(/[.;,\s]+$/,'').trim();
+    let after=source.slice(match.index+match[0].length).replace(/^\s*(?:and\s+then|then|and)\s+/i,'').replace(/^[.;,\s]+/,'').trim();
+    // English commonly says “then move group 1 ...”. The combat clause grammar
+    // is actor-first, so normalize only this unambiguous saved-group form.
+    const gEsc=escapeRegexText(groupName);
+    after=after.replace(new RegExp(`^(move|advance|approach|close|charge|rush|attack|fight|hold|join|regroup)\\s+(${gEsc})(?=\\s|$)`,'i'),(_,verb,g)=>`${g} ${verb}`);
+    const remainder=[before,after].filter(Boolean).join(before&&after?'. ':'').trim();
+    return {groupName,memberExpression,members,remainder};
+  }
+
+  function partyGroupSummary(){
+    const groups=Object.values(state.partyGroups||{});
+    if(!groups.length) return 'No named party groups.';
+    return groups.map(g=>`${g.name}: ${(g.memberNames||[]).join(', ')}`).join('\n');
+  }
+
   function deterministicCombatActorPattern(){
     const names=livingParty().map(pc=>escapeRegexText(pc.name)).sort((a,b)=>b.length-a.length);
+    const namedGroups=partyGroupActorNames().map(escapeRegexText).sort((a,b)=>b.length-a.length);
     const groups=[
       'those who are not engaged in melee','those who are not in melee','those who are not','those that are not','those who aren\'t','those that aren\'t','those not yet engaged in melee','those not yet engaged','those not engaged in melee','those not in melee','characters not engaged in melee','party members not engaged in melee','anyone not engaged in melee','everyone not engaged in melee','unengaged characters','unengaged party members','those still outside melee','those still approaching',
       'those who are engaged in melee','those engaged in melee','those already engaged in melee','those currently engaged in melee','those in melee','characters engaged in melee','party members engaged in melee','anyone engaged in melee','everyone engaged in melee','those already fighting','those currently fighting','engaged characters','engaged party members',
-      'the rest of the party','rest of the party','the rest of the group','rest of the group','the rest','the rest of them','rest of them','the remaining characters','remaining characters','the remaining adventurers','remaining adventurers','the remaining party members','remaining party members','the remaining group members','remaining group members','the remaining members','remaining members','all remaining','all remaining characters','all remaining adventurers','everyone else','everybody else','the others','others','the whole party','whole party','the party','party','the group','group','everyone','everybody','all of us','we','pcs','player characters'
+      'the rest of the party','rest of the party','the rest of the group','rest of the group','the rest','the rest of them','rest of them','the remaining characters','remaining characters','the remaining adventurers','remaining adventurers','the remaining party members','remaining party members','the remaining group members','remaining group members','the remaining members','remaining members','all remaining','all remaining characters','all remaining adventurers','everyone else','everybody else','the others','others','the whole party','whole party','the party','party','the group','everyone','everybody','all of us','we','pcs','player characters'
     ].map(escapeRegexText).sort((a,b)=>b.length-a.length);
-    return [...names,...groups].join('|');
+    return [...names,...namedGroups,...groups].join('|');
   }
 
   function normalizeCombatCommandFraming(input){
@@ -4278,23 +4413,55 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     })||null;
   }
 
+  function currentMeleeRangeForActorExpression(actor){
+    const ranges=[];
+    for(const pc of groupCombatActors(actor,{})){
+      const group=meleeGroups().find(g=>g.pcNames.includes(pc.name.toLowerCase()));
+      if(group?.range && !ranges.includes(group.range)) ranges.push(group.range);
+    }
+    return ranges.length===1?ranges[0]:null;
+  }
+
   function parseDeterministicCombatClause(actor,body,context={}){
     const text=String(body||'').trim();
     const lower=text.toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
     if(!text) return null;
+
+    // Close/Normal/Far is a shared MELEE state, not encounter-scale movement.
+    // Commands such as “press to close distance” and “move to close distance”
+    // therefore set rangeIntent while the combatants remain at the same physical
+    // encounter position.
+    let rangeIntent=null;
+    const desiredRange=(/\b(?:to|toward|towards|at|into)\s+(close|normal|far)(?:\s+(?:melee\s+)?(?:distance|range))?\b/.exec(lower)||[])[1]||null;
+    const rangeOnlyPhrase=Boolean(desiredRange || /\b(?:press(?: in)?|close (?:the )?distance|fight closer|move in closer|open (?:the )?distance|increase (?:the )?distance|fight farther|hold (?:the )?(?:melee )?(?:distance|range))\b/.test(lower));
+    if(/\b(?:press(?: in)?|close (?:the )?distance|fight closer|move in closer)\b/.test(lower)) rangeIntent='press';
+    if(/\b(?:open (?:the )?distance|increase (?:the )?distance|fight farther|make more room)\b/.test(lower)) rangeIntent='open';
+    if(/\bhold (?:the )?(?:melee )?(?:distance|range)\b/.test(lower)) rangeIntent='hold';
+    if(desiredRange){
+      if(desiredRange==='close') rangeIntent='press';
+      else if(desiredRange==='far') rangeIntent='open';
+      else {
+        const current=currentMeleeRangeForActorExpression(actor);
+        rangeIntent=current?rangeIntentToward(current,'normal'):(rangeIntent||'hold');
+      }
+    }
+
     let movement='hold';
     let movementExplicit=false;
-    if(/\b(?:retreat|flee|run away|full retreat)\b/.test(lower)){ movement='retreat'; movementExplicit=true; }
-    else if(/\b(?:withdraw|fighting withdrawal|fall back|back away|give ground)\b/.test(lower)){ movement='withdraw'; movementExplicit=true; }
-    else if(/\b(?:advance|approach|move(?:s)?(?: in| up| toward| towards)?|close(?:s)?(?: in| distance)?|charge|rush)\b/.test(lower)){ movement='approach'; movementExplicit=true; }
-    else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)){ movement='hold'; movementExplicit=true; }
+    let regroupTargetQuery=null;
+    const regroupMatch=/\b(?:join(?: up)?(?: with)?|regroup(?: with)?|form up(?: with)?|rally(?: on| with)?|catch up(?: to| with)?)\s+(.+?)(?=\s+(?:and|then)\b|$)/i.exec(text);
+    if(regroupMatch){
+      const candidate=String(regroupMatch[1]||'').replace(/\b(?:and )?form up.*$/i,'').trim();
+      if(resolvePartyFormationTarget(candidate)){ movement='regroup'; movementExplicit=true; regroupTargetQuery=candidate; }
+    }
+    if(!movementExplicit && !rangeOnlyPhrase){
+      if(/\b(?:retreat|flee|run away|full retreat)\b/.test(lower)){ movement='retreat'; movementExplicit=true; }
+      else if(/\b(?:withdraw|fighting withdrawal|fall back|back away|give ground)\b/.test(lower)){ movement='withdraw'; movementExplicit=true; }
+      else if(/\b(?:advance|approach|move(?:s)?(?: in| up| toward| towards)?|close(?:s)?(?: in)?|charge|rush)\b/.test(lower)){ movement='approach'; movementExplicit=true; }
+      else if(/\b(?:hold|stay|remain)(?:s)?(?: put| back| in place| position)?\b/.test(lower)){ movement='hold'; movementExplicit=true; }
+    }
 
-    const movementMode=/\b(?:together|as (?:a )?group|as one|in formation|keep formation|stay together|keep together|same pace|same distance|abreast)\b/.test(lower)?'together':'individual';
-    // Resolve an explicitly named foe/group first. In a compound tabletop order,
-    // a later clause may naturally omit the target ("while the rest advance to
-    // attack") because it is still talking about the foe set established by the
-    // preceding clause. Preserve that same-utterance referent instead of forcing
-    // the player to repeat the noun.
+    const movementMode=/\b(?:together|as (?:a )?group|as one|in formation|keep formation|stay together|keep together|same pace|same distance|abreast|form up)\b/.test(lower)?'together':'individual';
     const explicitTarget=inferCurrentFoeQuery(text);
     const inheritedTarget=String(context?.fallbackTarget||'').trim();
     let target=explicitTarget || inheritedTarget;
@@ -4305,27 +4472,23 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     else if(/\b(?:shoot|shoots|fire|fires|loose|looses)\b/.test(lower)) action='missile';
     else if(/\b(?:attack|attacks|attacking|fight|fights|fighting|engage|engages|engaging|strike|strikes|striking|melee)\b/.test(lower)) action='melee';
 
-    // Bare tabletop melee orders imply closing if necessary. Characters already
-    // engaged stay in their current melee; explicit movement language always wins.
-    if(action==='melee' && !movementExplicit) movement=actorState==='engaged'?'hold':'approach';
-
-    // "advance ... to meet them in melee" is an approach + melee order even if
-    // the prose contains filler or a typo in "meet"; the explicit word melee is
-    // the semantic signal, not the exact surrounding phrase.
+    if(action==='melee' && !movementExplicit && !rangeIntent) movement=actorState==='engaged'?'hold':'approach';
     if(movement==='approach' && /\bmelee\b/.test(lower)) action='melee';
-    // In an active fight with one hostile side, ordinary tabletop shorthand does
-    // not need to repeat “the foes” in every clause. Engaged subgroups keep their
-    // current opponent; unengaged characters can close on the current hostile set.
     if(!target && (action==='melee' || movement==='approach') && livingHostiles().length) target='foes';
-    if(action==='none' && movement==='hold' && !/\b(?:hold|stay|remain|wait|do nothing|continue)\b/.test(lower)) return null;
+
+    if(action==='none' && movement==='hold' && !rangeIntent && !/\b(?:hold|stay|remain|wait|do nothing|continue)\b/.test(lower)) return null;
     if(['melee','missile'].includes(action) && !target) return null;
     if(action==='spell' && !spell) return null;
     if(movement==='approach' && !target) return null;
+    if(movement==='regroup' && !regroupTargetQuery) return null;
 
     const step={domain:'combat',verb:'combat_order',actor:String(actor||'').trim(),movement,action};
     if(target){ step.target=target; if(movement==='approach') step.movementTarget=target; }
-    if(movementMode==='together') step.movementMode='together';
+    if(movement==='regroup') step.movementTarget=regroupTargetQuery;
+    if(movementMode==='together' || partyGroupRecord(actor)) step.movementMode='together';
+    if(partyGroupRecord(actor)) step.movementGroup=`party-group:${normalizePartyGroupKey(partyGroupRecord(actor).name)}`;
     if(action==='spell') step.spell=spell;
+    if(rangeIntent) step.rangeIntent=rangeIntent;
     if(actorState==='engaged' && action==='melee') step.targetSelection='engaged';
     else if(/\b(?:random|randomly|at random|whichever|any one)\b/.test(lower)) step.targetSelection='random';
     return step;
@@ -4364,7 +4527,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
     // Actorless shorthand is accepted only when it clearly names a combat action,
     // so a directional command such as “move north” is not stolen by this parser.
-    if(actor==='party' && !/\b(?:attack|fight|engage|strike|melee|shoot|fire|cast)\b/i.test(body)) return null;
+    if(actor==='party' && !/\b(?:attack|fight|engage|strike|melee|shoot|fire|cast|press|close (?:the )?distance|open (?:the )?distance|hold (?:the )?(?:melee )?(?:distance|range)|(?:move|go|shift)\s+(?:to|toward|towards|into)\s+(?:close|normal|far)(?:\s+(?:melee\s+)?(?:distance|range))?|join|regroup|form up|catch up)\b/i.test(body)) return null;
     const step=parseDeterministicCombatClause(actor,body,{fallbackTarget:inferCurrentFoeQuery(source)||'foes'});
     if(!step) return null;
     step.id='1';
@@ -4402,6 +4565,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const rawMovementMode=entry?.movementMode??entry?.formation??entry?.pace;
       const movementModeExplicit=rawMovementMode!=null && String(rawMovementMode).trim()!=='';
       let movementMode=normalizeMovementMode(rawMovementMode);
+      const savedActorGroup=partyGroupRecord(entry?.actor);
+      // A named player-defined group is a formation by definition. When ordered
+      // to advance, it uses one shared pace even if the wording omits “together.”
+      if(movement==='approach' && savedActorGroup && !movementModeExplicit) movementMode='together';
       // When the player explicitly gives a group actor and says the group stays
       // together, do not depend on the AI remembering to repeat movementMode.
       if(movement==='approach' && sourceRequestsTogether && !movementModeExplicit && (isPartyGroupActorExpression(entry?.actor) || actors.length>1)) movementMode='together';
@@ -4410,22 +4577,33 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const isEngagedSelection=selection==='engaged' || selection==='current_opponent' || selection==='current opponent';
       const targets=(isRandom||isEngagedSelection)?[]:strictCombatTargetsFromText(entry?.target);
       const movementText=String(entry?.movementTarget||entry?.moveTarget||((movement==='approach'&&(action==='hold'||rawAction==='none'))?entry?.target:'')||'').trim();
-      const movementCandidates=movementText?strictCombatTargetsFromText(movementText):[];
+      const movementCandidates=movement==='approach'&&movementText?strictCombatTargetsFromText(movementText):[];
+      const formationTarget=movement==='regroup'?resolvePartyFormationTarget(movementText):null;
       const spellName=String(entry?.spell||'').trim();
       const isAreaSleep=action==='spell' && spellName.toLowerCase()==='sleep';
       if(movement==='approach' && !movementText && action!=='melee' && !entry?.target){ issues.push(`Approach order for “${String(entry?.actor||'')}” has no foe/group to approach.`); return; }
       if(movement==='approach' && movementText && !movementCandidates.length){ issues.push(`No eligible foes match movement target “${movementText}”.`); return; }
+      if(movement==='regroup' && !formationTarget){ issues.push(`No party member/group matches formation target “${movementText}”.`); return; }
       if(['melee','missile','spell'].includes(action) && !isRandom && !isEngagedSelection && entry?.target && !targets.length){ issues.push(`No eligible foes match action target “${String(entry.target)}”.`); return; }
       for(const pc of actors){
         const currentEngaged=action==='melee'?engagementsForPc(pc).map(x=>x.monster).find(monsterStillPresent):null;
         let effectiveMovement=movement;
         if(action==='melee' && movement==='approach' && currentEngaged && isGenericCombatTargetQuery(movementText||entry?.target||'')) effectiveMovement='hold';
+        // A whole-side melee-range command can include both PCs already in the
+        // scrum and PCs still outside it. Engaged PCs stay physically put and
+        // contest Close/Normal/Far; unengaged PCs still have to approach the
+        // melee before they can attack. This keeps “move to close distance and
+        // attack” from freezing rear characters at encounter range.
+        if(action==='melee' && entry?.rangeIntent && movement==='hold' && !currentEngaged) effectiveMovement='approach';
         const order={action,movement:effectiveMovement,movementMode:effectiveMovement==='hold'?'individual':movementMode,targetId:null};
         order._movementModeExplicit=movementModeExplicit;
         if(entry?.movementGroup) order.movementGroup=String(entry.movementGroup);
+        else if(savedActorGroup) order.movementGroup=`party-group:${normalizePartyGroupKey(savedActorGroup.name)}`;
         if(effectiveMovement==='approach'){
           order.movementTargetQuery=movementText || String(entry?.target||'foe');
           if(movementCandidates.length===1) order.movementTargetId=movementCandidates[0].id;
+        } else if(effectiveMovement==='regroup'){
+          order.regroupTargetQuery=movementText;
         }
         if(['melee','missile','spell'].includes(action)){
           if(isAreaSleep){
@@ -4659,6 +4837,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
           clearAllPcEngagements(pc);
           write(`${pc.name} makes a fighting withdrawal ${combatDistanceLabel(speed)}.`,'system'); continue;
         }
+        if(movement==='regroup'){
+          movePcTowardPartyReference(pc,o);
+          continue;
+        }
         if(movement==='approach' && !processedTogether.has(pc.name.toLowerCase())){
           const target=resolveMovementOrderTarget(o,pc);
           if(target && monsterStillPresent(target) && !getEngagement(pc,target)) movePcTowardMonster(pc,target);
@@ -4761,6 +4943,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function isMeleeDistanceQuestion(input){
     const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
     if(!q) return false;
+    // This helper answers questions about the distance model; it must not steal
+    // imperative commands that merely contain words such as "distance" and
+    // "attack" (for example, "party move to close distance and attack").
+    const interrogative=isInformationRequest(q) || /[?]\s*$/.test(q);
+    if(!interrogative) return false;
     const melee=/(?:\bmelee\b|hand[- ]to[- ]hand|close combat|attack(?:s|ed|ing)?|hit(?:ting)?|strike|striking)/.test(q);
     const distance=/(?:\bdistance\b|\brange\b|\breach\b|\baway\b|yards?|\byds?\b|feet|\bft\b|contact)/.test(q);
     return melee && distance;
@@ -5082,7 +5269,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(normalized==='initiative mode raw' || normalized==='initiative raw'){setInitiativeMode('RAW');return true;}
     if(normalized==='initiative mode phases' || normalized==='initiative mode phased' || normalized==='phase based initiative' || normalized==='phase-based initiative'){setInitiativeMode('PHASED');return true;}
     if(/^(memorize|prepare)\s+/i.test(input.trim())){prepareSpellCommand(input);return true;}
-    if(combatActive() && !getStoredToken() && !looksLikeCompoundCombatInstruction(input) && parsePcCombatCommand(input))return true;
+    // Legacy per-PC parsing used to run here before the full-input semantic
+    // grammar. That allowed a recognizable first clause to steal a richer
+    // command (for example, a caster order followed by a named-group order).
+    // Simple PC commands are now handled by the deterministic full-input parser
+    // below; the legacy parser remains only as a later compatibility fallback.
     if(combatActive() && /^(everyone|everybody|all)\s+attacks?$/i.test(normalized)){autoPcOrders();return true;}
     return false;
   }
@@ -5396,6 +5587,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     merged.party=(loaded.party||[]).map(normalizeMember);
     merged.partyInventory=Array.isArray(loaded.partyInventory)?loaded.partyInventory:[];
     merged.mounts=Array.isArray(loaded.mounts)?loaded.mounts:[];
+    merged.partyGroups=loaded.partyGroups&&typeof loaded.partyGroups==='object'&&!Array.isArray(loaded.partyGroups)?loaded.partyGroups:{};
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
     merged.combatHistory=Array.isArray(loaded.combatHistory)?loaded.combatHistory:[];
     merged.pendingClarification=loaded.pendingClarification&&typeof loaded.pendingClarification==='object'?loaded.pendingClarification:null;
@@ -5645,6 +5837,7 @@ new game / clear`);
       party:livingParty().map(p=>({name:p.name,role:p.role,equipped:equippedWeaponItem(p)?.name||'unarmed',preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady),engagedWith:combatActive()?engagementsForPc(p).map(x=>x.monster?.name).filter(Boolean):[]})),
       knownDestinations:known,
       npcs:sceneNpcNames(),
+      partyGroups:Object.values(state.partyGroups||{}).map(g=>({name:g.name,members:(g.memberNames||[]).slice()})),
       discourse:discourseContextForParser()
     };
     if(state.mode==='wilderness'){
@@ -5860,7 +6053,7 @@ new game / clear`);
     m=/unsupported combat action [“"]([^”"]+)[”"]/i.exec(first);
     if(m) return `I understood who should act, but I do not know how “${m[1]}” maps to a combat action. Do you mean melee, missile fire, a spell, or no attack?`;
     m=/unsupported combat movement [“"]([^”"]+)[”"]/i.exec(first);
-    if(m) return `I understood the action, but I do not know how “${m[1]}” maps to movement. Do you mean approach, hold, withdraw, or retreat?`;
+    if(m) return `I understood the action, but I do not know how “${m[1]}” maps to movement. Do you mean approach the foes, hold, regroup with another party position, withdraw, or retreat?`;
     if(/no action steps/i.test(first)) return 'I can tell you are giving an instruction, but I could not identify a concrete action from it. What do you want the character or party to do?';
     if(/needs a valid direction/i.test(first)) return 'I understood that you want to move, but I need the direction.';
     if(/destination is ambiguous/i.test(first)) return `${first} Which destination do you mean?`;
@@ -5895,7 +6088,7 @@ new game / clear`);
   }
 
   function universalRepairPrompt(playerInput,previousIntent,validationReasons=[]){
-    return `You are a REPAIR PASS for the universal intent parser of a deterministic BECMI game. Return ONE raw JSON object only. The player's wording is authoritative. Produce kind ACTION_PLAN whenever the player is describing an in-world action, even if that action may require referee adjudication. Do NOT use REFEREE merely because the engine lacks a procedure; the validator decides that. Preserve every clause, actor, target, sequencing word, condition, exclusion, random selector, formation instruction, destination, topic, and stopping condition.\n\nACTION_PLAN shape: {"kind":"ACTION_PLAN","confidence":0.0,"summary":"...","steps":[{"id":"1","domain":"combat|travel|exploration|social|commerce|inventory|meta","verb":"...","actor":null,"target":null,"destination":null,"direction":null,"feature":null,"movement":null,"movementTarget":null,"movementMode":null,"movementGroup":null,"action":null,"spell":null,"targetSelection":null,"rangeIntent":null,"rangeBand":null,"addressee":null,"topic":null,"speechAct":null,"item":null,"quantity":null,"recipient":null,"service":null,"durationMinutes":null,"until":null,"condition":null,"constraints":[]}]}. Combat movement=approach|hold|withdraw|retreat; combat action=none|melee|missile|spell.\n\nCAPABILITIES/ONTOLOGY: ${capabilityPromptText()}\nSCENE: ${safeTraceValue(semanticSceneContext(),850)}\nPREVIOUS RESULT: ${safeTraceValue(previousIntent,600)}\nVALIDATOR NOTES: ${validationReasons.join(' | ').slice(0,500)}\nPLAYER: ${String(playerInput||'').slice(0,750)}`;
+    return `You are a REPAIR PASS for the universal intent parser of a deterministic BECMI game. Return ONE raw JSON object only. The player's wording is authoritative. Produce kind ACTION_PLAN whenever the player is describing an in-world action, even if that action may require referee adjudication. Do NOT use REFEREE merely because the engine lacks a procedure; the validator decides that. Preserve every clause, actor, target, sequencing word, condition, exclusion, random selector, formation instruction, destination, topic, and stopping condition.\n\nACTION_PLAN shape: {"kind":"ACTION_PLAN","confidence":0.0,"summary":"...","steps":[{"id":"1","domain":"combat|travel|exploration|social|commerce|inventory|meta","verb":"...","actor":null,"target":null,"destination":null,"direction":null,"feature":null,"movement":null,"movementTarget":null,"movementMode":null,"movementGroup":null,"action":null,"spell":null,"targetSelection":null,"rangeIntent":null,"rangeBand":null,"addressee":null,"topic":null,"speechAct":null,"item":null,"quantity":null,"recipient":null,"service":null,"durationMinutes":null,"until":null,"condition":null,"constraints":[]}]}. Combat movement=approach|hold|regroup|withdraw|retreat; regroup movementTarget names a PC, named party group, or 'the characters in the lead'; combat action=none|melee|missile|spell.\n\nCAPABILITIES/ONTOLOGY: ${capabilityPromptText()}\nSCENE: ${safeTraceValue(semanticSceneContext(),850)}\nPREVIOUS RESULT: ${safeTraceValue(previousIntent,600)}\nVALIDATOR NOTES: ${validationReasons.join(' | ').slice(0,500)}\nPLAYER: ${String(playerInput||'').slice(0,750)}`;
   }
 
   async function repairUniversalPlanWithAi(playerInput,previousIntent,validationReasons=[]){
@@ -6025,7 +6218,7 @@ RULES:
 - Do not invent named entities. Descriptive referents (innkeeper, door, river, skeletons) are valid targets/addressees.
 - Party/everyone/we = whole party; rest/remaining/everyone else = party minus separately ordered actors. Preserve named exclusions. Dynamic combat actor sets are valid and should be preserved semantically: ‘those engaged/in melee/already fighting’ = living PCs currently in a melee; ‘those not engaged/not in melee/unengaged’ = living PCs currently outside melee.
 - random/whichever/at random => targetSelection="random" over the described eligible set; never choose the individual.
-- Combat step verb=combat_order; movement=approach|hold|withdraw|retreat and action=none|melee|missile|spell are independent. together/as a group/same pace => movementMode="together" and one shared movementGroup when useful. rangeIntent=press|hold|open is only the shared Close/Normal/Far melee state. Area spells such as Sleep keep the group target. If the whole party is told to close/attack, PCs already engaged should hold their existing melee and attack their current opponent while unengaged PCs approach the hostile side.
+- Combat step verb=combat_order; movement=approach|hold|regroup|withdraw|retreat and action=none|melee|missile|spell are independent. regroup means join/form up with a PC, named party group, or the characters in the lead. together/as a group/same pace => movementMode="together" and one shared movementGroup when useful. rangeIntent=press|hold|open is only the shared Close/Normal/Far melee state. Area spells such as Sleep keep the group target. If the whole party is told to close/attack, PCs already engaged should hold their existing melee and attack their current opponent while unengaged PCs approach the hostile side.
 - Travel keeps destination/direction/feature AND conditions/stopping instructions. Social actions remain ACTION_PLAN with addressee/topic/speechAct; do not punt them to REFEREE just because adjudication may be needed.
 - Unknown-but-reasonable physical actions are still ACTION_PLAN; the validator decides capability.
 
@@ -6044,12 +6237,12 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
   }
 
   function compactIntentInterpreterPrompt(playerInput){
-    return `ONE raw JSON only. In-world action=>ACTION_PLAN; question/table talk=>REFEREE; CLARIFY only for material ambiguity. Preserve ALL clauses, sequence, conditions, exclusions, group/relative references, dynamic combat groups (engaged PCs vs unengaged PCs), random selectors and formation. steps use domain combat|travel|exploration|social|commerce|inventory|meta plus verb and relevant fields. Combat: verb=combat_order, movement=approach|hold|withdraw|retreat, action=none|melee|missile|spell, movementMode=together|individual. Social actions are ACTION_PLAN even if referee adjudication is needed. Scene=${safeTraceValue(semanticSceneContext(),650)} Pending=${safeTraceValue(pendingClarificationPrompt(),300)} Player=${String(playerInput||'').slice(0,550)}`;
+    return `ONE raw JSON only. In-world action=>ACTION_PLAN; question/table talk=>REFEREE; CLARIFY only for material ambiguity. Preserve ALL clauses, sequence, conditions, exclusions, group/relative references, dynamic combat groups (engaged PCs vs unengaged PCs), random selectors and formation. steps use domain combat|travel|exploration|social|commerce|inventory|meta plus verb and relevant fields. Combat: verb=combat_order, movement=approach|hold|regroup|withdraw|retreat, action=none|melee|missile|spell, movementMode=together|individual. regroup targets a PC/group/lead party position. Social actions are ACTION_PLAN even if referee adjudication is needed. Scene=${safeTraceValue(semanticSceneContext(),650)} Pending=${safeTraceValue(pendingClarificationPrompt(),300)} Player=${String(playerInput||'').slice(0,550)}`;
   }
 
   function combatRepairPrompt(playerInput,previousIntent){
     const combat={round:state.combat?.round||null,foes:livingHostiles().map(m=>m.name),pcs:livingParty().map(p=>({name:p.name,preparedSpell:spellReadyName(p)||null,spellReady:Boolean(p.spellReady)}))};
-    return `You are a second-pass combat INTENT PARSER, not a narrator. The first pass did not yield an executable combat plan. Re-evaluate the player's ordinary English and return ONE raw JSON object only. Prefer COMBAT_PLAN whenever every requested action fits this schema. orders:[{actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement=approach|hold|withdraw|retreat. action=none|melee|missile|spell. movement and action are independent. movementMode=together when actors stay together/keep formation/move at the same pace. Relative actor phrases (rest, remaining characters, everyone else, party) and state-based actor phrases (those engaged in melee, those not engaged, unengaged PCs) are valid. Random/whichever means targetSelection=random over the described eligible foe set. Area spells such as Sleep can name a foe group without choosing an individual. Example pattern: one named caster holds and casts a prepared spell on a foe group; the rest approach that foe group together with action=none. Do not hard-code any example names or monsters. Return REFEREE only if some requested behavior truly cannot fit the schema. Combat=${JSON.stringify(combat)}. FirstPass=${safeTraceValue(previousIntent,700)}. Player=${playerInput}`;
+    return `You are a second-pass combat INTENT PARSER, not a narrator. The first pass did not yield an executable combat plan. Re-evaluate the player's ordinary English and return ONE raw JSON object only. Prefer COMBAT_PLAN whenever every requested action fits this schema. orders:[{actor,movement,movementTarget,movementMode,movementGroup,action,target,spell,rangeIntent,rangeBand,targetSelection}]. movement=approach|hold|regroup|withdraw|retreat. action=none|melee|missile|spell. regroup targets a PC, named party group, or lead party position. movement and action are independent. movementMode=together when actors stay together/keep formation/move at the same pace. Relative actor phrases (rest, remaining characters, everyone else, party) and state-based actor phrases (those engaged in melee, those not engaged, unengaged PCs) are valid. Random/whichever means targetSelection=random over the described eligible foe set. Area spells such as Sleep can name a foe group without choosing an individual. Example pattern: one named caster holds and casts a prepared spell on a foe group; the rest approach that foe group together with action=none. Do not hard-code any example names or monsters. Return REFEREE only if some requested behavior truly cannot fit the schema. Combat=${JSON.stringify(combat)}. FirstPass=${safeTraceValue(previousIntent,700)}. Player=${playerInput}`;
   }
 
   async function repairCombatIntentWithAi(playerInput,previousIntent){
@@ -6160,6 +6353,13 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
   function isInformationRequest(input){
     const q=String(input||'').trim().toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ');
     if(!q) return false;
+    // HAVE/LET/MAKE can introduce an imperative player order. Do not classify
+    // "have Jaylin cast Sleep" or "have the group join Jaylin" as a yes/no
+    // question merely because the first word is "have".
+    const commandRest=q.replace(/^(?:please\s+)?(?:have|let|make)\s+/,'');
+    const partyCommand=/^(?:the\s+)?(?:party|group|whole party|everyone|everybody|all|we|pcs|player characters|rest of the party|the rest of the party)\b/.test(commandRest);
+    const pcCommand=(state.party||[]).some(pc=>commandRest===String(pc.name||'').toLowerCase() || commandRest.startsWith(String(pc.name||'').toLowerCase()+' '));
+    if(/^(?:please\s+)?(?:have|let|make)\s+/.test(q) && (partyCommand||pcCommand)) return false;
     if(/[?]\s*$/.test(q)) return true;
     if(/^(?:who|what|when|where|why|how|which|whose|is|are|am|was|were|do|does|did|can|could|would|should|will|may|might|has|have|had)\b/.test(q)) return true;
     if(/^(?:please\s+)?(?:explain|describe|tell me|show me|give me|remind me|walk me through|clarify|identify|compare|summarize|list)\b/.test(q)) return true;
@@ -6409,17 +6609,39 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   }
 
   async function handle(raw) {
-    const input = raw.trim();
+    let input = raw.trim();
     if (!input) return;
-    write(`> ${input}`,'prompt');
+    const displayedInput=input;
+    write(`> ${displayedInput}`,'prompt');
 
-    const normalized = input.toLowerCase().replace(/\s+/g,' ');
+    // Organizational grouping is parsed before combat intent so the verb
+    // “group” can never be mistaken for the actor “the group.” A definition may
+    // be followed by an ordinary action in the same sentence.
+    if(state.party.length){
+      const groupDirective=extractPartyGroupDefinition(input);
+      if(groupDirective){
+        if(!groupDirective.members.length){
+          write(`I understand that you want to create ${groupDirective.groupName}, but I cannot tell which characters belong in it. Which characters should be included?`,'warning');
+          setPendingClarification(displayedInput,`Which characters should be included in ${groupDirective.groupName}?`,{groupName:groupDirective.groupName,memberExpression:groupDirective.memberExpression});
+          return;
+        }
+        const record=definePartyGroup(groupDirective.groupName,groupDirective.members);
+        void refereeLog(`PARTY GROUP — ${record.name}: ${record.memberNames.join(', ')}. Defined from: ${displayedInput}`,{type:'party_group_definition',group:record.name,members:record.memberNames.slice(),source:displayedInput});
+        input=groupDirective.remainder;
+        if(!input) return;
+      }
+    }
+
+    let normalized = input.toLowerCase().replace(/\s+/g,' ');
     const directDirection = normalizeDirection(normalized);
     const naturalDirection = parseNaturalDirection(input);
 
     // Explicit engine/UI commands remain deterministic and bypass AI.
     if (normalized === 'new game' || normalized === 'restart') return newGame();
     if (normalized === 'load') return load();
+    if (['groups','party groups','show groups','list groups'].includes(normalized)) { write(partyGroupSummary(),'system'); return; }
+    const disband=/^(?:disband|delete|remove)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)$/i.exec(input);
+    if(disband){ if(!disbandPartyGroup(disband[1])) write(`No named party group called ${disband[1]} exists.`,'warning'); return; }
     if (handleCombatDirect(input,normalized)) return;
     if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
     if (normalized === 'wares' || normalized === 'shop' || normalized === 'list wares') return listWares();
@@ -7021,6 +7243,95 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const map=renderCombatAsciiMap();
         harnessAssert((map.match(/MELEE:/g)||[]).length===1,'Combat map rendered multiple melee distance annotations at one physical position');
       }},
+      {name:'Literal Sleep plus named Group 1 command preserves caster spell and groups the rest',run:async()=>{
+        installHarnessFixture({distance:90});
+        const caster=state.party[0];
+        delete state.combat.positions.pcs[caster.name.toLowerCase()];
+        caster.name='Jaylin'; caster.className='Magic-User'; caster.role='Magic-User 1';
+        caster.spellbook=['Read Magic','Sleep']; caster.memorizedSpell='Sleep'; caster.spellReady=true;
+        state.combat.positions.pcs.jaylin=0;
+        const text='Jaylin casts sleep on the skeletons. Group the rest of the party into group 1 and then move group 1 to melee and attack';
+        await handle(text);
+        const group=partyGroupRecord('group 1');
+        harnessAssert(group && group.memberNames.length===5 && !group.memberNames.includes('Jaylin'),'Group 1 did not become the five non-caster PCs');
+        const jaylin=state.combat.pcOrders.jaylin;
+        harnessAssert(jaylin?.action==='spell' && String(jaylin?.spell).toLowerCase()==='sleep','Jaylin spell order was overwritten by melee');
+        harnessAssert(/skeleton/i.test(String(jaylin?.areaTargetQuery||'')),'Sleep did not preserve the skeleton group as its area target');
+        harnessAssert(jaylin?.movement==='hold','Jaylin should stay put while casting unless movement was requested');
+        const rest=group.memberNames.map(name=>state.combat.pcOrders[name.toLowerCase()]);
+        harnessAssert(rest.every(o=>o?.action==='melee'&&o?.movement==='approach'&&o?.movementMode==='together'),'Group 1 did not receive together approach + melee orders');
+        harnessAssert(new Set(rest.map(o=>o?.movementGroup)).size===1 && String(rest[0]?.movementGroup||'').includes('group 1'),'Group 1 did not receive one persistent shared movement-group id');
+      }},
+      {name:'Specific named caster is excluded from a simultaneous broad party melee order',run:()=>{
+        installHarnessFixture({distance:90});
+        const plan={kind:'ACTION_PLAN',steps:[
+          {actor:'Nemiriel',movement:'hold',action:'spell',spell:'Magic Missile',target:'skeletons',targetSelection:'random'},
+          {actor:'party',movement:'approach',action:'melee',target:'skeletons'}
+        ]};
+        const result=applyCombatPlan(plan.steps,'Nemiriel casts Magic Missile while the party advances and attacks');
+        harnessAssert(result.ok,'Mixed named-caster + whole-party plan was rejected');
+        harnessAssert(state.combat.pcOrders.nemiriel?.action==='spell','Broad party order overwrote the named caster');
+        harnessAssert(Object.keys(state.combat.pcOrders).length===6,'Mixed plan did not assign all living PCs');
+      }},
+      {name:'Actorless press-to-close-distance is a shared melee-range order',run:async()=>{
+        installHarnessFixture({distance:0});
+        for(let i=0;i<state.party.length;i++) setEngagement(state.party[i],state.combat.monsters[i%state.combat.monsters.length],'far');
+        await handle('press to close distance');
+        const orders=Object.values(state.combat.pcOrders);
+        harnessAssert(orders.length===6,'Actorless press did not default to the PC side');
+        harnessAssert(orders.every(o=>o.rangeIntent==='press'),'Actorless press did not become PRESS for the whole melee side');
+        harnessAssert(orders.every(o=>o.movement==='hold'),'Melee-range press incorrectly became encounter-scale movement');
+        const natural=parseDeterministicSingleCombatPlan('move to close distance');
+        harnessAssert(natural?.steps?.[0]?.rangeIntent==='press' && natural?.steps?.[0]?.movement==='hold','Actorless “move to close distance” was not understood as a shared melee-range press');
+      }},
+      {name:'Party move to close distance and attack adapts engaged and unengaged PCs',run:async()=>{
+        installHarnessFixture({distance:40});
+        const engaged=state.party.slice(0,2);
+        for(let i=0;i<engaged.length;i++){
+          const foe=state.combat.monsters[i];
+          setCombatPcPosition(engaged[i],40); setCombatMonsterPosition(foe,40); setEngagement(engaged[i],foe,'far');
+        }
+        await handle('party move to close distance and attack');
+        for(const pc of engaged){
+          const o=state.combat.pcOrders[pc.name.toLowerCase()];
+          harnessAssert(o?.action==='melee'&&o?.movement==='hold'&&o?.rangeIntent==='press',`${pc.name} did not hold/attack/press while already engaged`);
+        }
+        for(const pc of state.party.slice(2)){
+          const o=state.combat.pcOrders[pc.name.toLowerCase()];
+          harnessAssert(o?.action==='melee'&&o?.movement==='approach'&&o?.rangeIntent==='press',`${pc.name} did not approach while the melee side pressed inward`);
+        }
+      }},
+      {name:'Persistent named party group moves together by group name',run:async()=>{
+        installHarnessFixture({distance:90});
+        definePartyGroup('group 1',state.party.slice(1,4),{announce:false});
+        await handle('group 1 move to melee and attack');
+        const group=partyGroupMembers('group 1');
+        harnessAssert(Object.keys(state.combat.pcOrders).length===3,'Named group order affected PCs outside Group 1');
+        const orders=group.map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
+        harnessAssert(orders.every(o=>o?.movement==='approach'&&o?.action==='melee'&&o?.movementMode==='together'),'Named Group 1 did not move together to melee');
+        harnessAssert(new Set(orders.map(o=>o?.movementGroup)).size===1,'Named Group 1 did not share one movement group');
+        movementPhase('pc');
+        const positions=group.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,'Named Group 1 members ended group movement at different positions');
+      }},
+      {name:'Party can join a lead character and form up on that position',run:async()=>{
+        installHarnessFixture({distance:120});
+        const leader=state.party[0]; setCombatPcPosition(leader,40);
+        for(const pc of state.party.slice(1)) setCombatPcPosition(pc,20);
+        await handle(`have the group join with ${leader.name} and hold position for the skeletons to advance`);
+        harnessAssert(Object.values(state.combat.pcOrders).every(o=>o?.movement==='regroup'),'Join-with-leader command did not become regroup movement');
+        movementPhase('pc');
+        harnessAssert(state.party.every(pc=>combatPcPosition(pc)===40),'Party failed to join the lead character at one position');
+      }},
+      {name:'Party can form up with whichever characters are in the lead',run:async()=>{
+        installHarnessFixture({distance:120});
+        setCombatPcPosition(state.party[0],40); setCombatPcPosition(state.party[1],40);
+        for(const pc of state.party.slice(2)) setCombatPcPosition(pc,20);
+        await handle('party join up with characters that are in the lead and form up with them');
+        harnessAssert(Object.values(state.combat.pcOrders).every(o=>o?.movement==='regroup'),'Lead-relative formation command did not become regroup movement');
+        movementPhase('pc');
+        harnessAssert(state.party.every(pc=>combatPcPosition(pc)===40),'Party did not form up on the current lead position');
+      }},
       {name:'Clarification state preserves the original instruction',run:()=>{
         installHarnessFixture();
         rememberPendingClarification('Nemiriel casts magic missile','Which foe?');
@@ -7161,8 +7472,10 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function boot(autoload=true) {
     if(autoload){
-      const raw=localStorage.getItem(STORAGE.save);
-      if(raw){ try{ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }catch{ state=initialState(); } }
+      try{
+        const raw=localStorage.getItem(STORAGE.save);
+        if(raw){ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }
+      }catch{ state=initialState(); }
     }
     write(`KNOWN WORLD REFEREE — CAMPAIGN BUILD v${APP_VERSION}`,'system');
     write('This build uses the regression/specification harness around the Universal Action Plan and deterministic engine. Developer Mode includes a full debug-session export containing transcript, hidden engine state, parser/AI diagnostics, and referee records; credentials are excluded.','system');
