@@ -128,17 +128,22 @@
   @media (min-width:801px) { html, body { height:100%; overflow:hidden; } }
   @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } .journal-toolbar { grid-template-columns:1fr 1fr; } .journal-toolbar input { grid-column:1 / -1; } .journal-results { min-height:52dvh; max-height:68dvh; } }
   @media (max-width:800px) {
-    html, body { min-height:100%; }
+    :root { --mobile-footer-h:104px; --mobile-situation-h:66px; --mobile-fixed-safe:190px; }
+    html, body { min-height:100%; height:auto; overflow-x:hidden; overflow-y:auto; scroll-padding-bottom:var(--mobile-fixed-safe); }
     body { display:block; }
-    #app { width:100%; height:100dvh; min-height:0; padding-bottom:104px; }
+    /* Mobile uses normal document flow. A constrained CSS grid caused the
+       terminal to overflow underneath later sidebar sections, which made
+       OPTIONS / COMBAT appear to cover game text. */
+    #app { width:100%; height:auto; min-height:100dvh; display:block; padding-bottom:var(--mobile-fixed-safe); }
     header { padding:12px 12px 9px; }
     .statusbar { gap:6px 8px; margin-top:9px; }
     .badge { padding:3px 5px; font-size:11px; }
-    main { grid-template-columns:1fr; min-height:0; overflow:auto; }
-    #terminal { min-height:70dvh; padding:14px 12px 20px; overflow:visible; }
-    #terminal > :last-child { scroll-margin-bottom:92px; }
-    aside { border-left:0; border-top:1px solid var(--line); padding:14px 12px 100px; }
-    .situation-section { position:fixed; left:8px; right:8px; bottom:96px; top:auto; z-index:58; margin:0; padding:8px; border:1px solid #58684f; background:#0c110b; max-height:48dvh; box-shadow:0 -8px 28px rgba(0,0,0,.72); }
+    main { display:block; min-height:0; overflow:visible; }
+    #terminal { min-height:70dvh; height:auto; padding:14px 12px calc(20px + var(--mobile-fixed-safe)); overflow:visible; scroll-padding-bottom:var(--mobile-fixed-safe); }
+    #terminal > :last-child { scroll-margin-bottom:var(--mobile-fixed-safe); }
+    aside { position:relative; border-left:0; border-top:1px solid var(--line); padding:14px 12px var(--mobile-fixed-safe); overflow:visible; }
+    aside details.sidebar-collapse, aside section { position:relative; z-index:auto; }
+    .situation-section { position:fixed; left:8px; right:8px; bottom:calc(var(--mobile-footer-h) + 8px); top:auto; z-index:58; margin:0; padding:8px; border:1px solid #58684f; background:#0c110b; max-height:48dvh; box-shadow:0 -8px 28px rgba(0,0,0,.72); }
     .situation-collapse { display:block; }
     .situation-section.collapsed { max-height:none; }
     .situation-section.collapsed .situation-tabs,
@@ -426,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.36';
+  const APP_VERSION = '0.3.38';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -3927,6 +3932,12 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function spellReadyName(pc){ return pc.memorizedSpell || (pc.spellbook?.[1]||null); }
   function canCastPrepared(pc,spell){ return Boolean(pc.spellbook?.length && pc.spellReady && spellReadyName(pc)?.toLowerCase()===String(spell||'').toLowerCase()); }
 
+  function sleepPlayerOutcome(pcName,scoped,budgetTotal,affected){
+    const targetText=scoped?` over ${scoped}`:'';
+    if(affected.length) return `${pcName} casts Sleep${targetText}: 2d8 = ${budgetTotal} Hit Dice. ${affected.map(m=>m.name).join(', ')} fall asleep. No saving throw applies.`;
+    return `${pcName} casts Sleep${targetText}. The magic settles over the targets, but none of them are affected.`;
+  }
+
   function castPcSpell(pc,order,phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && (pc.dead || pc.hp<=0))) return;
     const spell=String(order.spell||'').trim();
@@ -3942,7 +3953,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const pool=scoped?strictCombatTargetsFromText(scoped):livingHostiles();
       const eligible=pool.filter(m=>!m.immuneSleep && m.hd<=4.25).sort((a,b)=>a.hd-b.hd || a.id.localeCompare(b.id));
       for(const m of eligible){ if(m.hd<=budget+1e-9){ m.sleeping=true; affected.push(m); budget-=m.hd; } }
-      write(`${pc.name} casts Sleep${scoped?` on ${scoped}`:''}: 2d8 = ${budgetRoll.total} Hit Dice. ${affected.length?affected.map(m=>m.name).join(', ')+' fall asleep':'no eligible foe is affected'}. No saving throw applies.`,'system'); checkHalfDisabledMorale();
+      const immune=pool.filter(m=>m.immuneSleep);
+      void refereeLog(`SPELL — ${pc.name} casts Sleep${scoped?` on ${scoped}`:''}; 2d8=${budgetRoll.total} HD; targets=${pool.map(m=>m.name).join(', ')||'none'}; immune/excluded=${immune.map(m=>m.name).join(', ')||'none'}; affected=${affected.map(m=>m.name).join(', ')||'none'}.`,{type:'spell_sleep',round:state.combat?.round,caster:pc.name,scope:scoped||null,hitDiceBudget:budgetRoll.total,targetIds:pool.map(m=>m.id),immuneTargetIds:immune.map(m=>m.id),affectedTargetIds:affected.map(m=>m.id),developerRecord:true});
+      write(sleepPlayerOutcome(pc.name,scoped,budgetRoll.total,affected),'system'); checkHalfDisabledMorale();
     } else if(lower==='shield'){
       pc.spellReady=false; pc.shieldSpellRounds=120; write(`${pc.name} casts Shield. For 2 turns, ${pc.name}'s AC is no worse than 2 against missiles and 4 against other attacks; Shield may also stop Magic Missile with a saving throw.`,'system');
     } else if(lower==='charm person'){
@@ -4356,46 +4369,62 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     }
     const targetPos=combatMonsterPosition(target);
     const starts=active.map(pc=>combatPcPosition(pc));
-    const direction=targetPos>=starts.reduce((a,b)=>a+b,0)/starts.length ? 1 : -1;
-    const reach=active.map((pc,i)=>{
-      const speed=Math.max(0,pcEncounterSpeed(pc));
-      const start=starts[i];
-      return direction>0 ? Math.min(targetPos,start+speed) : Math.max(targetPos,start-speed);
-    });
+    const speeds=active.map(pc=>Math.max(0,pcEncounterSpeed(pc)));
+    const groupSpeed=Math.min(...speeds);
+    const alreadyFormed=starts.every(pos=>Math.abs(pos-starts[0])<1e-9);
 
-    // "Together" is a formation constraint, not merely a shared keyword. If the
-    // party can reach one common forward position this round, every member ends
-    // at that exact position. The common destination is limited by the slowest /
-    // most encumbered member. If they began spread too far apart to reform in one
-    // round, the front waits while the rear closes the formation instead of every
-    // member independently running their full movement allowance.
-    const front=direction>0?Math.max(...starts):Math.min(...starts);
-    const commonReach=direction>0?Math.min(...reach):Math.max(...reach);
-    const canForm=direction>0 ? commonReach>=front : commonReach<=front;
-    let destination;
-    if(canForm){
-      destination=commonReach;
+    // A formed group is one movement unit. Its maximum displacement is the
+    // encounter speed of its SLOWEST living member. Faster members do not use
+    // their extra movement while the formation is moving together.
+    let destination=null;
+    if(alreadyFormed){
+      const start=starts[0];
+      const delta=targetPos-start;
+      const travel=Math.min(Math.abs(delta),groupSpeed);
+      destination=start+(delta===0?0:Math.sign(delta)*travel);
       for(const pc of active) setCombatPcPosition(pc,destination);
     } else {
-      destination=front;
-      for(let i=0;i<active.length;i++){
-        const start=starts[i];
-        const next=direction>0 ? Math.min(front,reach[i]) : Math.max(front,reach[i]);
-        setCombatPcPosition(active[i],next);
+      // A named group that is already dispersed must reform before it can
+      // advance as one unit. Find the furthest target-ward coordinate that every
+      // member can reach this round. If none exists, members move only toward a
+      // rendezvous; nobody is allowed to continue an independent advance.
+      const low=Math.max(...starts.map((start,i)=>start-speeds[i]));
+      const high=Math.min(...starts.map((start,i)=>start+speeds[i]));
+      if(low<=high){
+        destination=Math.max(low,Math.min(high,targetPos));
+        for(const pc of active) setCombatPcPosition(pc,destination);
+      } else {
+        const minStart=Math.min(...starts), maxStart=Math.max(...starts);
+        const rendezvous=(minStart+maxStart)/2;
+        for(let i=0;i<active.length;i++){
+          const start=starts[i], speed=speeds[i];
+          const delta=rendezvous-start;
+          const next=Math.abs(delta)<=speed ? rendezvous : start+Math.sign(delta)*speed;
+          setCombatPcPosition(active[i],next);
+        }
       }
     }
 
-    for(const pc of active){
-      if(combatSeparation(pc,target)<=0 && !getEngagement(pc,target)) setEngagement(pc,target);
-    }
     const finalPositions=active.map(pc=>combatPcPosition(pc));
     const formed=finalPositions.every(pos=>Math.abs(pos-finalPositions[0])<1e-9);
-    const moved=Math.max(...active.map((pc,i)=>Math.abs(combatPcPosition(pc)-starts[i])));
-    const remain=Math.max(0,Math.round(Math.abs(targetPos-(formed?finalPositions[0]:direction>0?Math.min(...finalPositions):Math.max(...finalPositions)))));
+    if(formed){
+      // Contact with any hostile at the formation coordinate establishes the
+      // shared melee site; individual target links remain attack bookkeeping.
+      for(const pc of active){
+        const o=orders.get(pc.name.toLowerCase())||firstOrder;
+        const ownTarget=resolveMovementOrderTarget(o,pc)||target;
+        if(ownTarget && combatSeparation(pc,ownTarget)<=0 && !getEngagement(pc,ownTarget)) setEngagement(pc,ownTarget);
+      }
+    }
+    const anchor=formed?finalPositions[0]:finalPositions.reduce((a,b)=>a+b,0)/finalPositions.length;
+    const remain=Math.max(0,Math.round(Math.abs(targetPos-anchor)));
     const label=String(firstOrder?.movementTargetQuery||target.name);
-    if(formed) write(`${active.map(pc=>pc.name).join(', ')} advance together at the group's pace toward ${label}; the formation ends ${combatDistanceLabel(remain)} away.`,'system');
-    else write(`${active.map(pc=>pc.name).join(', ')} move to regroup while advancing toward ${label}; the formation cannot fully close this round without someone moving backward.`,'system');
-    void refereeLog(`GROUP MOVEMENT — round ${state.combat?.round||'?'}: ${active.map(pc=>pc.name).join(', ')}; target ${label}; starts [${starts.join(', ')}]; speeds [${active.map(pc=>pcEncounterSpeed(pc)).join(', ')}]; ends [${finalPositions.join(', ')}]; ${formed?'formation maintained/formed':'regrouping incomplete'}.`,{type:'group_movement',round:state.combat?.round||null,pcs:active.map(pc=>pc.name),target:label,starts,speeds:active.map(pc=>pcEncounterSpeed(pc)),ends:finalPositions,formed});
+    if(formed){
+      const moved=Math.abs(finalPositions[0]-starts[0]);
+      const pace=alreadyFormed?` at the slowest member's pace (${combatDistanceLabel(groupSpeed)}/round)`:'';
+      write(`${active.map(pc=>pc.name).join(', ')} move as one formation${pace} toward ${label}; shared displacement ${combatDistanceLabel(moved)}; all end at the same position, ${combatDistanceLabel(remain)} from the target.`,'system');
+    } else write(`${active.map(pc=>pc.name).join(', ')} regroup toward one rendezvous point; the formation is still assembling and does not advance independently.`,'system');
+    void refereeLog(`GROUP MOVEMENT — round ${state.combat?.round||'?'}: ${active.map(pc=>pc.name).join(', ')}; target ${label}; starts [${starts.join(', ')}]; speeds [${speeds.join(', ')}]; group speed ${groupSpeed}; ends [${finalPositions.join(', ')}]; ${formed?'one shared formation coordinate':'regrouping toward one rendezvous'}.`,{type:'group_movement',round:state.combat?.round||null,pcs:active.map(pc=>pc.name),target:label,starts,speeds,groupSpeed,ends:finalPositions,formed,formationDestination:formed?destination:null});
   }
 
   function escapeRegexText(value){
@@ -7166,6 +7195,16 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const order=state.combat.pcOrders.nemiriel;
         harnessAssert(!order.targetId && /skeleton/i.test(order.areaTargetQuery||''),'Area spell was incorrectly collapsed to one numbered skeleton');
       }},
+      {name:'Sleep has observable no-effect feedback without revealing hidden immunity',run:()=>{
+        installHarnessFixture({distance:60,type:'skeleton',count:4});
+        const caster=findPc('Nemiriel'); caster.spellbook=['Read Magic','Sleep']; caster.memorizedSpell='Sleep'; caster.spellReady=true;
+        castPcSpell(caster,{action:'spell',spell:'Sleep',areaTargetQuery:'skeletons'},true,false);
+        harnessAssert(caster.spellReady===false,'Sleep was not expended');
+        harnessAssert(state.combat.monsters.every(m=>m.sleeping===false),'Sleep incorrectly affected an immune skeleton');
+        const feedback=sleepPlayerOutcome(caster.name,'skeletons',7,[]);
+        harnessAssert(/none of them are affected/i.test(feedback),'No-effect feedback was not visible to the player');
+        harnessAssert(!/immune|undead|eligible/i.test(feedback),'Player feedback exposed hidden immunity/rules terminology');
+      }},
       {name:'Universal multi-step travel plan preserves sequence and route data',run:()=>{
         installHarnessFixture(); state.combat=null;
         const plan=normalizeActionPlan({kind:'ACTION_PLAN',steps:[
@@ -7372,6 +7411,9 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const rest=group.memberNames.map(name=>state.combat.pcOrders[name.toLowerCase()]);
         harnessAssert(rest.every(o=>o?.action==='melee'&&o?.movement==='approach'&&o?.movementMode==='together'),'Group 1 did not receive together approach + melee orders');
         harnessAssert(new Set(rest.map(o=>o?.movementGroup)).size===1 && String(rest[0]?.movementGroup||'').includes('group 1'),'Group 1 did not receive one persistent shared movement-group id');
+        movementPhase('pc');
+        const movedPositions=group.memberNames.map(name=>combatPcPosition(findPc(name)));
+        harnessAssert(new Set(movedPositions).size===1,'Literal Group 1 command produced different physical positions after movement');
       }},
       {name:'Specific named caster is excluded from a simultaneous broad party melee order',run:()=>{
         installHarnessFixture({distance:90});
@@ -7424,6 +7466,30 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         movementPhase('pc');
         const positions=group.map(pc=>combatPcPosition(pc));
         harnessAssert(new Set(positions).size===1,'Named Group 1 members ended group movement at different positions');
+        const slowest=Math.min(...group.map(pc=>pcEncounterSpeed(pc)));
+        harnessAssert(Math.abs(positions[0]-slowest)<1e-9,`Named Group 1 moved ${positions[0]} instead of the slowest member's ${slowest} yd encounter speed`);
+      }},
+      {name:'Formed named group movement is capped by its slowest member',run:async()=>{
+        installHarnessFixture({distance:120});
+        definePartyGroup('group 1',state.party.slice(0,4),{announce:false});
+        const group=partyGroupMembers('group 1');
+        for(const pc of group) setCombatPcPosition(pc,0);
+        const slowest=Math.min(...group.map(pc=>pcEncounterSpeed(pc)));
+        await handle('group 1 move to melee and attack');
+        movementPhase('pc');
+        const positions=group.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,'Formed named group fragmented during movement');
+        harnessAssert(Math.abs(positions[0]-slowest)<1e-9,`Formation moved ${positions[0]} yd; slowest member permits ${slowest} yd`);
+      }},
+      {name:'Named group converges to one reachable formation coordinate before advancing',run:async()=>{
+        installHarnessFixture({distance:120});
+        definePartyGroup('group 1',state.party.slice(0,3),{announce:false});
+        const group=partyGroupMembers('group 1');
+        setCombatPcPosition(group[0],0); setCombatPcPosition(group[1],10); setCombatPcPosition(group[2],20);
+        await handle('group 1 move to melee and attack');
+        movementPhase('pc');
+        const positions=group.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,'Separated Group 1 members failed to converge to one reachable formation coordinate');
       }},
       {name:'Party can join a lead character and form up on that position',run:async()=>{
         installHarnessFixture({distance:120});
@@ -7662,6 +7728,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     const collapsed=situationSection?.classList.toggle('collapsed')||false;
     situationCollapseButton.textContent=collapsed?'SHOW MAP':'HIDE';
     situationCollapseButton.setAttribute('aria-expanded',collapsed?'false':'true');
+    requestAnimationFrame(()=>updateMobileFixedSafeArea());
     command?.focus();
   });
   const syncSituationResponsiveState=()=>{
@@ -7678,8 +7745,37 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       situationCollapseButton.setAttribute('aria-expanded','false');
     }
   };
+  const updateMobileFixedSafeArea=()=>{
+    const root=document.documentElement;
+    if(!window.matchMedia('(max-width:800px)').matches){
+      root.style.removeProperty('--mobile-footer-h');
+      root.style.removeProperty('--mobile-situation-h');
+      root.style.removeProperty('--mobile-fixed-safe');
+      return;
+    }
+    const footerEl=document.querySelector('footer');
+    const footerH=Math.ceil(footerEl?.getBoundingClientRect().height||104);
+    root.style.setProperty('--mobile-footer-h',`${footerH}px`);
+    // Measure after the footer variable is applied because it determines the
+    // Situation drawer's bottom offset. The clearance deliberately includes a
+    // little breathing room so scrollIntoView never parks the latest transcript
+    // line underneath a border/shadow.
+    requestAnimationFrame(()=>{
+      const situationH=Math.ceil(situationSection?.getBoundingClientRect().height||66);
+      const safe=footerH+situationH+28;
+      root.style.setProperty('--mobile-situation-h',`${situationH}px`);
+      root.style.setProperty('--mobile-fixed-safe',`${safe}px`);
+    });
+  };
   syncSituationResponsiveState();
-  window.addEventListener('resize',syncSituationResponsiveState);
+  updateMobileFixedSafeArea();
+  window.addEventListener('resize',()=>{ syncSituationResponsiveState(); updateMobileFixedSafeArea(); });
+  if(typeof ResizeObserver!=='undefined'){
+    const mobileDockObserver=new ResizeObserver(()=>updateMobileFixedSafeArea());
+    const footerEl=document.querySelector('footer');
+    if(footerEl) mobileDockObserver.observe(footerEl);
+    if(situationSection) mobileDockObserver.observe(situationSection);
+  }
 
   if(showMapButton) showMapButton.addEventListener('click',()=>openMapWindow());
   if(closeMapButton) closeMapButton.addEventListener('click',closeMapWindow);
