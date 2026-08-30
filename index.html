@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.38';
+  const APP_VERSION = '0.3.39';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -4433,7 +4433,23 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function extractPartyGroupDefinition(input){
     const source=String(input||'');
+    const pcNames=livingParty().map(pc=>escapeRegexText(pc.name)).sort((a,b)=>b.length-a.length);
+    const nameAlt=pcNames.length?`(?:${pcNames.join('|')})`:null;
+    const namedList=nameAlt?`${nameAlt}(?:\\s*,\\s*${nameAlt})*(?:\\s*,?\\s*(?:and|&)\\s*${nameAlt})?`:null;
+    const relativeMember=[
+      '(?:the\\s+)?rest(?:\\s+of\\s+(?:the\\s+)?(?:party|group|them|us))?',
+      '(?:the\\s+)?remaining\\s+(?:party\\s+members?|group\\s+members?|characters?|adventurers?|members?)',
+      'everyone\\s+else','everybody\\s+else','the\\s+others','others',
+      '(?:the\\s+)?whole\\s+party','(?:the\\s+)?party','everyone','everybody','all\\s+of\\s+us','we','pcs','player\\s+characters'
+    ].join('|');
+    const actorFirstMember=namedList?`(?:${relativeMember}|${namedList})`:`(?:${relativeMember})`;
+    const groupNamePattern='((?:group|team|squad)\\s+[a-z0-9][a-z0-9_-]*)';
     const patterns=[
+      // Actor-first natural English: “the rest form group 1”,
+      // “Kyree, Elissa and Norman form group 1”. The clause boundary is
+      // consumed deliberately so an earlier caster/action is not swallowed
+      // into the member expression.
+      new RegExp(`(?:^|[.;]\\s*|\\b(?:and\\s+then|then|and)\\s+)(${actorFirstMember})\\s+(?:form|forms|make|makes)\\s+${groupNamePattern}(?=\\s+(?:and\\s+then|then|and)\\s+|[.;]|$)`,'i'),
       /\bgroup\s+(.+?)\s+(?:into|as)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
       /\bput\s+(.+?)\s+(?:into|in)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
       /\b(?:make|form)\s+(.+?)\s+(?:into\s+|as\s+)?((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i
@@ -4447,10 +4463,12 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const members=groupCombatActors(memberExpression,{assigned:new Set(),explicitlyAssigned:explicitlyNamed});
     let before=source.slice(0,match.index).replace(/[.;,\s]+$/,'').trim();
     let after=source.slice(match.index+match[0].length).replace(/^\s*(?:and\s+then|then|and)\s+/i,'').replace(/^[.;,\s]+/,'').trim();
-    // English commonly says “then move group 1 ...”. The combat clause grammar
-    // is actor-first, so normalize only this unambiguous saved-group form.
+    // English may say either “then move group 1 ...” or simply
+    // “the rest form group 1 and advance ...”. In both cases, bind the
+    // following action to the newly created named group before combat parsing.
     const gEsc=escapeRegexText(groupName);
     after=after.replace(new RegExp(`^(move|advance|approach|close|charge|rush|attack|fight|hold|join|regroup)\\s+(${gEsc})(?=\\s|$)`,'i'),(_,verb,g)=>`${g} ${verb}`);
+    if(after && !new RegExp(`^(?:the\\s+)?${gEsc}(?=\\s|$)`,'i').test(after) && /^(?:move|advance|approach|close|charge|rush|attack|fight|hold|join|regroup)\b/i.test(after)) after=`${groupName} ${after}`;
     const remainder=[before,after].filter(Boolean).join(before&&after?'. ':'').trim();
     return {groupName,memberExpression,members,remainder};
   }
@@ -7414,6 +7432,30 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         movementPhase('pc');
         const movedPositions=group.memberNames.map(name=>combatPcPosition(findPc(name)));
         harnessAssert(new Set(movedPositions).size===1,'Literal Group 1 command produced different physical positions after movement');
+      }},
+      {name:'Literal actor-first Group 1 command creates the group and moves at slowest pace',run:async()=>{
+        installHarnessFixture({distance:120});
+        const caster=state.party[2];
+        const oldKey=caster.name.toLowerCase();
+        const oldPos=state.combat.positions.pcs[oldKey]??0;
+        delete state.combat.positions.pcs[oldKey];
+        caster.name='Luke'; caster.className='Magic-User'; caster.role='Magic-User 1';
+        caster.spellbook=['Read Magic','Magic Missile']; caster.memorizedSpell='Magic Missile'; caster.spellReady=true;
+        state.combat.positions.pcs.luke=oldPos;
+        const text='Luke casts magic missile and the rest form group 1 and advance to melee and attack';
+        await handle(text);
+        const group=partyGroupRecord('group 1');
+        harnessAssert(group && group.memberNames.length===5 && !group.memberNames.includes('Luke'),'Actor-first “the rest form group 1” did not create the five-member group');
+        harnessAssert(state.combat.pcOrders.luke?.action==='spell',"Luke's Magic Missile order was overwritten");
+        const members=partyGroupMembers('group 1');
+        const orders=members.map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
+        harnessAssert(orders.every(o=>o?.movement==='approach'&&o?.action==='melee'&&o?.movementMode==='together'),'Actor-first Group 1 did not receive together approach + melee orders');
+        harnessAssert(new Set(orders.map(o=>o?.movementGroup)).size===1,'Actor-first Group 1 did not receive one shared movement-group id');
+        const slowest=Math.min(...members.map(pc=>pcEncounterSpeed(pc)));
+        movementPhase('pc');
+        const positions=members.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,'Actor-first Group 1 fragmented during actual movement');
+        harnessAssert(Math.abs(positions[0]-slowest)<1e-9,`Actor-first Group 1 moved ${positions[0]} yd instead of slowest-member pace ${slowest} yd`);
       }},
       {name:'Specific named caster is excluded from a simultaneous broad party melee order',run:()=>{
         installHarnessFixture({distance:90});
