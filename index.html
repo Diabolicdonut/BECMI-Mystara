@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.45';
+  const APP_VERSION = '0.3.46';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -826,8 +826,60 @@
     },
     talamau: {
       name:'Talamau', settlement:'talamau', outdoor:true, returnsToHex:true, aliases:['talamau','village','settlement','coastal village','coastal settlement'], services:['lodging','provisions','directions','rumors'],
-      desc:'Talamau is a prosperous coastal village of roughly four hundred people, its thatched homes gathered around a small inlet and rice paddies. Strangers are uncommon. Villagers watch the armed newcomers with cautious curiosity, and the old gray-stone academy stands out among the woven walls and grass roofs.',
-      exits:{}, searchText:'The village has a dock, smithy, carpenter, guesthouse, weaver, huntsman, old academy, elder’s home, healer, and shrine. These locations are not yet individually keyed in this development slice.'
+      desc:'Talamau is a prosperous coastal village of roughly four hundred people, its thatched homes gathered around a small inlet and rice paddies. Strangers are uncommon. The old gray-stone academy stands out among the woven walls and grass roofs.',
+      exits:{}, npcs:['Elder Kitra','Chief Scholar Indah','Kuwat the Smith','Old Yuda','Batari','Eko','Heinrich','Kusar','Priestess Iroko'],
+      refereeFacts:['Peaceful strangers are expected to speak with Elder Kitra about their purpose before freely trading in Talamau.','The villagers know that recent tremors and the academy warning flame indicate danger from the volcano, but Chief Scholar Indah is the local authority on the old records.'],
+      searchText:'Public village locations: dock, smithy, carpenter, Batari’s guesthouse, weaver, huntsman’s hut, old academy, Elder Kitra’s home, healer, and village shrine.'
+    },
+    talamau_dock: {
+      name:'Talamau Dock', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['dock','village dock','talamau dock','harbor','jetty'], services:['directions'],
+      desc:'A small village dock reaches into the sheltered inlet. Only one or two little fishing boats are normally drawn up here, and the reefs beyond make the surrounding waters treacherous.', exits:{},
+      refereeFacts:['The best fishing grounds lie dangerously close to the reefs. Merchant vessels visit only occasionally.']
+    },
+    talamau_smithy: {
+      name:'Kuwat’s Smithy', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['smithy','smith','kuwat','kuwat smithy','kuwat’s smithy','ship chandler'], services:['provisions','general goods','shopping'],
+      desc:'Burly, shaven-headed Kuwat works the village iron here. The shop is practical rather than martial, with simple tools, ship chandlery, rope, lamp oil, dried rations, spears, and knives.', exits:{}, npcs:['Kuwat the Smith'],
+      refereeFacts:['Kuwat is not a weaponsmith, but can forge spears, knives, and simple implements.','He keeps rope, lamp oil, dried rations, and ship supplies; other adventuring equipment has only a 20% chance of being available.','His prices are twice normal. He buys up to 100 gp of goods at one-quarter list price.']
+    },
+    talamau_carpenter: {
+      name:'Old Yuda’s Carpenter Yard', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['carpenter','carpenter yard','old yuda','yuda','boatwright'], services:['repairs','directions'],
+      desc:'Rough mahogany and other jungle logs are stacked beside the work area of Old Yuda and his two sons. The place smells of fresh-cut wood and pitch.', exits:{}, npcs:['Old Yuda'],
+      refereeFacts:['Old Yuda and his sons are capable boatwrights and can repair damaged ships, but they lack the materials and expertise to build anything larger than a fishing smack.']
+    },
+    talamau_guesthouse: {
+      name:'Batari’s Guesthouse', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['guesthouse','inn','lodging','batari','batari’s guesthouse','batari guesthouse'], services:['lodging','food','rumors'],
+      desc:'Batari makes room for visiting scholars in her family’s large home. Farmers often gather in the yard at day’s end over cups of her popular rice beer.', exits:{}, npcs:['Batari'],
+      refereeFacts:['Most travelers pay about 2 sp per night for room and board, though Batari varies the price with their apparent wealth.','The guesthouse is a natural place to hear ordinary village talk.']
+    },
+    talamau_weaver: {
+      name:'Eko’s Weaving House', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['weaver','weaving house','eko','eko’s weaving house','scribal supplies'], services:['scribal materials','shopping'],
+      desc:'Brusque Eko oversees weaving here while two granddaughters work grass mats and cloth. The family also continues Talamau’s old bookmaking traditions and produces fine rag paper.', exits:{}, npcs:['Eko'],
+      refereeFacts:['Wizards and scholars can buy normal scribal materials here at the usual listed prices.']
+    },
+    talamau_huntsman: {
+      name:'Heinrich’s Huntsman Hut', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['huntsman','huntsman hut','hunter','heinrich','heinrich’s hut','heinrich hut'], services:['directions','guide'],
+      desc:'This weathered hut is shabbier than its neighbors. The grizzled huntsman Heinrich returns every few days with jungle game and otherwise spends much of his time away from the village.', exits:{}, npcs:['Heinrich'],
+      refereeFacts:['Heinrich knows the jungle well and, if persuaded to help, can lead the party directly to the Temple of the Flame.','HIDDEN: Heinrich was a notorious outlaw on the mainland and carefully avoids strangers when possible. Do not volunteer this secret unless play reveals it.']
+    },
+    talamau_academy: {
+      name:'The Old Academy', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['academy','old academy','the old academy','indah','chief scholar'], services:['research','directions'],
+      desc:'The seamless gray-stone, two-storey academy is unlike every other building in Talamau. Shelves of old books and classical works fill its rooms under the care of Chief Scholar Indah. Upstairs, a magical brazier burns blue shot through with troubling tongues of red.', exits:{}, npcs:['Chief Scholar Indah'],
+      refereeFacts:['Indah has learned from the old records that the blue-and-red warning flame means the volcano’s ancient wards and bindings are failing.','If the magic is not renewed, the volcano will erupt. The villagers know the secret of restoring the wards lies in the ancient Temple of the Flame somewhere on the Pillar of Lan Yu, but Indah does not know the repair procedure.','The academy contains no magical tomes, but five rare history books would each be worth 250 gp elsewhere. Indah will not sell them. A scholarly reader notices their value after one hour of research; copying one takes at least a month.']
+    },
+    talamau_elder: {
+      name:'Elder Kitra’s Home', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['elder','elder kitra','kitra','kitra’s home','elder’s home','elder home'], services:['directions','negotiation','rumors'],
+      desc:'Elder Kitra receives outsiders in her family home, attended by her favorite grandson and his wife. The wizened elder is plainly worried, but watches armed strangers with practical caution.', exits:{}, npcs:['Elder Kitra'],
+      refereeFacts:['Kitra conducts negotiations with outsiders and the villagers trust agreements she makes on their behalf.','She is suspicious of armed strangers but is ready to make whatever bargain she must to get the volcano’s magical seal restored.','Kitra can explain the recent tremors, the academy warning flame, Indah’s conclusion that the wards are failing, and the belief that the answer lies in the Temple of the Flame. She does not know the ritual required to repair the wards.','She can identify the village’s public locations and their proprietors.']
+    },
+    talamau_healer: {
+      name:'Kusar the Healer', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['healer','kusar','kusar the healer','healer hut'], services:['healing'],
+      desc:'The village healer Kusar works among bundles of jungle herbs and pungent decoctions. His remedies are effective when he is sober enough to apply them carefully.', exits:{}, npcs:['Kusar'],
+      refereeFacts:['Kusar has a 20% chance of being intoxicated.','When sober, his ministrations heal 1d4+1 hp once per day and double normal healing rates. He works for free for PCs aiding the village, otherwise charging what he can.','HIDDEN: Kusar spends time with Heinrich and, if questioned while intoxicated, will cheerfully reveal Heinrich’s criminal past.']
+    },
+    talamau_shrine: {
+      name:'Village Shrine', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['village shrine','talamau shrine','shrine','iroko','priestess iroko'], services:['worship'],
+      desc:'A small shrine dedicated to the gods of sea and paddy is decorated with handsome carvings. Priestess Iroko tends the place and performs its rites.', exits:{}, npcs:['Priestess Iroko'],
+      refereeFacts:['Iroko is a skilled ritual dancer and performer but has no clerical powers. She is a stranger from the mainland.']
     },
     ruined_manor: {name:"Lan Yu's Ruined Manor",outdoor:true,returnsToHex:true,aliases:['ruined manor','manor','lan yu manor'],services:[],desc:'Jungle growth has reclaimed the gray-stone remains of the old manor. Damp, mold, and generations of earlier visitors have left little obvious value.',exits:{}},
     temple_flame: {name:'Temple of the Flame',outdoor:true,returnsToHex:true,aliases:['temple of the flame','temple','flame temple'],services:[],desc:'An overgrown path reaches a black-basalt entrance partway up the volcanic slope. The complete keyed temple is the next major content layer for this test campaign.',exits:{}},
@@ -872,7 +924,7 @@
 
 
   const SETTLEMENTS = {
-    talamau:{name:'Talamau',type:'coastal village',territory:'Kai Besil',population:'about 400',scale:'village',leadership:'Elder Kitra',rootSite:'talamau',initialKnown:['talamau'],publicFacts:['A small coastal settlement surrounded by rice paddies and jungle.','An old gray-stone academy is conspicuous among the thatched houses.']},
+    talamau:{name:'Talamau',type:'coastal village',territory:'Kai Besil',population:'about 400',scale:'village',leadership:'Elder Kitra',rootSite:'talamau',initialKnown:['talamau'],publicFacts:['A small coastal settlement surrounded by rice paddies and jungle.','The old gray-stone academy is conspicuous among the thatched houses.','Outsiders are received by Elder Kitra before being allowed to trade freely in the village.']},
     penhaligon:{
       name:'Penhaligon',
       type:'fortified town',
@@ -1387,7 +1439,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     knownPlaces:[],
     visiblePlaces:[],
     knownSettlementPlaces:{talamau:['talamau']},
-    locationState:{shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}}},
+    locationState:{shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}},talamau:{kitraReceptionComplete:false}},
     torchLit:false,
     torchMinutes:0,
     torches:0,
@@ -1442,7 +1494,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       state.knownPlaces=[];
       state.visiblePlaces=[];
       state.knownSettlementPlaces={talamau:['talamau']};
-      state.locationState={shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}}};
+      state.locationState={shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}},talamau:{kitraReceptionComplete:false}};
     }
   }
 
@@ -1755,12 +1807,23 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
 
   const SITE_LOCATIONS = allSiteLocations();
 
+  function settlementRegion(settlementId){
+    const info=SETTLEMENTS[settlementId];
+    const root=info?.rootSite;
+    return root && SITE_LOCATIONS[root]?.region ? SITE_LOCATIONS[root].region : (settlementId==='talamau'?'kai_besil':'karameikos');
+  }
+
   function ensureKnowledgeState() {
     if (!Array.isArray(state.knownPlaces)) state.knownPlaces = currentRegionId()==='kai_besil'?[]:['market','stallanford'];
     if (!Array.isArray(state.visiblePlaces)) state.visiblePlaces=[];
     if (!state.knownSettlementPlaces || typeof state.knownSettlementPlaces !== 'object') state.knownSettlementPlaces = {};
     if (!state.locationState || typeof state.locationState !== 'object') state.locationState={};
+    const region=currentRegionId();
+    for(const settlementId of Object.keys(state.knownSettlementPlaces)){
+      if(SETTLEMENTS[settlementId] && settlementRegion(settlementId)!==region) delete state.knownSettlementPlaces[settlementId];
+    }
     for (const [settlementId,info] of Object.entries(SETTLEMENTS)) {
+      if(settlementRegion(settlementId)!==region) continue;
       if (!Array.isArray(state.knownSettlementPlaces[settlementId])) state.knownSettlementPlaces[settlementId] = [...(info.initialKnown||[])];
     }
   }
@@ -1772,6 +1835,40 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function currentSettlementId(){
     if(state.mode!=='site' || !state.location) return null;
     return settlementForSite(state.location);
+  }
+
+  function knownLocalPlaceIds(settlementId=currentSettlementId()){
+    if(!settlementId || !SETTLEMENTS[settlementId]) return [];
+    ensureKnowledgeState();
+    return (state.knownSettlementPlaces[settlementId]||[]).filter(id=>sites[id] && settlementForSite(id)===settlementId);
+  }
+
+  const TALAMAU_PUBLIC_SITES=['talamau','talamau_dock','talamau_smithy','talamau_carpenter','talamau_guesthouse','talamau_weaver','talamau_huntsman','talamau_academy','talamau_elder','talamau_healer','talamau_shrine'];
+
+  function revealTalamauPublicPlaces(){
+    ensureKnowledgeState();
+    for(const siteId of TALAMAU_PUBLIC_SITES) learnLocalPlace(siteId,false);
+  }
+
+  function talamauReceptionComplete(){
+    return Boolean(state.locationState?.talamau?.kitraReceptionComplete);
+  }
+
+  function handleTalamauFirstArrival(){
+    ensureKnowledgeState();
+    if(currentRegionId()!=='kai_besil' || state.mode!=='site' || state.location!=='talamau' || talamauReceptionComplete()) return false;
+    if(!state.locationState.talamau || typeof state.locationState.talamau!=='object') state.locationState.talamau={};
+    state.locationState.talamau.kitraReceptionComplete=true;
+    state.locationState.talamau.kitraReceptionDay=state.day;
+    state.locationState.talamau.kitraReceptionMinute=state.minutes;
+    revealTalamauPublicPlaces();
+    state.location='talamau_elder';
+    write('The arrival of armed strangers quickly draws attention. Villagers lead the shipwrecked party to Elder Kitra before they are allowed to go freely about Talamau.','system');
+    write('Elder Kitra hears the account of the wreck and explains the village’s danger. Small tremors have shaken Talamau, and the ancient warning flame in the Old Academy now burns blue streaked with red. Chief Scholar Indah believes the volcano’s old magical bindings are failing; if they are not renewed, the mountain will erupt. The villagers know only that the answer lies in the ancient Temple of the Flame somewhere on the Pillar of Lan Yu.');
+    write('Kitra points out the village dock, Kuwat’s smithy, Old Yuda’s carpenter yard, Batari’s guesthouse, Eko’s weaving house, Heinrich’s huntsman hut, the Old Academy, her own home, Kusar the healer, and the village shrine. The party is free to visit them or leave Talamau.','system');
+    addEvent('Elder Kitra received the shipwrecked party, explained the failing volcanic wards, and oriented them to Talamau’s public locations.');
+    look();
+    return true;
   }
 
   function learnLocalPlace(siteId, announce=false){
@@ -1915,7 +2012,17 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function settlementPlaceSummary(siteId){
     const site=sites[siteId];
     if(!site) return '';
-    if(siteId==='talamau') return 'coastal village, academy, supplies, local guidance';
+    if(siteId==='talamau') return 'coastal village center';
+    if(siteId==='talamau_dock') return 'small dock and fishing boats';
+    if(siteId==='talamau_smithy') return 'simple ironwork, ship chandlery, rope, oil, rations';
+    if(siteId==='talamau_carpenter') return 'boat repairs and woodworking';
+    if(siteId==='talamau_guesthouse') return 'lodging, rice beer, village talk';
+    if(siteId==='talamau_weaver') return 'cloth, rag paper, scribal materials';
+    if(siteId==='talamau_huntsman') return 'Heinrich; jungle knowledge and guidance';
+    if(siteId==='talamau_academy') return 'Chief Scholar Indah, old books, warning flame';
+    if(siteId==='talamau_elder') return 'Elder Kitra; village leadership and negotiations';
+    if(siteId==='talamau_healer') return 'Kusar; healing and jungle remedies';
+    if(siteId==='talamau_shrine') return 'Priestess Iroko; gods of sea and paddy';
     if(siteId==='market') return 'market square, notices, directions';
     if(siteId==='brazen_shield') return 'inn, food, lodging, rumors';
     if(siteId==='general_store') return 'expedition supplies and provisions';
@@ -2591,6 +2698,7 @@ W: swollen wooden door · E: cellar`;
       return;
     }
 
+    if(state.location==='talamau' && !talamauReceptionComplete() && handleTalamauFirstArrival()) return;
     revealVisibleSettlementPlaces();
     write(currentSite().desc);
     const exits = visibleSiteExits();
@@ -2748,6 +2856,7 @@ W: swollen wooden door · E: cellar`;
     learnPlace(hex.site);
     learnLocalPlace(hex.site,false);
     advanceExploration(10,`Party entered ${sites[hex.site].name}.`);
+    if(hex.site==='talamau' && handleTalamauFirstArrival()) return true;
     look();
     return true;
   }
@@ -2795,9 +2904,21 @@ W: swollen wooden door · E: cellar`;
   }
 
   function travelToSite(siteId, options={}) {
-    if (!sites[siteId] || !SITE_LOCATIONS[siteId]) {
+    if(!sites[siteId]){
       write('That destination is not part of the implemented world map.','warning');
       return false;
+    }
+    if(!SITE_LOCATIONS[siteId]){
+      const settlementId=settlementForSite(siteId);
+      const known=settlementId && knownLocalPlaceIds(settlementId).includes(siteId);
+      const root=settlementId ? SETTLEMENTS[settlementId]?.rootSite : null;
+      if(!settlementId || !known || !root){
+        write(`The party does not currently know how to reach ${sites[siteId].name}.`,'warning');
+        return false;
+      }
+      if(currentSettlementId()===settlementId) return enterLocalSite(siteId);
+      if(!travelToSite(root,{enter:true})) return false;
+      return enterLocalSite(siteId);
     }
     const targetLoc=SITE_LOCATIONS[siteId];
     if(targetLoc?.region && targetLoc.region!==currentRegionId()){
@@ -6853,6 +6974,10 @@ AI backend: ${WORKER_URL}`);
     if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
     merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
     state=merged;
+    if(state.region==='kai_besil'){
+      if(!state.locationState.talamau || typeof state.locationState.talamau!=='object') state.locationState.talamau={kitraReceptionComplete:false};
+    }
+    ensureKnowledgeState();
     for(const g of Object.values(state.partyGroups||{})){ g.initiativeSideId='pc'; normalizePartyGroupRoles(g); }
     normalizeCombatState();
     if(state.combat?.active) ensureDefaultPartyGroup({announce:false});
@@ -6976,9 +7101,28 @@ Travel/exploration used today: ${travelUsed}
 Weapon damage mode: ${state.rules.weaponDamageMode}`;
     }
     const site = currentSite();
-    return `Mode: keyed site or dungeon\nLocation: ${site.name}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}\nLocal services: ${(site.services||[]).join(', ')||'none'}\nShop type: ${site.shopType||'none'}\nWeapon damage mode: ${state.rules.weaponDamageMode}`;
+    const settlementId=currentSettlementId();
+    const settlement=settlementId?SETTLEMENTS[settlementId]:null;
+    const localPlaces=settlementId?knownLocalPlaceIds(settlementId).map(id=>`${id}:${sites[id].name}`).join(', '):'none';
+    return `Mode: keyed site or dungeon\nRegion: ${currentRegionId()==='kai_besil'?'Kai Besil':'Karameikos'}\nLocation: ${site.name}\nSettlement: ${settlement?.name||'none'}\nSettlement leadership: ${settlement?.leadership||'none'}\nDescription: ${canSee() ? site.desc : 'Complete darkness; no visible details.'}\nObvious exits: ${canSee() ? visibleSiteExits().join(', ') : 'none visible in darkness'}\nKnown local places in current settlement: ${localPlaces}\nLocal services: ${(site.services||[]).join(', ')||'none'}\nShop type: ${site.shopType||'none'}\nWeapon damage mode: ${state.rules.weaponDamageMode}`;
   }
 
+
+  function answerCurrentSettlementNavigationQuestion(input){
+    const settlementId=currentSettlementId();
+    if(!settlementId) return false;
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9'\s-]/g,' ').replace(/\s+/g,' ').trim();
+    const asksPlaces=/\bwhere (?:can|could|may|should) (?:i|we|the party) go\b/.test(q) || /\bwhat (?:places|locations|buildings|shops|services) (?:are|can be found|do you know)\b/.test(q) || /\bwhat(?:'s| is) (?:in|around) (?:the )?(?:village|town|settlement)\b/.test(q) || /\bwhere can i go in the village\b/.test(q);
+    const asksWhich=/\b(?:what|which) (?:village|town|settlement) (?:am i|are we|is the party) in\b/.test(q);
+    if(!asksPlaces && !asksWhich) return false;
+    const info=SETTLEMENTS[settlementId];
+    if(asksWhich && !asksPlaces){ write(`The party is in ${info.name}.`,'system'); return true; }
+    const ids=knownLocalPlaceIds(settlementId).filter(id=>id!==info.rootSite);
+    const lines=ids.map(id=>`- ${sites[id].name}: ${settlementPlaceSummary(id)}`);
+    write(`${info.name} — places the party currently knows:
+${lines.length?lines.join('\n'):'No individual local destinations have been learned yet.'}`,'system');
+    return true;
+  }
 
   // --- Universal semantic action layer ------------------------------------
   // The AI interprets meaning. This layer resolves references, validates the
@@ -7126,6 +7270,11 @@ Weapon damage mode: ${state.rules.weaponDamageMode}`;
       base.services=site?.services||[];
       base.exits=canSee()?visibleSiteExits():[];
       base.shopType=site?.shopType||null;
+      const settlementId=currentSettlementId();
+      if(settlementId){
+        base.settlement={id:settlementId,name:SETTLEMENTS[settlementId]?.name||settlementId,leadership:SETTLEMENTS[settlementId]?.leadership||null,knownPlaces:knownLocalPlaceIds(settlementId).map(id=>({id,name:sites[id]?.name||id,services:sites[id]?.services||[]}))};
+      }
+      if(Array.isArray(site?.refereeFacts)) base.refereeFacts=site.refereeFacts.slice();
     }
     if(combatActive()) base.combat={round:state.combat.round,foes:livingHostiles().map(m=>m.name),melees:meleeGroups().map((g,i)=>({id:i+1,pcs:g.pcNames,foes:g.monsterIds.map(id=>state.combat.monsters.find(m=>m.id===id)?.name||id),range:g.range}))};
     return base;
@@ -7198,9 +7347,9 @@ Weapon damage mode: ${state.rules.weaponDamageMode}`;
   }
 
   function resolveSemanticDestination(value){
-    const q=String(value||'').trim().toLowerCase();
+    const q=String(typeof value==='object'?(value.id||value.name||''):value||'').trim().toLowerCase();
     if(!q) return {id:null,matches:[]};
-    const ids=navigablePlaceIds();
+    const ids=[...new Set([...navigablePlaceIds(),...knownLocalPlaceIds()])];
     if(ids.includes(q)) return {id:q,matches:[q]};
     const matches=ids.filter(id=>siteAliases(id).includes(q) || String(sites[id]?.name||'').toLowerCase()===q || siteAliases(id).some(a=>q.includes(a)||a.includes(q)));
     return {id:matches.length===1?matches[0]:null,matches};
@@ -7594,9 +7743,9 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
         move(direction); return true;
       }
       case 'TRAVEL_TO': {
-        const target = String(intent.target || '');
-        if (!navigablePlaceIds().includes(target)) { write('I do not know which known or visible destination you mean.','warning'); return true; }
-        travelToSite(target,{enter:true}); return true;
+        const r=resolveSemanticDestination(intent.target || intent.destination || '');
+        if(!r.id){ write('I do not know which currently known destination you mean.','warning'); return true; }
+        travelToSite(r.id,{enter:true}); return true;
       }
       case 'FOLLOW_FEATURE': followFeature(intent.feature || 'road',intent.direction || null); return true;
       case 'SERVICE': goForService(intent.service || 'resupply'); return true;
@@ -7981,6 +8130,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     // authoritative state even if AI context is compacted, unavailable, or stale.
     if(answerDeveloperCombatantStateQuestion(input)) return;
     if(answerMeleeDistanceQuestion(input)) return;
+    if(answerCurrentSettlementNavigationQuestion(input)) return;
 
     // Informational questions/table talk are routed to the referee before action parsing.
     if(isInformationRequest(input) || isRulesInformationRequest(input)){
@@ -8182,16 +8332,66 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(!state.knownPlaces.includes('talamau'),'Talamau was automatically identified before the party visited or learned its name');
         harnessAssert(navigablePlaceIds().includes('talamau'),'Visible settlement could not be used as a travel destination');
       }},
-      {name:'Natural go-to-village command reaches visible Talamau from the wreck',run:async()=>{
+      {name:'Natural go-to-village command reaches Talamau and triggers Kitra reception',run:async()=>{
         installKaiBesilHarnessFixture();
         look();
         const before=state.day*1440+state.minutes;
         await handle('go to the village');
         const after=state.day*1440+state.minutes;
-        harnessAssert(state.mode==='site' && state.location==='talamau','Natural village travel did not enter Talamau');
+        harnessAssert(state.mode==='site' && state.location==='talamau_elder','First Talamau entry did not place the party with Elder Kitra');
         harnessEqual(state.hex,{q:3,r:-2},'Travel to Talamau ended in the wrong hex');
         harnessAssert(after-before===40,'One light-jungle hex plus settlement entry did not consume 40 minutes');
         harnessAssert(state.knownPlaces.includes('talamau'),'Visiting Talamau did not convert the sighted settlement into known campaign knowledge');
+        harnessAssert(talamauReceptionComplete(),'First Talamau entry did not persist the Kitra reception');
+        harnessAssert(TALAMAU_PUBLIC_SITES.every(id=>state.knownSettlementPlaces.talamau.includes(id)),'Kitra reception did not reveal all public Talamau locations');
+      }},
+      {name:'Kai Besil settlement knowledge excludes legacy Karameikos catalogs',run:()=>{
+        installKaiBesilHarnessFixture();
+        state.knownSettlementPlaces.penhaligon=['market','brazen_shield'];
+        state.knownSettlementPlaces.stallanford=['stallanford'];
+        ensureKnowledgeState();
+        harnessAssert(!('penhaligon' in state.knownSettlementPlaces) && !('stallanford' in state.knownSettlementPlaces),'Karameikos settlement knowledge leaked into Kai Besil');
+        harnessAssert(Array.isArray(state.knownSettlementPlaces.talamau),'Talamau knowledge was lost while scoping settlements to Kai Besil');
+      }},
+      {name:'Literal village-navigation question resolves against current Talamau state',run:async()=>{
+        installKaiBesilHarnessFixture();
+        look();
+        await handle('go to the village');
+        harnessAssert(answerCurrentSettlementNavigationQuestion('Where can I go in the village?')===true,'Literal current-village navigation question was not recognized deterministically');
+        const ids=knownLocalPlaceIds('talamau');
+        harnessAssert(ids.includes('talamau_smithy') && ids.includes('talamau_healer') && ids.includes('talamau_academy'),'Current-village navigation context omitted Talamau public destinations');
+        harnessAssert(!('penhaligon' in state.knownSettlementPlaces),'Current-village navigation context leaked Penhaligon');
+      }},
+      {name:'Known Talamau destinations can be entered as local sites',run:()=>{
+        installKaiBesilHarnessFixture();
+        state.hex={q:3,r:-2}; state.mode='site'; state.location='talamau';
+        handleTalamauFirstArrival();
+        const r=resolveSemanticDestination('the healer');
+        harnessAssert(r.id==='talamau_healer','Healer alias did not resolve to Kusar in current Talamau context');
+        harnessAssert(travelToSite(r.id,{enter:true})===true && state.location==='talamau_healer','Known Talamau local destination could not be entered');
+      }},
+      {name:'v0.3.45 Talamau save migrates into Kitra reception without Karameikos leakage',run:()=>{
+        installKaiBesilHarnessFixture();
+        const legacy45=harnessClone(state);
+        legacy45.version='0.3.45';
+        legacy45.region='kai_besil';
+        legacy45.mode='site';
+        legacy45.hex={q:3,r:-2};
+        legacy45.location='talamau';
+        legacy45.knownPlaces=['shipwreck','talamau'];
+        legacy45.visiblePlaces=['talamau'];
+        legacy45.knownSettlementPlaces={
+          talamau:['talamau'],
+          penhaligon:['market','brazen_shield','general_store','weaponsmith','armorer','stable'],
+          stallanford:['stallanford']
+        };
+        legacy45.locationState={shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}}};
+        migrateSave(legacy45);
+        harnessAssert(!('penhaligon' in state.knownSettlementPlaces) && !('stallanford' in state.knownSettlementPlaces),'Migrated Kai Besil save retained legacy Karameikos settlement catalogs');
+        harnessAssert(state.mode==='site' && state.location==='talamau','Migration unexpectedly moved an existing v0.3.45 Talamau save before scene recovery');
+        look();
+        harnessAssert(state.location==='talamau_elder' && talamauReceptionComplete(),'Existing v0.3.45 Talamau save did not recover into first Kitra reception');
+        harnessAssert(TALAMAU_PUBLIC_SITES.every(id=>state.knownSettlementPlaces.talamau.includes(id)),'Recovered Talamau save did not learn the public village locations');
       }},
       {name:'Natural investigate-current-hex command uses wilderness search procedure',run:async()=>{
         installKaiBesilHarnessFixture();
