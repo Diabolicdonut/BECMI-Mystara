@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.39';
+  const APP_VERSION = '0.3.41';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -1904,6 +1904,154 @@ W: swollen wooden door · E: cellar`;
     return `${base}${num}`;
   }
 
+  function normalizeMonsterGroupKey(value){
+    return String(value||'').toLowerCase().replace(/[’]/g,"'").replace(/[^a-z0-9_' -]/g,' ').replace(/\s+/g,' ').trim();
+  }
+
+  function monsterGroupRecords(){
+    if(!state.combat?.active) return [];
+    const groups=state.combat.monsterGroups&&typeof state.combat.monsterGroups==='object'?state.combat.monsterGroups:{};
+    return Object.values(groups).filter(g=>g&&Array.isArray(g.memberIds));
+  }
+
+  function monsterGroupMembers(group,{presentOnly=true,combatCapableOnly=false}={}){
+    if(!group||!state.combat?.active) return [];
+    const wanted=new Set((group.memberIds||[]).map(String));
+    return state.combat.monsters.filter(m=>wanted.has(String(m.id)) && (!presentOnly||monsterStillPresent(m)) && (!combatCapableOnly||monsterCanFight(m)));
+  }
+
+  function defineMonsterGroup(name,members,{role='melee',createdBy='referee',formation=true}={}){
+    if(!state.combat?.active) return null;
+    const display=String(name||'').trim().replace(/^the\s+/i,'');
+    const key=normalizeMonsterGroupKey(display);
+    const monsters=(Array.isArray(members)?members:[]).filter(m=>m&&state.combat.monsters.includes(m));
+    if(!key||!monsters.length) return null;
+    if(!state.combat.monsterGroups||typeof state.combat.monsterGroups!=='object') state.combat.monsterGroups={};
+    const now=Date.now();
+    const previous=state.combat.monsterGroups[key];
+    const record=state.combat.monsterGroups[key]={
+      id:`monster-group:${key}`,
+      name:display,
+      memberIds:[...new Set(monsters.map(m=>m.id))],
+      role:String(role||'melee').toLowerCase(),
+      formation:Boolean(formation),
+      createdBy:String(createdBy||'referee'),
+      createdAt:previous?.createdAt||now,
+      updatedAt:now
+    };
+    return record;
+  }
+
+  function monsterDefaultTacticalRole(monster){
+    const explicit=String(monster?.tacticalRole||'').toLowerCase();
+    if(explicit) return explicit;
+    const weapon=SHOP_ITEMS?.[monster?.weaponId]||null;
+    if(weapon?.missile || monster?.missileWeaponId) return 'missile';
+    return 'melee';
+  }
+
+  function pluralMonsterName(monsters){
+    const first=monsters?.[0];
+    const base=String(COMBAT_MONSTERS[first?.type]?.name||first?.type||'Foe').trim();
+    if(/s$/i.test(base)) return base;
+    if(/y$/i.test(base)) return `${base.slice(0,-1)}ies`;
+    return `${base}s`;
+  }
+
+  function ensureMonsterTacticalGroups(){
+    if(!state.combat?.active) return [];
+    const c=state.combat;
+    if(!c.monsterGroups||typeof c.monsterGroups!=='object') c.monsterGroups={};
+    // Existing referee/module groups are authoritative. Only auto-group monsters
+    // that have not already been assigned. This lets a referee split one creature
+    // type into a melee line, archers, reserve, escorts, etc.
+    const assigned=new Set();
+    for(const g of monsterGroupRecords()) for(const id of g.memberIds||[]) assigned.add(String(id));
+    const unassigned=c.monsters.filter(monsterStillPresent).filter(m=>!assigned.has(String(m.id)));
+    const buckets=new Map();
+    for(const m of unassigned){
+      const role=monsterDefaultTacticalRole(m);
+      const explicit=String(m.tacticalGroupName||'').trim();
+      const signature=explicit?`named:${normalizeMonsterGroupKey(explicit)}`:`auto:${m.type||'foe'}:${role}:${m.weaponId||m.missileWeaponId||'natural'}`;
+      if(!buckets.has(signature)) buckets.set(signature,{members:[],role,explicit});
+      buckets.get(signature).members.push(m);
+    }
+    for(const bucket of buckets.values()){
+      if(bucket.members.length<2 && !bucket.explicit) continue;
+      let name=bucket.explicit;
+      if(!name){
+        const plural=pluralMonsterName(bucket.members);
+        const sameTypeGroups=[...buckets.values()].filter(b=>b.members[0]?.type===bucket.members[0]?.type).length;
+        if(bucket.role==='missile') name=`${plural} Archers`;
+        else if(sameTypeGroups>1) name=`${plural} Line`;
+        else name=plural;
+      }
+      let unique=name, n=2;
+      while(c.monsterGroups[normalizeMonsterGroupKey(unique)]) unique=`${name} ${n++}`;
+      defineMonsterGroup(unique,bucket.members,{role:bucket.role,createdBy:bucket.explicit?'module/referee':'referee-auto',formation:true});
+    }
+    return monsterGroupRecords();
+  }
+
+  function combatMapFormationSlices(){
+    if(!state.combat?.active) return {slices:[],legends:[]};
+    ensureMonsterTacticalGroups();
+    const c=state.combat, slices=[], legends=[];
+    const usedPcs=new Set(), usedMonsters=new Set();
+    // Player groups are always shown by name. If a group has not yet physically
+    // formed, the map shows how many members occupy each band instead of hiding
+    // the split behind one token.
+    for(const g of Object.values(state.partyGroups||{})){
+      const members=partyGroupMembers(g.name).filter(pc=>!usedPcs.has(pc.name.toLowerCase()));
+      if(!members.length) continue;
+      const byPos=new Map();
+      for(const pc of members){ const pos=combatPcPosition(pc); if(!byPos.has(pos)) byPos.set(pos,[]); byPos.get(pos).push(pc); usedPcs.add(pc.name.toLowerCase()); }
+      const total=members.length;
+      for(const [pos,atPos] of byPos) slices.push({pos,kind:'pc-group',label:byPos.size===1?g.name:`${g.name} ${atPos.length}/${total}`,group:g,members:atPos});
+      const split=byPos.size>1?' · FORMING/SPLIT':'';
+      legends.push(`${g.name}: ${members.map(pc=>pc.name).join(', ')}${split}`);
+    }
+    for(const g of monsterGroupRecords()){
+      const members=monsterGroupMembers(g).filter(m=>!usedMonsters.has(m.id));
+      if(!members.length) continue;
+      const byPos=new Map();
+      for(const m of members){ const pos=combatMonsterPosition(m); if(!byPos.has(pos)) byPos.set(pos,[]); byPos.get(pos).push(m); usedMonsters.add(m.id); }
+      const total=members.length;
+      for(const [pos,atPos] of byPos){
+        const countLabel=byPos.size===1?`×${total}`:`${atPos.length}/${total}`;
+        slices.push({pos,kind:'monster-group',label:`${g.name} ${countLabel}`,group:g,members:atPos});
+      }
+      const typeSummary=[...new Set(members.map(m=>COMBAT_MONSTERS[m.type]?.name||m.type))].join('/');
+      const split=byPos.size>1?' · FORMATION SPLIT':'';
+      legends.push(`${g.name} ×${total}: ${typeSummary}${g.role?` · ${String(g.role).toUpperCase()}`:''}${split}`);
+    }
+    for(const pc of livingParty()) if(!usedPcs.has(pc.name.toLowerCase())) slices.push({pos:combatPcPosition(pc),kind:'pc',label:pc.name,id:pc.name.toLowerCase(),members:[pc]});
+    for(const m of c.monsters.filter(monsterStillPresent)) if(!usedMonsters.has(m.id)) slices.push({pos:combatMonsterPosition(m),kind:'monster',label:mapMonsterToken(m),id:m.id,members:[m]});
+    return {slices,legends};
+  }
+
+  function compressedMeleePcLabels(pcNames){
+    const wanted=new Set((pcNames||[]).map(n=>String(n).toLowerCase()));
+    const labels=[], used=new Set();
+    for(const g of Object.values(state.partyGroups||{})){
+      const names=(g.memberNames||[]).map(n=>String(n).toLowerCase()).filter(n=>wanted.has(n));
+      if(names.length>=2){ labels.push(names.length===(g.memberNames||[]).length?g.name:`${g.name} ${names.length}/${(g.memberNames||[]).length}`); names.forEach(n=>used.add(n)); }
+    }
+    for(const n of wanted) if(!used.has(n)) labels.push(state.party.find(p=>p.name.toLowerCase()===n)?.name||n);
+    return labels.join(', ');
+  }
+
+  function compressedMeleeMonsterLabels(monsterIds){
+    ensureMonsterTacticalGroups();
+    const wanted=new Set((monsterIds||[]).map(String)), labels=[], used=new Set();
+    for(const g of monsterGroupRecords()){
+      const ids=(g.memberIds||[]).map(String).filter(id=>wanted.has(id));
+      if(ids.length>=2){ labels.push(ids.length===(g.memberIds||[]).length?`${g.name} ×${ids.length}`:`${g.name} ${ids.length}/${(g.memberIds||[]).length}`); ids.forEach(id=>used.add(id)); }
+    }
+    for(const id of wanted) if(!used.has(id)) labels.push(mapMonsterToken(state.combat.monsters.find(m=>m.id===id)));
+    return labels.join(', ');
+  }
+
   function combatDistanceUnit(){ return state.combat?.distanceUnit==='yd'?'yd':'ft'; }
   function combatDistanceLabel(value){
     const n=Math.round(Number(value)||0);
@@ -1913,15 +2061,13 @@ W: swollen wooden door · E: cellar`;
   function renderCombatAsciiMap(){
     if(!state.combat?.active) return 'COMBAT POSITION\n\nNo combat in progress.';
     const c=state.combat;
-    const unit=combatDistanceUnit();
+    const {slices,legends}=combatMapFormationSlices();
     const bands=new Map();
-    const add=(pos,label,kind,id)=>{
-      const key=Number(pos)||0;
+    for(const item of slices){
+      const key=Number(item.pos)||0;
       if(!bands.has(key)) bands.set(key,[]);
-      bands.get(key).push({label,kind,id});
-    };
-    for(const m of c.monsters.filter(monsterStillPresent)) add(combatMonsterPosition(m),mapMonsterToken(m),'monster',m.id);
-    for(const pc of livingParty()) add(combatPcPosition(pc),pc.name,'pc',pc.name.toLowerCase());
+      bands.get(key).push(item);
+    }
     const positions=[...bands.keys()].sort((a,b)=>b-a);
     if(!positions.length) return `COMBAT POSITION — ROUND ${c.round}\n\nNo active figures.`;
     const lines=[`COMBAT POSITION — ROUND ${c.round}`,'','ENEMY SIDE ↑',''];
@@ -1931,8 +2077,8 @@ W: swollen wooden door · E: cellar`;
       const annotations=[];
       for(const group of meleeGroups()){
         if(Math.abs(Number(group.position)-pos)>=0.001) continue;
-        const pcLabels=group.pcNames.map(n=>state.party.find(p=>p.name.toLowerCase()===n)?.name||n).join(', ');
-        const foeLabels=group.monsterIds.map(id=>mapMonsterToken(c.monsters.find(m=>m.id===id))).join(', ');
+        const pcLabels=compressedMeleePcLabels(group.pcNames);
+        const foeLabels=compressedMeleeMonsterLabels(group.monsterIds);
         annotations.push(`MELEE: ${pcLabels} ↔ ${foeLabels} — ${String(group.range||'far').toUpperCase()}`);
       }
       if(annotations.length) lines.push(`  ${annotations.join(' · ')}`);
@@ -1942,6 +2088,10 @@ W: swollen wooden door · E: cellar`;
       }
     });
     lines.push('','PARTY SIDE ↓');
+    if(legends.length){
+      lines.push('','GROUP LEGEND');
+      for(const line of legends) lines.push(`  ${line}`);
+    }
     return lines.join('\n');
   }
 
@@ -3067,6 +3217,9 @@ W: swollen wooden door · E: cellar`;
     }
     c.pcOrders=c.pcOrders&&typeof c.pcOrders==='object'?c.pcOrders:{};
     c.monsterOrders=c.monsterOrders&&typeof c.monsterOrders==='object'?c.monsterOrders:{};
+    // Referee-defined tactical formations. Unlike partyGroups these are encounter-
+    // scoped because hostile organization can change from one encounter to the next.
+    c.monsterGroups=c.monsterGroups&&typeof c.monsterGroups==='object'&&!Array.isArray(c.monsterGroups)?c.monsterGroups:{};
     c.engagements=c.engagements&&typeof c.engagements==='object'?c.engagements:{};
     c.meleeSites=c.meleeSites&&typeof c.meleeSites==='object'?c.meleeSites:{};
     c.initiative=c.initiative||null;
@@ -3193,7 +3346,8 @@ W: swollen wooden door · E: cellar`;
     const positions={pcs:{},monsters:{}};
     for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=encounterDistance;
-    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    state.combat={active:true,round:1,source:'test',monsters,pcOrders:{},monsterOrders:{},monsterGroups:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace,positions};
+    ensureMonsterTacticalGroups();
     archiveCombatEncounterRoster(state.combat);
     void refereeLog(`ENCOUNTER DISTANCE — ${outdoor?'wilderness':'dungeon/site'} test encounter: ${encounterDistanceTrace.dice} = ${distanceDice.join('+')} = ${distanceRoll}; ×10 = ${encounterDistance} ${distanceUnit}. ${encounterDistanceTrace.context}`,
       {type:'encounter_distance',source:'test',context:outdoor?'wilderness':'dungeon',dice:encounterDistanceTrace.dice,rolls:distanceDice.slice(),sum:distanceRoll,multiplier:10,result:encounterDistance,unit:distanceUnit,procedure:encounterDistanceTrace.procedure});
@@ -3410,6 +3564,62 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(remain<=0){ setEngagement(pc,monster); write(`${monster.name} closes ${combatDistanceLabel(step)} and engages ${pc.name}.`,'system'); return true; }
     write(`${monster.name} advances ${combatDistanceLabel(step)} toward ${pc.name}; ${combatDistanceLabel(remain)} remain.`,'system');
     return false;
+  }
+
+  function monsterGroupRecordForMonster(monster){
+    if(!monster) return null;
+    ensureMonsterTacticalGroups();
+    return monsterGroupRecords().find(g=>(g.memberIds||[]).includes(monster.id))||null;
+  }
+
+  function moveMonsterGroupTowardPc(monsters,orders,groupRecord=null){
+    const active=(Array.isArray(monsters)?monsters:[]).filter(monsterCanFight);
+    if(!active.length) return;
+    const starts=active.map(combatMonsterPosition);
+    const speeds=active.map(m=>Math.max(0,Number(m.move)||0));
+    const groupSpeed=Math.min(...speeds);
+    const firstOrder=orders.get(active[0].id)||{};
+    const anchorTarget=findPc(firstOrder.movementTargetName||firstOrder.targetName)||livingParty()[0]||null;
+    if(!anchorTarget) return;
+    const targetPos=combatPcPosition(anchorTarget);
+    const alreadyFormed=starts.every(pos=>Math.abs(pos-starts[0])<1e-9);
+    let destination=null;
+    if(alreadyFormed){
+      const start=starts[0], gap=Math.abs(targetPos-start), step=Math.min(groupSpeed,gap);
+      destination=start+(targetPos>start?step:targetPos<start?-step:0);
+      for(const monster of active) setCombatMonsterPosition(monster,destination);
+    }else{
+      const low=Math.max(...starts.map((start,i)=>start-speeds[i]));
+      const high=Math.min(...starts.map((start,i)=>start+speeds[i]));
+      if(low<=high){
+        destination=Math.max(low,Math.min(high,targetPos));
+        for(const monster of active) setCombatMonsterPosition(monster,destination);
+      }else{
+        const rendezvous=(Math.min(...starts)+Math.max(...starts))/2;
+        for(let i=0;i<active.length;i++){
+          const delta=rendezvous-starts[i], speed=speeds[i];
+          setCombatMonsterPosition(active[i],Math.abs(delta)<=speed?rendezvous:starts[i]+Math.sign(delta)*speed);
+        }
+      }
+    }
+    const ends=active.map(combatMonsterPosition);
+    const formed=ends.every(pos=>Math.abs(pos-ends[0])<1e-9);
+    if(formed){
+      for(const monster of active){
+        const order=orders.get(monster.id)||firstOrder;
+        const pc=findPc(order.targetName)||anchorTarget;
+        if(pc && combatSeparation(pc,monster)<=0 && !getEngagement(pc,monster)) setEngagement(pc,monster);
+      }
+    }
+    const name=groupRecord?.name||pluralMonsterName(active);
+    const anchor=formed?ends[0]:ends.reduce((a,b)=>a+b,0)/ends.length;
+    const remain=Math.max(0,Math.round(Math.abs(targetPos-anchor)));
+    if(formed){
+      write(`${name} ×${active.length} advance as one formation at ${combatDistanceLabel(groupSpeed)}/round toward ${anchorTarget.name}; ${combatDistanceLabel(remain)} remain.`,'system');
+    }else{
+      write(`${name} regroup into formation instead of advancing independently.`,'system');
+    }
+    void refereeLog(`MONSTER GROUP MOVEMENT — round ${state.combat?.round||'?'}: ${name} ×${active.length}; starts [${starts.join(', ')}]; speeds [${speeds.join(', ')}]; group speed ${groupSpeed}; ends [${ends.join(', ')}]; target ${anchorTarget.name}; ${formed?'formed':'regrouping'}.`,{type:'monster_group_movement',round:state.combat?.round||null,group:groupRecord?.id||null,name,monsterIds:active.map(m=>m.id),starts,speeds,groupSpeed,ends,target:anchorTarget.name,formed});
   }
 
   function movePcAwayFromThreat(pc,distance){
@@ -4449,7 +4659,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       // “Kyree, Elissa and Norman form group 1”. The clause boundary is
       // consumed deliberately so an earlier caster/action is not swallowed
       // into the member expression.
-      new RegExp(`(?:^|[.;]\\s*|\\b(?:and\\s+then|then|and)\\s+)(${actorFirstMember})\\s+(?:form|forms|make|makes)\\s+${groupNamePattern}(?=\\s+(?:and\\s+then|then|and)\\s+|[.;]|$)`,'i'),
+      new RegExp(`(?:^|[.;]\\s*|\\b(?:and\\s+then|then|and)\\s+)(?:(?:have|let)\\s+)?(${actorFirstMember})\\s+(?:form|forms|make|makes)\\s+${groupNamePattern}(?=\\s+(?:and\\s+then|then|and)\\s+|[.;]|$)`,'i'),
+      new RegExp(`(?:^|[.;]\\s*|\\b(?:and\\s+then|then|and)\\s+)(?:tell|ask|order)\\s+(${actorFirstMember})\\s+to\\s+(?:form|make)\\s+${groupNamePattern}(?=\\s+(?:and\\s+then|then|and)\\s+|[.;]|$)`,'i'),
       /\bgroup\s+(.+?)\s+(?:into|as)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
       /\bput\s+(.+?)\s+(?:into|in)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i,
       /\b(?:make|form)\s+(.+?)\s+(?:into\s+|as\s+)?((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)(?=\s+(?:and\s+then|then|and)\s+|[.;]|$)/i
@@ -4471,6 +4682,15 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(after && !new RegExp(`^(?:the\\s+)?${gEsc}(?=\\s|$)`,'i').test(after) && /^(?:move|advance|approach|close|charge|rush|attack|fight|hold|join|regroup)\b/i.test(after)) after=`${groupName} ${after}`;
     const remainder=[before,after].filter(Boolean).join(before&&after?'. ':'').trim();
     return {groupName,memberExpression,members,remainder};
+  }
+
+  function looksLikePartyGroupFormationRequest(input){
+    const q=String(input||'').toLowerCase().replace(/[’]/g,"'").replace(/\s+/g,' ').trim();
+    if(!q) return false;
+    // Safety net: if ordinary English clearly asks to create a named party
+    // formation but the extractor does not understand the exact wording, do
+    // not silently discard the formation and execute everyone independently.
+    return /\b(?:form|forms|create|creates|organize|organizes|organise|organises)\b[^.;]{0,100}\b(?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*/i.test(q);
   }
 
   function partyGroupSummary(){
@@ -4874,8 +5094,29 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function chooseMonsterOrders(){
     if(!combatActive()) return;
     const pcs=livingParty(); state.combat.monsterOrders={}; if(!pcs.length)return;
-    let i=0; const audit=[];
+    ensureMonsterTacticalGroups();
+    let i=0; const audit=[], assigned=new Set();
+    for(const formation of monsterGroupRecords()){
+      const members=monsterGroupMembers(formation,{combatCapableOnly:true});
+      if(!members.length) continue;
+      const groupPos=members.map(combatMonsterPosition).reduce((a,b)=>a+b,0)/members.length;
+      const anchor=pcs.slice().sort((a,b)=>Math.abs(combatPcPosition(a)-groupPos)-Math.abs(combatPcPosition(b)-groupPos)||a.name.localeCompare(b.name))[0];
+      const role=String(formation.role||'melee').toLowerCase();
+      for(const m of members){
+        const engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean);
+        const target=engaged[0]||pcs[i++%pcs.length];
+        const group=engaged.length?meleeGroupFor(target,m):null;
+        const currentRange=group?.range||'far';
+        const preferredRange=monsterPreferredMeleeRange(m,target,currentRange);
+        const rangeIntent=rangeIntentToward(currentRange,preferredRange);
+        const action=role==='missile'?'missile':'melee';
+        state.combat.monsterOrders[m.id]={action,targetName:target.name,movementTargetName:anchor.name,movementMode:'together',movementGroup:formation.id,rangeIntent,preferredRange};
+        assigned.add(m.id);
+      }
+      audit.push(`${formation.name} ×${members.length}: ${role.toUpperCase()} formation; moves together toward ${anchor.name}.`);
+    }
     for(const m of livingHostiles()){
+      if(assigned.has(m.id)) continue;
       const engaged=engagementsForMonster(m).map(x=>x.pc).filter(Boolean);
       const target=engaged[0]||pcs[i++%pcs.length];
       const group=engaged.length?meleeGroupFor(target,m):null;
@@ -4886,7 +5127,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name,rangeIntent,preferredRange};
       audit.push(`${m.name}: MELEE ${target.name} (${reason}); prefers ${preferredRange.toUpperCase()}${rangeIntent!=='hold'?` → ${rangeIntent.toUpperCase()}`:' → HOLD'}`);
     }
-    if(audit.length) void refereeLog(`ROUND ${state.combat.round} — MONSTER ORDERS\n${audit.join('\n')}`,{type:'monster_orders',round:state.combat.round,orders:{...state.combat.monsterOrders}});
+    if(audit.length) void refereeLog(`ROUND ${state.combat.round} — MONSTER ORDERS\n${audit.join('\n')}`,{type:'monster_orders',round:state.combat.round,orders:{...state.combat.monsterOrders},monsterGroups:debugClone(state.combat.monsterGroups||{})});
   }
 
   function meleeSideIntent(group,side){
@@ -5011,7 +5252,23 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         }
       }
     } else {
+      ensureMonsterTacticalGroups();
+      const processed=new Set(), togetherGroups=new Map();
       for(const monster of livingHostiles()){
+        const o=state.combat.monsterOrders[monster.id];
+        if(o?.action==='melee' && o?.movementMode==='together' && o?.movementGroup){
+          if(!togetherGroups.has(o.movementGroup)) togetherGroups.set(o.movementGroup,[]);
+          togetherGroups.get(o.movementGroup).push(monster);
+        }
+      }
+      for(const [groupId,monsters] of togetherGroups){
+        const orders=new Map(monsters.map(m=>[m.id,state.combat.monsterOrders[m.id]]));
+        const formation=monsterGroupRecords().find(g=>g.id===groupId)||null;
+        moveMonsterGroupTowardPc(monsters,orders,formation);
+        for(const m of monsters) processed.add(m.id);
+      }
+      for(const monster of livingHostiles()){
+        if(processed.has(monster.id)) continue;
         const o=state.combat.monsterOrders[monster.id]; if(!o)continue; const pc=findPc(o.targetName); if(!pc||pc.dead)continue;
         if(o.action==='melee'){
           const wasWithdrawn=Boolean(pc.withdrewThisRound);
@@ -6787,6 +7044,12 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         void refereeLog(`PARTY GROUP — ${record.name}: ${record.memberNames.join(', ')}. Defined from: ${displayedInput}`,{type:'party_group_definition',group:record.name,members:record.memberNames.slice(),source:displayedInput});
         input=groupDirective.remainder;
         if(!input) return;
+      } else if(looksLikePartyGroupFormationRequest(input)) {
+        const question='I can tell you are trying to create a named party group, but I could not determine the complete membership or group name. Which characters should be in which group?';
+        write(question,'warning');
+        setPendingClarification(displayedInput,question,{kind:'party_group_definition'});
+        patchParserTrace(displayedInput,{stage:'party-group-definition',localParser:'recognized group-formation intent but could not safely extract it',validation:'clarification required',execution:'no game-state mutation'});
+        return;
       }
     }
 
@@ -6969,7 +7232,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     const positions={pcs:{},monsters:{}};
     for(const pc of state.party) positions.pcs[pc.name.toLowerCase()]=0;
     for(const m of monsters) positions.monsters[m.id]=distance;
-    return {active:true,round:1,source:'harness',monsters,pcOrders:{},monsterOrders:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance:distance,distanceUnit:'yd',encounterDistanceTrace:null,positions};
+    return {active:true,round:1,source:'harness',monsters,pcOrders:{},monsterOrders:{},monsterGroups:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance:distance,distanceUnit:'yd',encounterDistanceTrace:null,positions};
   }
 
   function installHarnessFixture(options={}){
@@ -7433,6 +7696,22 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const movedPositions=group.memberNames.map(name=>combatPcPosition(findPc(name)));
         harnessAssert(new Set(movedPositions).size===1,'Literal Group 1 command produced different physical positions after movement');
       }},
+      {name:'Literal “Have the party form group bruiser” creates a persistent slowest-pace formation',run:async()=>{
+        installHarnessFixture({distance:110});
+        const text='Have the party form group bruiser and move to melee and attack';
+        await handle(text);
+        const group=partyGroupRecord('group bruiser');
+        harnessAssert(group && group.memberNames.length===livingParty().length,'Causative “Have the party form group bruiser” did not create the full-party group');
+        const members=partyGroupMembers('group bruiser');
+        const orders=members.map(pc=>state.combat.pcOrders[pc.name.toLowerCase()]);
+        harnessAssert(orders.every(o=>o?.movement==='approach'&&o?.action==='melee'&&o?.movementMode==='together'),'Group Bruiser did not receive together approach + melee orders');
+        harnessAssert(new Set(orders.map(o=>o?.movementGroup)).size===1 && String(orders[0]?.movementGroup||'').includes('group bruiser'),'Group Bruiser did not receive one persistent movement-group id');
+        const slowest=Math.min(...members.map(pc=>pcEncounterSpeed(pc)));
+        movementPhase('pc');
+        const positions=members.map(pc=>combatPcPosition(pc));
+        harnessAssert(new Set(positions).size===1,'Group Bruiser fragmented during actual movement');
+        harnessAssert(Math.abs(positions[0]-slowest)<1e-9,`Group Bruiser moved ${positions[0]} yd instead of slowest-member pace ${slowest} yd`);
+      }},
       {name:'Literal actor-first Group 1 command creates the group and moves at slowest pace',run:async()=>{
         installHarnessFixture({distance:120});
         const caster=state.party[2];
@@ -7510,6 +7789,42 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(new Set(positions).size===1,'Named Group 1 members ended group movement at different positions');
         const slowest=Math.min(...group.map(pc=>pcEncounterSpeed(pc)));
         harnessAssert(Math.abs(positions[0]-slowest)<1e-9,`Named Group 1 moved ${positions[0]} instead of the slowest member's ${slowest} yd encounter speed`);
+      }},
+      {name:'Combat map replaces formed party members with the named group plus legend',run:()=>{
+        installHarnessFixture({distance:90});
+        definePartyGroup('group bruiser',state.party.slice(0,4),{announce:false});
+        for(const pc of state.party.slice(0,4)) setCombatPcPosition(pc,30);
+        const map=renderCombatAsciiMap();
+        harnessAssert(/\[group bruiser\]/i.test(map),'Named party formation was not rendered as one map token');
+        harnessAssert(/GROUP LEGEND/i.test(map)&&/group bruiser:.*Nemiriel.*Tyree.*Karson.*Serena/i.test(map),'Party group legend did not expose formation membership');
+      }},
+      {name:'Referee monster formations render as group tokens and can split one creature type by role',run:()=>{
+        installHarnessFixture({distance:90,type:'skeleton',count:4});
+        state.combat.monsterGroups={};
+        state.combat.monsters[0].tacticalGroupName='Skeleton Line';
+        state.combat.monsters[1].tacticalGroupName='Skeleton Line';
+        state.combat.monsters[2].tacticalGroupName='Skeleton Archers'; state.combat.monsters[2].tacticalRole='missile';
+        state.combat.monsters[3].tacticalGroupName='Skeleton Archers'; state.combat.monsters[3].tacticalRole='missile';
+        ensureMonsterTacticalGroups();
+        const map=renderCombatAsciiMap();
+        harnessAssert(/\[Skeleton Line ×2\]/.test(map),'Melee skeleton formation was not collapsed to one map token');
+        harnessAssert(/\[Skeleton Archers ×2\]/.test(map),'Skeleton archer formation was not kept separate from the melee line');
+        harnessAssert(/Skeleton Line ×2:.*MELEE/.test(map)&&/Skeleton Archers ×2:.*MISSILE/.test(map),'Monster formation legend omitted tactical roles');
+      }},
+      {name:'Referee monster group advances at one shared pace and position',run:()=>{
+        installHarnessFixture({distance:100,type:'skeleton',count:4});
+        // Spread the PCs so individual target-following would fragment the foes.
+        setCombatPcPosition(state.party[0],0); setCombatPcPosition(state.party[1],10); setCombatPcPosition(state.party[2],20);
+        state.combat.monsterGroups={}; ensureMonsterTacticalGroups();
+        chooseMonsterOrders();
+        const group=monsterGroupRecords()[0];
+        harnessAssert(group&&monsterGroupMembers(group).length===4,'Default referee formation was not created for the skeletons');
+        const before=monsterGroupMembers(group).map(combatMonsterPosition);
+        movementPhase('monster');
+        const after=monsterGroupMembers(group).map(combatMonsterPosition);
+        harnessAssert(new Set(after).size===1,'Monster formation fragmented while advancing');
+        const expected=before[0]-Math.min(...monsterGroupMembers(group).map(m=>Number(m.move)||0));
+        harnessAssert(Math.abs(after[0]-expected)<1e-9,`Monster formation moved to ${after[0]} instead of shared slowest pace ${expected}`);
       }},
       {name:'Formed named group movement is capped by its slowest member',run:async()=>{
         installHarnessFixture({distance:120});
