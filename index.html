@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.46';
+  const APP_VERSION = '0.3.47';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -562,7 +562,9 @@
     light_jungle: {name:'light jungle', cost:0, desc:'Broken jungle and secondary growth slow travel but still permit some view through the trees.'},
     heavy_jungle: {name:'heavy jungle', cost:0, desc:'Dense tropical growth closes around the party and makes progress slow.'},
     volcano:      {name:'volcanic slopes', cost:0, desc:'Steep black slopes, broken rock, and steaming ground rise toward the Pillar of Lan Yu.'},
-    reef:         {name:'reef', cost:0, desc:'Jagged coral and surf make this dangerous water rather than overland terrain.'}
+    reef:         {name:'reef', cost:0, desc:'Jagged coral breaks the surface beneath dangerous surf and currents.'},
+    coastal_water:{name:'coastal water', cost:0, desc:'Shallow blue water lies close enough to the island for coast-hugging navigation.'},
+    deep_water:   {name:'deep water', cost:0, desc:'Open sea extends beyond the island shallows.'}
   };
   const RC_WEAPON_MATRIX = {"Axe, Battle (RC)":{"rawDamage":"1d8","size":"Medium-Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Rules Cyclopedia battle axe: a 3–5 ft two-handed chopping weapon; strong committed cuts without a strong Soft/Hard bias.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d8","normal":"2d4","far":"1d10"}}}},"Axe, Hand (RC)":{"rawDamage":"1d6","size":"Medium-Small","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Compact one-handed chopping axe; useful in melee and throwable.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d3","far":"1d6"},"hard":{"close":"1d8","normal":"2d3","far":"1d6"}},"medium":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"large":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}}}},"Bow, Short (RC)":{"rawDamage":"1d6","size":"Medium","power":"Light","consistency":0.17,"rangeProfile":"Short-Slight","description":"Compact bow favoring mobility and exposed targets; modest performance against rigid protection.","matrix":{"small":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"medium":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"large":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Bow, Long (RC)":{"rawDamage":"1d6","size":"Large","power":"Light","consistency":0.33,"rangeProfile":"Long-Slight","description":"Longer bow with greater reach and repeatability; arrows remain Soft-target biased.","matrix":{"small":{"soft":{"close":"1d4+1","normal":"2d3","far":"1d6+1"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"1d6+1","normal":"2d3+1","far":"1d8+1"},"hard":{"close":"1d4","normal":"2d2","far":"1d4+1"}},"large":{"soft":{"close":"1d8+1","normal":"2d4+1","far":"1d8+2"},"hard":{"close":"1d4+1","normal":"2d3","far":"1d6+1"}}}},"Crossbow, Light (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal-Heavy","consistency":0.5,"rangeProfile":"Long-Slight","description":"Mechanically launched bolt with good repeatability and meaningful performance against hard protection.","matrix":{"small":{"soft":{"close":"2d2","normal":"1d4+1","far":"2d3"},"hard":{"close":"2d3","normal":"1d6+1","far":"2d3+1"}},"medium":{"soft":{"close":"1d4+1","normal":"2d3","far":"1d6+1"},"hard":{"close":"1d6+1","normal":"2d3+1","far":"1d6+2"}},"large":{"soft":{"close":"2d3","normal":"1d6+1","far":"2d3+1"},"hard":{"close":"2d3+1","normal":"1d6+2","far":"2d4+1"}}}},"Crossbow, Heavy (RC)":{"rawDamage":"2d4","size":"Large","power":"Heavy","consistency":0.67,"rangeProfile":"Long-Favored","description":"Heavy mechanically spanned crossbow; excellent rigid-target performance, offset in play by slow reloading.","matrix":{"small":{"soft":{"close":"1d2+1","normal":"1d4+1","far":"3d2"},"hard":{"close":"3d2","normal":"3d2+1","far":"1d6+3"}},"medium":{"soft":{"close":"1d4+1","normal":"3d2","far":"3d2+1"},"hard":{"close":"3d2+1","normal":"1d6+3","far":"5d2"}},"large":{"soft":{"close":"3d2","normal":"3d2+1","far":"1d6+3"},"hard":{"close":"1d6+3","normal":"5d2","far":"5d2+1"}}}},"Blackjack (RC)":{"rawDamage":"1d2","size":"Extra Small","power":"Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Very low injury output; its real purpose is the Cyclopedia knockout/stun effect against an accessible head or neck.","matrix":{"small":{"soft":{"close":"1d10","normal":"2d3","far":"1d4"},"hard":{"close":"1d6","normal":"1d3","far":"None"}},"medium":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"1d3","normal":"None","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Club (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Simple blunt implement with modest impact and no strong protection bias.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"medium":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}},"large":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Hammer, Throwing (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal-Heavy","consistency":0.17,"rangeProfile":"Short-Slight","description":"Compact broad-headed impact weapon balanced for throwing; concentrated force helps against rigid targets.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d8","normal":"2d3","far":"1d6"}},"medium":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"large":{"soft":{"close":"1d4","normal":"1d3","far":"1d2"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}}}},"Hammer, War (RC)":{"rawDamage":"1d6","size":"Medium","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Medium-shafted war hammer concentrating impact against armor and other hard protection.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"large":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}}}},"Mace (RC)":{"rawDamage":"1d6","size":"Medium","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Heavy striking head on a short or medium shaft; moderate bias toward hard-target effectiveness.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}},"large":{"soft":{"close":"1d6","normal":"1d6","far":"1d6"},"hard":{"close":"1d8","normal":"1d8","far":"1d8"}}}},"Staff (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Long two-handed blunt weapon; reach and handling are more important than raw injury output.","matrix":{"small":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"medium":{"soft":{"close":"2d2","normal":"1d6","far":"2d3"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"large":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}}}},"Torch (RC)":{"rawDamage":"1d4","size":"Medium-Small","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Light improvised club whose flame can matter fictionally beyond its direct weapon damage.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}},"medium":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d4","normal":"1d3","far":"1d2"}},"large":{"soft":{"close":"2d2","normal":"1d4","far":"1d3"},"hard":{"close":"1d3","normal":"1d2","far":"1 dmg"}}}},"Dagger (RC)":{"rawDamage":"1d4","size":"Small","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Compact cutting and thrusting blade; excels when fighting distance collapses inward.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Dagger, Silver (RC)":{"rawDamage":"1d4","size":"Small","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Physically identical to the normal dagger; silver is treated as a material property relevant to susceptible creatures.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Halberd (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Long combination polearm with axe, spike, and hook; strong general battlefield damage with some anti-armor bias.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d4","normal":"1d8+1d2","far":"2d6"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"1d8+1d2","normal":"2d6","far":"1d12+1d2"}}}},"Javelin (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Light","consistency":0.17,"rangeProfile":"Size-Based","description":"Light 4–6 ft spear usable one-handed in melee or thrown; reach is useful without the mass of a full spear.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"1d3","normal":"1d4","far":"2d2"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d8+1"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}}}},"Lance (RC)":{"rawDamage":"1d10","size":"Extra Large","power":"Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Extreme-reach mounted thrusting weapon; a true charge should be resolved as favorable delivery rather than permanent base damage.","matrix":{"small":{"soft":{"close":"None","normal":"1d3","far":"1d6"},"hard":{"close":"1d4","normal":"2d3","far":"1d10"}},"medium":{"soft":{"close":"1d3","normal":"1d6","far":"2d4"},"hard":{"close":"2d3","normal":"1d10","far":"2d6"}},"large":{"soft":{"close":"1d6","normal":"2d4","far":"1d12"},"hard":{"close":"1d10","normal":"2d6","far":"1d12+1d3"}}}},"Pike (RC)":{"rawDamage":"1d10","size":"Extra Large","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"Extra-long 12–18 ft thrusting spear; exceptional outward effectiveness with a strong exposed-target bias.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d4","far":"1d12"},"hard":{"close":"1d2","normal":"2d2","far":"1d8"}},"medium":{"soft":{"close":"2d4","normal":"1d12","far":"1d12+1d2"},"hard":{"close":"2d2","normal":"1d8","far":"1d8+1d2"}},"large":{"soft":{"close":"1d12","normal":"1d12+1d2","far":"1d12+1d3+1"},"hard":{"close":"1d8","normal":"1d8+1d2","far":"1d12+1"}}}},"Polearm (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Generic long pole weapon occupying the midpoint between specialized pikes, halberds, and heavy chopping variants.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d4","normal":"1d8+1d2","far":"2d6"}}}},"Poleaxe (RC)":{"rawDamage":"1d10","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Rules Cyclopedia poleaxe: an extra-long battle axe on a 5–15 ft pole, distinct from the shorter knightly pollaxe.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Spear (RC)":{"rawDamage":"1d6","size":"Large","power":"Light","consistency":0,"rangeProfile":"Size-Based","description":"6–8 ft thrusting spear; reach and Soft-target efficiency are its main strengths rather than raw base damage.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"None","normal":"1d2","far":"1d4"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d2","normal":"1d4","far":"1d6"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}}}},"Trident (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Light three-pronged spear designed for underwater use; versatile against exposed flesh but less convincing against rigid armor.","matrix":{"small":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}},"medium":{"soft":{"close":"2d2","normal":"1d6","far":"2d3"},"hard":{"close":"1d3","normal":"1d4","far":"2d2"}},"large":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}}}},"Shield, Horned (RC)":{"rawDamage":"1d2","size":"Small","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Small strapped shield with a central spike; primarily a close secondary attack rather than a full-length weapon.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d2","far":"1d2"},"hard":{"close":"1d6","normal":"1d3","far":"None"}},"medium":{"soft":{"close":"1d6","normal":"1d3","far":"None"},"hard":{"close":"1d4","normal":"1 dmg","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Shield, Knife (RC)":{"rawDamage":"1d4+1","size":"Small","power":"Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Small buckler carrying short blades; close-range secondary attack with limited reach.","matrix":{"small":{"soft":{"close":"1d8+1d2","normal":"1d8","far":"2d2"},"hard":{"close":"2d3","normal":"1d4","far":"1 dmg"}},"medium":{"soft":{"close":"2d4","normal":"1d6","far":"1d3"},"hard":{"close":"2d2","normal":"1d2","far":"None"}},"large":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"1d3","normal":"None","far":"None"}}}},"Shield, Sword (RC)":{"rawDamage":"1d4+2","size":"Medium","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Favored","description":"Medium shield mounting sword or spear blades; substantial secondary-weapon output but still body-centered in reach.","matrix":{"small":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}},"medium":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}},"large":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}}}},"Shield, Tusked (RC)":{"rawDamage":"1d4+1","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Favored","description":"Large two-handed bladed shield; physically large but its attacking edges remain close to the wielder rather than functioning as a long weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"medium":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d6","normal":"1d4","far":"1d2"}},"large":{"soft":{"close":"1d10","normal":"1d8","far":"1d6"},"hard":{"close":"1d8","normal":"1d6","far":"1d4"}}}},"Sword, Short (RC)":{"rawDamage":"1d6","size":"Medium-Small","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Compact sword that handles well in compressed fighting while giving up some reach.","matrix":{"small":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}},"medium":{"soft":{"close":"1d8","normal":"2d3","far":"1d6"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}},"large":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Sword, Normal (RC)":{"rawDamage":"1d8","size":"Medium","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Classic one-handed cutting and thrusting sword; broad general-purpose handling with a modest Soft-target bias.","matrix":{"small":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}},"medium":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}},"large":{"soft":{"close":"1d8","normal":"1d8","far":"1d8"},"hard":{"close":"1d6","normal":"1d6","far":"1d6"}}}},"Sword, Bastard (One-Handed) (RC)":{"rawDamage":"1d6+1","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Hand-and-a-half sword used one-handed; gains length but cannot fully exploit the weapon's mass and leverage.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"medium":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}}}},"Sword, Bastard (Two-Handed) (RC)":{"rawDamage":"1d8+1","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Hand-and-a-half sword committed to a two-handed grip for improved leverage while retaining flexible sword handling.","matrix":{"small":{"soft":{"close":"2d3","normal":"1d8","far":"2d4"},"hard":{"close":"2d2","normal":"1d6","far":"2d3"}},"medium":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"large":{"soft":{"close":"2d4","normal":"1d10","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}}}},"Sword, Two-Handed (RC)":{"rawDamage":"1d10","size":"Medium-Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Great sword approximately 4½–6½ ft long; high Soft-target damage across a broad personal-combat envelope.","matrix":{"small":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"2d4","normal":"1d10","far":"1d8+1d2"},"hard":{"close":"2d3","normal":"1d8","far":"2d4"}},"large":{"soft":{"close":"1d10","normal":"1d8+1d2","far":"1d12"},"hard":{"close":"1d8","normal":"2d4","far":"1d10"}}}},"Blowgun, up to 2' (RC)":{"rawDamage":"Nil","size":"Extra Small","power":"Ultra Light","consistency":0.67,"rangeProfile":"Short-Slight","description":"The dart inflicts no meaningful direct injury in the Cyclopedia; poison is the actual payload.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Blowgun, 2'+ (RC)":{"rawDamage":"Nil","size":"Small","power":"Ultra Light","consistency":0.67,"rangeProfile":"Long-Slight","description":"Longer blowgun improves delivery range but the dart itself still has no meaningful direct-damage profile; poison is the payload.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Bola (RC)":{"rawDamage":"1d2","size":"Small","power":"Light","consistency":0.17,"rangeProfile":"Short-Favored","description":"Weighted entangling projectile with very low direct injury; its primary value is the Cyclopedia entangle/slow/delay effect.","matrix":{"small":{"soft":{"close":"1d8","normal":"1d6","far":"1d4"},"hard":{"close":"1d4","normal":"1d2","far":"None"}},"medium":{"soft":{"close":"1d6","normal":"1d4","far":"1d2"},"hard":{"close":"1d2","normal":"None","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1d2","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Cestus (RC)":{"rawDamage":"1d3","size":"Extra Small","power":"Normal-Light","consistency":0,"rangeProfile":"Short-Specialized","description":"Armed glove or hand-wrap that makes a punch cutting and more dangerous while remaining essentially fist-range.","matrix":{"small":{"soft":{"close":"1d10","normal":"2d3","far":"1d4"},"hard":{"close":"1d8","normal":"2d2","far":"1d2"}},"medium":{"soft":{"close":"2d3","normal":"1d4","far":"1 dmg"},"hard":{"close":"2d2","normal":"1d2","far":"None"}},"large":{"soft":{"close":"1d4","normal":"1 dmg","far":"None"},"hard":{"close":"1d2","normal":"None","far":"None"}}}},"Holy Water (RC)":{"rawDamage":"1d8","size":"Small","power":"Normal","consistency":0.17,"rangeProfile":"Short-Slight","description":"Breakable thrown container whose listed damage applies only to appropriate undead; ordinary armor is not treated as the key resistance mechanism.","matrix":{"small":{"soft":{"close":"1d8+1d2","normal":"1d8+1","far":"2d4"},"hard":{"close":"1d8+1d2","normal":"1d8+1","far":"2d4"}},"medium":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d4","normal":"1d8","far":"2d3"}},"large":{"soft":{"close":"2d3","normal":"1d6","far":"2d2"},"hard":{"close":"2d3","normal":"1d6","far":"2d2"}}}},"Net (RC)":{"rawDamage":"Nil","size":"Medium","power":"Ultra Light","consistency":0,"rangeProfile":"Short-Slight","description":"Standard human-sized net profile. It inflicts no direct damage; size-sensitive entanglement remains a separate effect.","matrix":{"small":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}},"large":{"soft":{"close":"None","normal":"None","far":"None"},"hard":{"close":"None","normal":"None","far":"None"}}}},"Oil, Burning (RC)":{"rawDamage":"1d8","size":"Small","power":"Normal","consistency":0.33,"rangeProfile":"Short-Slight","description":"Thrown breakable container delivering fire; continuing burn duration should remain a condition/effect rather than be hidden in Base damage.","matrix":{"small":{"soft":{"close":"2d4+1","normal":"1d8+1","far":"2d3+1"},"hard":{"close":"2d4+1","normal":"1d8+1","far":"2d3+1"}},"medium":{"soft":{"close":"2d3+1","normal":"1d6+1","far":"2d3"},"hard":{"close":"2d3+1","normal":"1d6+1","far":"2d3"}},"large":{"soft":{"close":"2d3","normal":"1d4+1","far":"2d2"},"hard":{"close":"2d3","normal":"1d4+1","far":"2d2"}}}},"Rock, Thrown (RC)":{"rawDamage":"1d3","size":"Small","power":"Normal","consistency":0,"rangeProfile":"Short-Favored","description":"Fist-sized improvised impact projectile; low output but broadly applicable.","matrix":{"small":{"soft":{"close":"2d3","normal":"2d2","far":"1d3"},"hard":{"close":"2d3","normal":"2d2","far":"1d3"}},"medium":{"soft":{"close":"2d2","normal":"1d3","far":"1 dmg"},"hard":{"close":"2d2","normal":"1d3","far":"1 dmg"}},"large":{"soft":{"close":"1d3","normal":"1 dmg","far":"None"},"hard":{"close":"1d3","normal":"1 dmg","far":"None"}}}},"Sling (RC)":{"rawDamage":"1d4","size":"Small","power":"Normal","consistency":0.17,"rangeProfile":"Long-Slight","description":"Compact projectile weapon that delivers a stone or lead pellet with substantially better range than hand throwing.","matrix":{"small":{"soft":{"close":"1d6","normal":"2d3","far":"1d8"},"hard":{"close":"1d6","normal":"2d3","far":"1d8"}},"medium":{"soft":{"close":"1d4","normal":"2d2","far":"1d6"},"hard":{"close":"1d4","normal":"2d2","far":"1d6"}},"large":{"soft":{"close":"1d2","normal":"1d3","far":"1d4"},"hard":{"close":"1d2","normal":"1d3","far":"1d4"}}}},"Whip (RC)":{"rawDamage":"1d2","size":"Large","power":"Light","consistency":0,"rangeProfile":"Long-Favored","description":"Long flexible tactical weapon with very low injury output; reach and entangling utility are its main reasons to exist.","matrix":{"small":{"soft":{"close":"None","normal":"1d2","far":"1d4"},"hard":{"close":"None","normal":"None","far":"None"}},"medium":{"soft":{"close":"1d2","normal":"1d4","far":"1d6"},"hard":{"close":"None","normal":"None","far":"1d2"}},"large":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"None","normal":"1d2","far":"1d4"}}}},"Bardiche (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Heavy axe-bladed polearm with a forward spike; high raw chopping performance.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Bill (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Relatively light polearm with a long narrow single-edged blade; emphasizes cutting and handling over mass.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Gisarme (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Bill-like polearm with an added rear spike; balanced cutting, hooking, and thrusting potential.","matrix":{"small":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Glaive (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad knifelike blade on a long pole; strong cutting profile with an exposed-target preference.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Lochaber Axe (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Long heavy single-bladed axe with a forward hook; powerful chopping and control weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}},"Partizan (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad spearhead with two forward-pointing hooks at the base; primarily thrusting with useful cutting/control surfaces.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Ranseur (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Heavy","consistency":0,"rangeProfile":"Size-Based","description":"Central thrusting spike flanked by short curved blades; favors concentrated thrust and weapon control over broad cuts.","matrix":{"small":{"soft":{"close":"1d2","normal":"1d4","far":"1d6"},"hard":{"close":"1d4","normal":"1d6","far":"1d8"}},"medium":{"soft":{"close":"1d4","normal":"1d6","far":"1d8"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"large":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}}}},"Spetum (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Long central spike with two sharp curved blades forming a trident-like head; versatile thrusting and cutting polearm.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Spontoon (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal-Light","consistency":0,"rangeProfile":"Size-Based","description":"Broad elaborate spear-like blade, sometimes wavy or flared; relatively light fighting polearm.","matrix":{"small":{"soft":{"close":"2d2","normal":"2d3","far":"2d4"},"hard":{"close":"1d3","normal":"2d2","far":"2d3"}},"medium":{"soft":{"close":"2d3","normal":"2d4","far":"1d8+1d2"},"hard":{"close":"2d2","normal":"2d3","far":"2d4"}},"large":{"soft":{"close":"2d4","normal":"1d8+1d2","far":"2d6"},"hard":{"close":"2d3","normal":"2d4","far":"1d8+1d2"}}}},"Voulge (RC)":{"rawDamage":"1d10 (generic polearm)","size":"Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Large heavy cleaver-like blade on a pole; emphatically a high-output chopping weapon.","matrix":{"small":{"soft":{"close":"1d6","normal":"1d8","far":"1d10"},"hard":{"close":"1d6","normal":"1d8","far":"1d10"}},"medium":{"soft":{"close":"1d8","normal":"1d10","far":"1d12"},"hard":{"close":"1d8","normal":"1d10","far":"1d12"}},"large":{"soft":{"close":"1d10","normal":"1d12","far":"1d12+1"},"hard":{"close":"1d10","normal":"1d12","far":"1d12+1"}}}}};
 
@@ -741,43 +743,89 @@
     }
   };
 
-  // Kai Besil is a deliberately bounded 1/2-mile hex-crawl test region based
-  // on The Smoking Pillar of Lan Yu. Coordinates are engine-private; the player
-  // interacts with directions, landmarks, and discovered places rather than X/Y data.
-  const kaiBesilHexes = (() => {
+  // Kai Besil wilderness transcription from The Smoking Pillar of Lan Yu map.
+  // The source map uses 1/2-mile hexes. The compact row strings below transcribe
+  // the published terrain cell-by-cell, including the surrounding sea and reefs.
+  // Coordinates remain engine-private and are never intended as a player map.
+  const KAI_BESIL_TERRAIN_CODES={D:'deep_water',C:'coastal_water',R:'reef',P:'plains',L:'light_jungle',J:'heavy_jungle',H:'hills',M:'mountain',S:'swamp',V:'volcano'};
+  const KAI_BESIL_MAP_ROWS=[
+    {r:2,q:-1,codes:'DDDDDDDDDDCCDDDDDD'},
+    {r:3,q:-1,codes:'DDDDDDDDDCCCDDDDDD'},
+    {r:4,q:-2,codes:'DDDDDDDRRCLCDCCCDD'},
+    {r:5,q:-2,codes:'DDDDDDRRCCLCCCCCDD'},
+    {r:6,q:-3,codes:'DDDDDDDRCCLCCCCCRD'},
+    {r:7,q:-3,codes:'DDDDDDDCCLCCCCLCRD'},
+    {r:8,q:-4,codes:'DDDDDRDCCLCCCLLCCR'},
+    {r:9,q:-4,codes:'DDDDDRCCHLCCLLLCRD'},
+    {r:10,q:-5,codes:'DDDDCRRLJJCCCLLLCD'},
+    {r:11,q:-5,codes:'DDDCCRCJHLCLLLLCRD'},
+    {r:12,q:-6,codes:'DDDDCCCCHJLCLLLLCD'},
+    {r:13,q:-6,codes:'DDDCCCCCHJLLLJLCRD'},
+    {r:14,q:-7,codes:'DDDDSCSCMHJLLJJLRD'},
+    {r:15,q:-7,codes:'DDDCSPLHVHLLJJLCRD'},
+    {r:16,q:-8,codes:'DDDCCPLHMMJJJJLCCR'},
+    {r:17,q:-8,codes:'DDDCPLJHHHJLLLCCCD'},
+    {r:18,q:-9,codes:'DDDCSPLJHHHJLLCCCD'},
+    {r:19,q:-9,codes:'DDDCPPLJJJHLLLCCDD'},
+    {r:20,q:-10,codes:'DDDCSCCLJJLLLLCCDD'},
+    {r:21,q:-10,codes:'DDDCSCSJJLCCLLCDDD'},
+    {r:22,q:-11,codes:'DDDRCCSLJJCCCLCDDD'},
+    {r:23,q:-11,codes:'DDRRCCSLJJCCCCCDDD'},
+    {r:24,q:-12,codes:'DDDDRCCLLLLCCCCDDD'},
+    {r:25,q:-12,codes:'DDDRCCCLLLCCCCCDDD'},
+    {r:26,q:-13,codes:'DDDDRCCCLLLCCCCCDD'},
+    {r:27,q:-13,codes:'DDDRRCCCLLLCCCDDDD'},
+    {r:28,q:-14,codes:'DDDDRCCCPLLLCRDCDD'},
+    {r:29,q:-14,codes:'DDDDRCCSSLLLCDRDDD'},
+    {r:30,q:-15,codes:'DDDDDCSSSCLJCRDDDD'},
+    {r:31,q:-15,codes:'DDDRCCSSCCLLRRDDDD'},
+    {r:32,q:-16,codes:'DDDDDCSSSRCLLRDDDD'},
+    {r:33,q:-16,codes:'DDDRCCSSCRCCCDDDDD'},
+    {r:34,q:-17,codes:'DDDDRCCCSRCCCRDDDD'},
+    {r:35,q:-17,codes:'DDDDRCCCCRCCRDDDDD'},
+    {r:36,q:-18,codes:'DDDDDCCCCRCCCDDDDD'},
+    {r:37,q:-18,codes:'DDDDDCCCRDDCDDDDDD'},
+    {r:38,q:-19,codes:'DDDDDDDDDDDDDDDDDD'}
+  ];
+  const KAI_BESIL_CURSED_REEF_CELLS=new Set(['13,6','13,7','13,8','12,9','11,11','10,13','9,14','9,15','9,16']);
+  const KAI_BESIL_SITE_CELLS={
+    '6,12':{site:'talamau',siteLabel:'Talamau'},
+    '7,12':{site:'shipwreck',siteLabel:'the wreck',visibleSites:[{id:'talamau',direction:'northwest',label:'a coastal settlement',distance:'about half a mile'}]},
+    '2,12':{site:'ruined_manor',siteLabel:'ruined manor'},
+    '1,15':{site:'temple_flame',siteLabel:'Temple of the Flame',hiddenSite:true,searchHoursDice:'2d6'},
+    '-2,15':{site:'pirate_camp',siteLabel:'pirate camp'},
+    '-9,31':{site:'exile_tower',siteLabel:"exile's tower"},
+    '11,11':{site:'cursed_reef',siteLabel:'the strange reef',hiddenSite:true}
+  };
+  const KAI_BESIL_TERRAIN_TEXT={
+    deep_water:'Open sea rolls beyond the island shallows.',
+    coastal_water:'Clear tropical water lies close to Kai Besil, with the island coast still visible nearby.',
+    reef:'Jagged coral lies close beneath the surface; white water breaks where the reef rises toward the air.',
+    plains:'Salt-touched grass and scrub open the view between patches of jungle.',
+    light_jungle:'Broken tropical jungle alternates with clearings, game trails, and tangled undergrowth.',
+    heavy_jungle:'Dense, wet jungle closes around the party beneath a high green canopy.',
+    hills:'Rugged wooded hills rise and fall sharply beneath tropical growth.',
+    mountain:'Steep mountain ground of stone, jungle, and ravines makes every mile hard-won.',
+    swamp:'Warm black water, reeds, and low islands of sodden ground cover this marshy country.',
+    volcano:'Black volcanic rock and jungle-clad slopes rise toward the smoking Pillar of Lan Yu.'
+  };
+  const kaiBesilHexes=(()=>{
     const map={};
-    const terrainText={
-      plains:'Salt-touched grass and scrub open the view between patches of jungle.',
-      light_jungle:'Broken tropical jungle alternates with clearings, game trails, and tangled undergrowth.',
-      heavy_jungle:'Dense, wet jungle closes around the party beneath a high green canopy.',
-      hills:'Rugged wooded hills rise and fall sharply beneath tropical growth.',
-      mountain:'Steep mountain ground of stone, jungle, and ravines makes every mile hard-won.',
-      swamp:'Warm black water, reeds, and low islands of sodden ground cover this marshy country.',
-      volcano:'Black volcanic rock and jungle-clad slopes rise toward the smoking summit.'
-    };
-    const add=(q,r,terrain,extra={})=>{ map[`${q},${r}`]={name:extra.name||TERRAIN[terrain]?.name||'Island wilderness',terrain,desc:extra.desc||terrainText[terrain]||'Untamed island country.',roadDirs:[],...extra}; };
-    // Bounded island silhouette. This is an engine representation of the module map,
-    // not a player-facing coordinate system.
-    const rows={'-4':[-1,0,1],'-3':[-3,-2,-1,0,1,2,3],'-2':[-4,-3,-2,-1,0,1,2,3,4],'-1':[-5,-4,-3,-2,-1,0,1,2,3,4],'0':[-5,-4,-3,-2,-1,0,1,2,3],'1':[-5,-4,-3,-2,-1,0,1,2,3],'2':[-4,-3,-2,-1,0,1,2],'3':[-3,-2,-1,0,1],'4':[-3,-2,-1]};
-    for(const [rText,qs] of Object.entries(rows)){
-      const r=Number(rText);
-      for(const q of qs){
-        let terrain='heavy_jungle';
-        if(q<=-4 && r>=-1) terrain=r>=1?'swamp':'plains';
-        else if(r>=3 && q<=-2) terrain='swamp';
-        else if(q<=-2 && r<=-2) terrain='light_jungle';
-        else if(q>=2 && r<=-1) terrain='light_jungle';
-        else if((q===-1||q===0) && (r===-2||r===-1||r===0)) terrain='hills';
-        add(q,r,terrain);
-      }
+    for(const row of KAI_BESIL_MAP_ROWS){
+      [...row.codes].forEach((code,index)=>{
+        const q=row.q+index,r=row.r,key=`${q},${r}`,terrain=KAI_BESIL_TERRAIN_CODES[code];
+        const extra=KAI_BESIL_SITE_CELLS[key]||{};
+        map[key]={name:TERRAIN[terrain]?.name?.replace(/\b\w/g,c=>c.toUpperCase())||'Kai Besil',terrain,desc:KAI_BESIL_TERRAIN_TEXT[terrain],roadDirs:[],...extra};
+        if(KAI_BESIL_CURSED_REEF_CELLS.has(key)) map[key].cursedReef=true;
+      });
     }
-    add(-1,-1,'volcano',{name:'Pillar of Lan Yu',desc:'The smoking volcanic slopes dominate the island. Dense growth gives way to black rock and steep ravines higher on the mountain.',site:'temple_flame',siteLabel:'Temple of the Flame',hiddenSite:true,searchHoursDice:'2d6'});
-    add(-3,-2,'light_jungle',{name:'Jungle Ruins',desc:'Broken gray stone rises through vines and wet greenery where an old residence has been swallowed by the jungle.',site:'ruined_manor',siteLabel:'ruined manor'});
-    add(-5,0,'plains',{name:'Western Coastal Flats',desc:'Salt-stunted grass and scrub spread behind a rough western beach. Smoke from a makeshift camp is visible near the shore.',site:'pirate_camp',siteLabel:'pirate camp'});
-    add(-3,3,'swamp',{name:'Southwestern Marsh',desc:'A low rise stands above the surrounding marsh, crowned by the broken stump of an old stone tower.',site:'exile_tower',siteLabel:"exile's tower"});
-    add(3,-2,'light_jungle',{name:'Northeastern Coast',desc:'Cultivated paddies and cleared ground appear between the jungle and a sheltered inlet. A compact coastal village stands here.',site:'talamau',siteLabel:'Talamau'});
-    // New campaign start: a persistent wreck one hex from the settlement.
-    add(4,-2,'light_jungle',{name:'Shipwreck Beach',desc:'A narrow tropical beach lies between the surf and the jungle. Offshore, the broken remains of the ship grind against the reef while splintered wreckage has washed ashore. Along the coast to the northwest, about half a mile away, thatched roofs, cultivated paddies, and cooking smoke reveal a settlement. Inland, the smoking volcanic peak rises above the jungle.',site:'shipwreck',siteLabel:'the wreck',visibleSites:[{id:'talamau',direction:'northwest',label:'a coastal settlement',distance:'about half a mile'}]});
+    Object.assign(map['6,12'],{name:'Northeastern Coast',desc:'Cultivated paddies and cleared ground appear between light jungle and a sheltered inlet. Talamau stands here on the northeast coast.'});
+    Object.assign(map['7,12'],{name:'Shipwreck Beach',desc:'A narrow tropical beach lies between the surf and light jungle. Offshore, the broken remains of the ship grind against the reef while splintered wreckage has washed ashore. Along the coast to the northwest, about half a mile away, thatched roofs, cultivated paddies, and cooking smoke reveal a settlement. Inland, the smoking volcanic peak rises above the jungle.'});
+    Object.assign(map['2,12'],{name:'Jungle Ruins',desc:'Broken gray stone rises through vines and wet greenery where Lan Yu’s old residence has been swallowed by the hills and jungle.'});
+    Object.assign(map['1,15'],{name:'Pillar of Lan Yu',desc:'The smoking volcanic slopes dominate the island. An old temple entrance is concealed somewhere amid the mountain approaches.'});
+    Object.assign(map['-2,15'],{name:'Western Coastal Flats',desc:'Salt-stunted grass and scrub spread behind a rough western beach. Smoke from a makeshift camp is visible near the shore.'});
+    Object.assign(map['-9,31'],{name:'Southwestern Marsh',desc:'A low, well-drained rise stands above the surrounding marsh, crowned by the broken stump of an old stone tower.'});
+    Object.assign(map['11,11'],{name:'Eastern Reef',desc:'Coral heads break the tropical water here. Something about the reef feels strangely watchful.'});
     return map;
   })();
 
@@ -869,7 +917,7 @@
     talamau_elder: {
       name:'Elder Kitra’s Home', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['elder','elder kitra','kitra','kitra’s home','elder’s home','elder home'], services:['directions','negotiation','rumors'],
       desc:'Elder Kitra receives outsiders in her family home, attended by her favorite grandson and his wife. The wizened elder is plainly worried, but watches armed strangers with practical caution.', exits:{}, npcs:['Elder Kitra'],
-      refereeFacts:['Kitra conducts negotiations with outsiders and the villagers trust agreements she makes on their behalf.','She is suspicious of armed strangers but is ready to make whatever bargain she must to get the volcano’s magical seal restored.','Kitra can explain the recent tremors, the academy warning flame, Indah’s conclusion that the wards are failing, and the belief that the answer lies in the Temple of the Flame. She does not know the ritual required to repair the wards.','She can identify the village’s public locations and their proprietors.']
+      refereeFacts:['Kitra conducts negotiations with outsiders and the villagers trust agreements she makes on their behalf.','She is suspicious of armed strangers but is ready to make whatever bargain she must to get the volcano’s magical seal restored.','Kitra can explain the recent tremors, the academy warning flame, Indah’s conclusion that the wards are failing, and the belief that the answer lies in the Temple of the Flame. She does not know the ritual required to repair the wards.','She can identify the village’s public locations and their proprietors.','The villagers warn strangers that some reef waters around Kai Besil are cursed and dangerous, but they do not know the precise location of the malignant reef.']
     },
     talamau_healer: {
       name:'Kusar the Healer', settlement:'talamau', outdoor:true, returnsToSite:'talamau', localParent:'talamau', aliases:['healer','kusar','kusar the healer','healer hut'], services:['healing'],
@@ -883,8 +931,9 @@
     },
     ruined_manor: {name:"Lan Yu's Ruined Manor",outdoor:true,returnsToHex:true,aliases:['ruined manor','manor','lan yu manor'],services:[],desc:'Jungle growth has reclaimed the gray-stone remains of the old manor. Damp, mold, and generations of earlier visitors have left little obvious value.',exits:{}},
     temple_flame: {name:'Temple of the Flame',outdoor:true,returnsToHex:true,aliases:['temple of the flame','temple','flame temple'],services:[],desc:'An overgrown path reaches a black-basalt entrance partway up the volcanic slope. The complete keyed temple is the next major content layer for this test campaign.',exits:{}},
-    pirate_camp: {name:'Pirate Camp',outdoor:true,returnsToHex:true,aliases:['pirate camp','pirates'],services:[],desc:'A rough shoreline camp of sticks and sailcloth shelters survivors from a damaged vessel. The full pirate encounter has not yet been wired into deterministic campaign play.',exits:{}},
+    pirate_camp: {name:'Pirate Camp',outdoor:true,returnsToHex:true,aliases:['pirate camp','pirates'],services:[],desc:'A rough shoreline camp of sticks and sailcloth shelters fifteen pirates under Captain Harshaw. Offshore, the damaged Sorrowful Gull lies beached while the crew works on repairs.',exits:{},refereeFacts:['Fifteen pirates camp here under Captain Harshaw.','The portable pirate treasure—750 gp in coins and jewelry—is kept aboard the beached Sorrowful Gull.','The Sorrowful Gull is damaged but under repair and remains controlled by the pirates until play changes that fact.']},
     exile_tower: {name:"Exile's Tower",outdoor:true,returnsToHex:true,aliases:["exile's tower",'exile tower','tower'],services:[],desc:'Only the tumbled stump of an old tower remains on a low rise above the marsh. From here the surrounding country can be surveyed more easily.',exits:{}},
+    cursed_reef: {name:'The Cursed Reef',outdoor:true,returnsToHex:true,aliases:['cursed reef','strange reef','reef'],services:[],desc:'A field of jagged coral lies beneath the sea. The reef is saturated with a hostile, telepathic intelligence that presses thoughts of impossible secrets into nearby minds.',exits:{},refereeFacts:['Anyone entering a Cursed Reef hex must save vs. Spells or become convinced that immortality waits in the coral below.','The compulsion persists until the victim is removed from the reef area.']},
     stallanford: {
       name:'Stallanford', settlement:'stallanford', outdoor:true, returnsToHex:true, aliases:['stallanford','village'], services:['resupply','provisions','lodging','rumors'],
       desc:'Stallanford is a worried village of timber houses and stone foundations. Doors are barred earlier than usual, and armed villagers watch the northern approaches. The complete B11 village and adventure content has not yet been converted into this build.',
@@ -1427,7 +1476,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     campaignId:newCampaignId(),
     region:'kai_besil',
     mode:'wilderness',
-    hex:{q:4,r:-2},
+    hex:{q:7,r:12},
     location:null,
     day:1,
     minutes:8*60,
@@ -1436,6 +1485,11 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     travelMinutesToday:0,
     wildernessEncounterMinutes:0,
     previousHex:null,
+    activeVesselId:null,
+    vessels:{talamau_fishing_boat:{id:'talamau_fishing_boat',name:'Talamau fishing boat',location:'talamau_dock',controlled:false,stolen:false,seaworthy:true,hullPercent:100,coastwise:true,rulesClass:'RC sailing boat',deepWaterMinutesPerHex:10},sorrowful_gull:{id:'sorrowful_gull',name:'Sorrowful Gull',location:'pirate_camp',controlled:false,stolen:false,seaworthy:true,damaged:true,hullPercent:70,coastwise:true,rulesClass:'RC small sailing ship',deepWaterMinutesPerHex:8}},
+    pendingEncounter:null,
+    specialEncounterHistory:[],
+    wildernessHazards:[],
     knownPlaces:[],
     visiblePlaces:[],
     knownSettlementPlaces:{talamau:['talamau']},
@@ -1483,12 +1537,17 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function initializeKaiBesilStart({resetKnowledge=true}={}){
     state.region='kai_besil';
     state.mode='wilderness';
-    state.hex={q:4,r:-2};
+    state.hex={q:7,r:12};
     state.location=null;
     state.previousHex=null;
     state.travelUsed=0;
     state.travelMinutesToday=0;
     state.wildernessEncounterMinutes=0;
+    state.activeVesselId=null;
+    state.pendingEncounter=null;
+    state.specialEncounterHistory=[];
+    state.wildernessHazards=[];
+    state.vessels={talamau_fishing_boat:{id:'talamau_fishing_boat',name:'Talamau fishing boat',location:'talamau_dock',controlled:false,stolen:false,seaworthy:true,hullPercent:100,coastwise:true,rulesClass:'RC sailing boat',deepWaterMinutesPerHex:10},sorrowful_gull:{id:'sorrowful_gull',name:'Sorrowful Gull',location:'pirate_camp',controlled:false,stolen:false,seaworthy:true,damaged:true,hullPercent:70,coastwise:true,rulesClass:'RC small sailing ship',deepWaterMinutesPerHex:8}};
     state.combat=null;
     if(resetKnowledge){
       state.knownPlaces=[];
@@ -1787,6 +1846,75 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function wildernessHexScaleMiles(){ return currentRegionId()==='kai_besil'?0.5:6; }
   function wildernessHexScaleLabel(){ return currentRegionId()==='kai_besil'?'1/2-mile':'6-mile'; }
 
+  function isKaiWaterTerrain(terrain){ return ['coastal_water','deep_water','reef'].includes(String(terrain||'')); }
+  function isKaiLandTerrain(terrain){ return Boolean(terrain) && !isKaiWaterTerrain(terrain); }
+  function defaultKaiBesilVessels(){
+    return {
+      talamau_fishing_boat:{id:'talamau_fishing_boat',name:'Talamau fishing boat',location:'talamau_dock',hex:{q:6,r:12},controlled:false,stolen:false,seaworthy:true,hullPercent:100,coastwise:true,rulesClass:'RC sailing boat',rulesClassNote:'development adaptation for Talamau small fishing craft',deepWaterMinutesPerHex:10},
+      sorrowful_gull:{id:'sorrowful_gull',name:'Sorrowful Gull',location:'pirate_camp',hex:{q:-2,r:15},controlled:false,stolen:false,seaworthy:true,damaged:true,hullPercent:70,coastwise:true,rulesClass:'RC small sailing ship',rulesClassNote:'development adaptation based on the module pirate vessel',deepWaterMinutesPerHex:8}
+    };
+  }
+  function ensureKaiBesilWorldState(){
+    if(currentRegionId()!=='kai_besil') return;
+    if(!state.vessels || typeof state.vessels!=='object' || Array.isArray(state.vessels)) state.vessels=defaultKaiBesilVessels();
+    const defaults=defaultKaiBesilVessels();
+    for(const [id,base] of Object.entries(defaults)) state.vessels[id]={...base,...(state.vessels[id]||{}),hex:{...base.hex,...(state.vessels[id]?.hex||{})}};
+    if(!Array.isArray(state.specialEncounterHistory)) state.specialEncounterHistory=[];
+    if(!Array.isArray(state.wildernessHazards)) state.wildernessHazards=[];
+    if(state.pendingEncounter && typeof state.pendingEncounter!=='object') state.pendingEncounter=null;
+    if(state.activeVesselId && (!state.vessels[state.activeVesselId] || !state.vessels[state.activeVesselId].controlled || !state.vessels[state.activeVesselId].seaworthy)) state.activeVesselId=null;
+  }
+  function currentVessel(){ ensureKaiBesilWorldState(); return state.activeVesselId?state.vessels?.[state.activeVesselId]||null:null; }
+  function vesselHere(vessel){
+    if(!vessel) return false;
+    if(state.mode==='site') return vessel.location===state.location || vessel.location===sites[state.location]?.localParent;
+    return vessel.hex && Number(vessel.hex.q)===Number(state.hex.q) && Number(vessel.hex.r)===Number(state.hex.r);
+  }
+  function localVessels(){ ensureKaiBesilWorldState(); return Object.values(state.vessels||{}).filter(v=>vesselHere(v)); }
+  function vesselStatus(){
+    if(currentRegionId()!=='kai_besil'){ write('No local vessel registry is active in this campaign region.'); return true; }
+    ensureKaiBesilWorldState();
+    const rows=Object.values(state.vessels).map(v=>`${v.name}: ${v.controlled?'controlled by party':'not controlled'}; ${v.seaworthy?'seaworthy':'wrecked/unseaworthy'}; hull ${Math.max(0,Math.round(Number(v.hullPercent)||0))}%${v.id===state.activeVesselId?' — PARTY ABOARD':''}${v.stolen?' — taken without permission':''}.`);
+    write(`VESSELS — ${rows.join(' ')}`,'system'); return true;
+  }
+  function acquireLocalVessel(text){
+    if(currentRegionId()!=='kai_besil') return false;
+    ensureKaiBesilWorldState();
+    const q=String(text||'').toLowerCase();
+    if(!/\b(?:take|steal|commandeer|claim|capture)\b/.test(q) || !/\b(?:boat|vessel|ship|sorrowful gull|fishing boat)\b/.test(q)) return false;
+    let candidates=localVessels();
+    if(/sorrowful gull/.test(q)) candidates=candidates.filter(v=>v.id==='sorrowful_gull');
+    else if(/fishing boat|boat/.test(q) && candidates.some(v=>v.id==='talamau_fishing_boat')) candidates=candidates.filter(v=>v.id==='talamau_fishing_boat');
+    if(candidates.length!==1){ write(candidates.length?'Which vessel do you mean?':'There is no vessel here that the party can take.','warning'); return true; }
+    const v=candidates[0];
+    if(v.id==='sorrowful_gull' && !state.locationState?.pirate_camp?.cleared){
+      write('The pirates still control the Sorrowful Gull and will not allow the party to take it uncontested.','warning');
+      return true;
+    }
+    v.controlled=true; v.stolen=true; v.location=null; v.hex={q:state.hex.q,r:state.hex.r};
+    addEvent(`Party took control of ${v.name}${v.stolen?' without established permission':''}.`);
+    write(`The party takes control of ${v.name}. It can now be boarded from this hex.`, 'system'); updatePanels(); return true;
+  }
+  function boardLocalVessel(text){
+    if(currentRegionId()!=='kai_besil') return false;
+    const q=String(text||'').toLowerCase();
+    if(!/\b(?:board|embark|get in|get aboard)\b/.test(q) || !/\b(?:boat|ship|vessel|sorrowful gull)\b/.test(q)) return false;
+    ensureKaiBesilWorldState();
+    let candidates=localVessels().filter(v=>v.controlled&&v.seaworthy);
+    if(/sorrowful gull/.test(q)) candidates=candidates.filter(v=>v.id==='sorrowful_gull');
+    if(candidates.length!==1){ write(candidates.length?'Which controlled vessel do you want to board?':'There is no controlled seaworthy vessel here to board.','warning'); return true; }
+    const v=candidates[0]; state.activeVesselId=v.id; v.location=null; v.hex={q:state.hex.q,r:state.hex.r};
+    if(state.mode==='site'){ state.mode='wilderness'; state.location=null; advanceClock(10,`Party boarded ${v.name} and put out from shore.`); }
+    else advanceClock(10,`Party boarded ${v.name}.`);
+    write(`The party boards ${v.name}. Coast-hugging sea travel can now use the surrounding coastal-water and reef hexes.`, 'system'); updatePanels(); return true;
+  }
+  function disembarkVessel(){
+    const v=currentVessel(); if(!v) return false;
+    const hex=currentHex();
+    if(!hex || isKaiWaterTerrain(hex.terrain)){ write('The party cannot disembark onto dry ground from this water hex.','warning'); return true; }
+    v.hex={q:state.hex.q,r:state.hex.r}; state.activeVesselId=null; advanceClock(10,`Party beached ${v.name} and disembarked.`); write(`The party beaches ${v.name} and goes ashore.`,'system'); return true;
+  }
+
   function getHex(q=state.hex.q,r=state.hex.r) {
     if(currentRegionId()==='kai_besil') return kaiBesilHexes[hexKey(q,r)] || null;
     if (hexDistance(q,r) > HEX_RADIUS) return null;
@@ -1948,7 +2076,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function currentHex() { return getHex(state.hex.q,state.hex.r); }
   function currentPlace() { return state.mode === 'wilderness' ? currentHex() : currentSite(); }
 
-  const TERRAIN_MAP_CODE = {clear:'CLR',forest:'FOR',hills:'HIL',mountain:'MTN',swamp:'SWP',plains:'PLN',light_jungle:'LJG',heavy_jungle:'HJG',volcano:'VOL',reef:'REF'};
+  const TERRAIN_MAP_CODE = {clear:'CLR',forest:'FOR',hills:'HIL',mountain:'MTN',swamp:'SWP',plains:'PLN',light_jungle:'LJG',heavy_jungle:'HJG',volcano:'VOL',reef:'REF',coastal_water:'SEA',deep_water:'OCN'};
 
   function knownSiteVisibleInHex(hex,isCurrent=false){
     if(!hex?.site) return false;
@@ -2609,6 +2737,7 @@ W: swollen wooden door · E: cellar`;
   }
 
   function advanceClock(minutes, reason) {
+    const beforeAbsolute=absoluteCampaignMinute();
     state.minutes += minutes;
     while (state.minutes >= 1440) {
       state.minutes -= 1440;
@@ -2625,7 +2754,12 @@ W: swollen wooden door · E: cellar`;
         addEvent('Torch expired.');
       }
     }
+    const afterAbsolute=absoluteCampaignMinute();
+    for(const pc of state.party||[]){
+      if(!pc.dead && Number(pc.fatalPoisonDueMinute)>beforeAbsolute && Number(pc.fatalPoisonDueMinute)<=afterAbsolute){ pc.hp=0; pc.dead=true; write(`${pc.name} dies as untreated venom takes its course.`,'error'); addEvent(`${pc.name} died from untreated poison.`); delete pc.fatalPoisonDueMinute; }
+    }
     if (reason) addEvent(reason);
+    processWildernessHazards();
     updatePanels();
   }
 
@@ -2751,94 +2885,350 @@ W: swollen wooden door · E: cellar`;
       const cost=byRoad?TERRAIN.road.cost:TERRAIN[destination.terrain].cost;
       return {minutes:Math.round((cost/DAILY_TRAVEL_ALLOWANCE)*TRAVEL_DAY_MINUTES),cost,byRoad};
     }
-    // Module rates: 3 hex/hour grassland, 2 hex/hour swamp or jungle,
-    // 1 hex/hour heavy jungle, hills, or mountains.
+    // Lan Yu module rates: 3 hex/hour grassland; 2 hex/hour swamp or jungle;
+    // 1 hex/hour heavy jungle, hills, or mountains; coast-hugging sea travel 6 hex/hour.
+    if(['coastal_water','reef'].includes(destination.terrain)) return {minutes:10,cost:0,byRoad:false,bySea:true};
+    if(destination.terrain==='deep_water') return {minutes:null,cost:0,byRoad:false,bySea:true,deepWater:true};
     const rates={plains:20,light_jungle:30,swamp:30,heavy_jungle:60,hills:60,mountain:60,volcano:60};
-    return {minutes:rates[destination.terrain]||60,cost:0,byRoad:false};
+    return {minutes:rates[destination.terrain]||60,cost:0,byRoad:false,bySea:false};
   }
 
-  const KAI_BESIL_WILDERNESS_ENCOUNTERS=['giant beetles','a rabid jaguar','giant centipedes','Hollow Children','giant crab spiders','zombie natives','a special wilderness encounter','a special wilderness encounter'];
-  function accrueWildernessEncounterTime(minutes){
-    if(currentRegionId()!=='kai_besil') return;
-    state.wildernessEncounterMinutes=Math.max(0,Number(state.wildernessEncounterMinutes)||0)+Math.max(0,Number(minutes)||0);
-    while(state.wildernessEncounterMinutes>=60){
-      state.wildernessEncounterMinutes-=60;
-      const check=rng(6);
-      addEvent(`Kai Besil hourly wilderness encounter check: 1d6 = ${check}.`);
-      if(check===6){
-        const roll=rng(8), result=KAI_BESIL_WILDERNESS_ENCOUNTERS[roll-1];
-        addEvent(`Kai Besil wilderness encounter table: 1d8 = ${roll} — ${result}.`);
-        write(`WILDERNESS ENCOUNTER — ${result}. The encounter has been generated from the module table; full campaign encounter resolution for this result is not yet connected in this development slice.`,'warning');
-      }
+  const KAI_BESIL_WILDERNESS_ENCOUNTERS=[
+    {roll:1,type:'giant_beetle',label:'giant beetles',count:'1d4',hostility:'reaction'},
+    {roll:2,type:'jaguar',label:'a rabid jaguar',count:'1',hostility:'hostile'},
+    {roll:3,type:'giant_centipede',label:'giant centipedes',count:'2d4',hostility:'hostile',surpriseThreshold:4},
+    {roll:4,type:'hollow_child',label:'Hollow Children',count:'1d6',hostility:'hostile'},
+    {roll:5,type:'giant_crab_spider',label:'giant crab spiders',count:'1d4',hostility:'hostile',surpriseThreshold:4},
+    {roll:6,type:'zombie_native',label:'zombie natives',count:'2d4',hostility:'hostile'},
+    {roll:7,special:true,label:'a special wilderness encounter'},
+    {roll:8,special:true,label:'a special wilderness encounter'}
+  ];
+  const KAI_BESIL_SPECIAL_ENCOUNTERS=[
+    {id:'hollow_child_handiwork',name:'Hollow Child Handiwork'},
+    {id:'sorcerers_bones',name:"Sorcerer's Bones"},
+    {id:'desperate_villager',name:'Desperate Villager'},
+    {id:'boggy_hole',name:'Boggy Hole'},
+    {id:'bad_water',name:'Bad Water'},
+    {id:'parasite_infestation',name:'Parasite Infestation'},
+    {id:'marching_in_circles',name:'Marching in Circles'}
+  ];
+
+  function rollExprSimple(expr){
+    const m=/^(\d+)?d(\d+)([+-]\d+)?$/i.exec(String(expr||'').trim());
+    if(!m) return Math.max(1,Number(expr)||1);
+    const n=Math.max(1,Number(m[1]||1)), sides=Math.max(2,Number(m[2])||6), mod=Number(m[3]||0);
+    let total=mod; for(let i=0;i<n;i++) total+=rng(sides); return Math.max(1,total);
+  }
+  function absoluteCampaignMinute(){ return (Math.max(1,Number(state.day)||1)-1)*1440 + Math.max(0,Number(state.minutes)||0); }
+  function pcSave(pc,type='spells',modifier=0,reason=''){
+    const key=type==='poison'?'death':type;
+    const needed=Number(pc?.saves?.[key] ?? pc?.saves?.spells ?? 16);
+    const wisMod=type==='spells'?Number(pc?.spellSaveAdjustment||0):0;
+    const d20=rng(20), total=d20+Number(modifier||0)+wisMod;
+    const success=d20===20 || (d20!==1 && total>=needed);
+    void refereeLog(`SAVING THROW — ${pc.name}: ${type}${reason?` (${reason})`:''}; d20 ${d20}${wisMod+modifier?` ${wisMod+modifier>=0?'+':'-'} ${Math.abs(wisMod+modifier)}`:''} = ${total}, needs ${needed} → ${success?'SUCCESS':'FAILURE'}.`,{type:'pc_save',pc:pc.name,saveType:type,reason,d20,modifier:Number(modifier||0)+wisMod,total,needed,success});
+    return {d20,total,needed,success};
+  }
+  function encounterVisibilityBand(){
+    const m=Number(state.minutes)||0;
+    if(m>=420 && m<1140) return 'clear';
+    if((m>=360&&m<420)||(m>=1140&&m<1200)) return 'dim';
+    return 'dark';
+  }
+  function rollKaiEncounterDistance(anySurprise=false){
+    const visibility=encounterVisibilityBand();
+    let n=4;
+    if(anySurprise || visibility==='dark') n=1;
+    else if(visibility==='dim') n=2;
+    const rolls=[]; for(let i=0;i<n;i++) rolls.push(rng(6));
+    return {distance:rolls.reduce((a,b)=>a+b,0)*10,unit:'yd',rolls,dice:`${n}d6`,visibility};
+  }
+  function reactionResult(total){
+    if(total<=3) return {code:'attack',text:'attacks'};
+    if(total<=6) return {code:'aggressive',text:'is aggressive and threatening'};
+    if(total<=9) return {code:'cautious',text:'is cautious'};
+    if(total<=11) return {code:'neutral',text:'is neutral'};
+    return {code:'friendly',text:'is friendly'};
+  }
+  function chooseKaiSpecialEncounter(){
+    ensureKaiBesilWorldState();
+    const terrain=currentHex()?.terrain;
+    const allowed=KAI_BESIL_SPECIAL_ENCOUNTERS.filter(e=>{
+      if(e.id==='boggy_hole') return ['swamp','light_jungle','heavy_jungle'].includes(terrain);
+      if(e.id==='marching_in_circles') return ['light_jungle','heavy_jungle','hills','mountain','volcano'].includes(terrain);
+      if(e.id==='parasite_infestation') return ['light_jungle','heavy_jungle','swamp'].includes(terrain);
+      return !isKaiWaterTerrain(terrain);
+    });
+    const unseen=allowed.filter(e=>!state.specialEncounterHistory.includes(e.id));
+    const pool=unseen.length?unseen:(allowed.length?allowed:KAI_BESIL_SPECIAL_ENCOUNTERS);
+    return pool[rng(pool.length)-1];
+  }
+  function addPartyItem(record){
+    if(!Array.isArray(state.partyInventory)) state.partyInventory=[];
+    const existing=state.partyInventory.find(x=>x.itemId===record.itemId);
+    if(existing) existing.qty=(Number(existing.qty)||1)+(Number(record.qty)||1);
+    else state.partyInventory.push({...record,qty:Number(record.qty)||1});
+  }
+  function resolveKaiSpecialEncounter(special){
+    ensureKaiBesilWorldState();
+    if(!special) special=chooseKaiSpecialEncounter();
+    if(!state.specialEncounterHistory.includes(special.id)) state.specialEncounterHistory.push(special.id);
+    const key=hexKey(state.hex.q,state.hex.r);
+    addEvent(`Kai Besil special encounter: ${special.name}.`);
+    if(special.id==='hollow_child_handiwork'){
+      state.wildernessHazards.push({kind:'hollow_child_handiwork',hex:key,dueAbsoluteMinute:absoluteCampaignMinute()+10,resolved:false});
+      write('Among the jungle debris lies a grotesque humanoid shape hacked together from rotting monkey limbs and lashings. Nothing moves nearby.','warning');
+      return true;
     }
+    if(special.id==='sorcerers_bones'){
+      addPartyItem({itemId:'lan_yu_dagger_plus1',name:"Lan Yu pupil's dagger +1",kind:'weapon',matrixId:'Dagger (RC)',enc:10,magicBonus:1});
+      write('The party finds the old bones of one of Lan Yu’s pupils. Mold and damp have ruined almost everything, but an alchemically treated dagger +1 remains intact among corroded spellbook fittings. The party takes the dagger.','system');
+      return true;
+    }
+    if(special.id==='desperate_villager'){
+      const treasureRich=rng(2)===2;
+      state.locationState.desperate_villager={met:true,hex:key,motherRecovered:false,jaguarDrivenOff:false,treasureRich,completed:false};
+      write('A bleeding, exhausted young woman named Suryana stumbles from the jungle and begs for help. A jaguar killed her mother nearby. She asks the party to drive it off and recover the body, promising to reveal where her grandfather hid a treasure if they return the remains to Talamau.','warning');
+      return true;
+    }
+    if(special.id==='boggy_hole'){
+      const pc=livingParty()[0];
+      if(!pc){ write('The mire yawns beneath the path, but no living adventurer remains to stumble into it.','warning'); return true; }
+      const save=pcSave(pc,'paralysis',0,'boggy hole');
+      if(save.success){ write(`${pc.name}, first in the marching order, feels the crust give way and jerks back before plunging into the deep mire.`,'warning'); }
+      else {
+        state.pendingWildernessHazard={kind:'boggy_hole',pcName:pc.name,armored:Boolean(pc.equippedArmor),hex:key};
+        write(`${pc.name} crashes through the crust into a deep boggy hole, losing whatever was held in hand. ${pc.equippedArmor?'The weight of armor is dragging '+pc.name+' under; the others need to act quickly, ideally with a rope.':'The mire is deep and foul, but '+pc.name+' is not being dragged down by heavy armor.'}`,'error');
+      }
+      return true;
+    }
+    if(special.id==='bad_water'){
+      state.locationState.bad_water={contaminated:true,hex:key,noticed:true};
+      write('The party discovers that jungle mold has visibly contaminated its water supply. The foul water can still be drunk, but doing so risks violent sickness; fresh water will have to be found.','warning');
+      return true;
+    }
+    if(special.id==='parasite_infestation'){
+      const failed=[];
+      for(const pc of livingParty()){
+        const sv=pcSave(pc,'poison',0,'parasite infestation');
+        if(!sv.success) failed.push({pc,roll:sv.total});
+      }
+      if(!failed.length) write('The party discovers biting flies and larvae before they can take hold. No one is infested.','system');
+      else {
+        failed.sort((a,b)=>a.roll-b.roll); const victim=failed[0].pc;
+        if(!victim.parasiteInfested){ victim.parasiteInfested=true; victim.parasiteOriginalMaxHp=victim.maxHp; victim.maxHp=Math.max(1,victim.maxHp-1); victim.hp=Math.min(victim.hp,victim.maxHp); }
+        write(`${victim.name} finds a minor cut crawling with fly larvae. ${victim.name}'s maximum hit points are reduced by 1 until the party spends an hour carefully removing the infestation.`,'warning');
+      }
+      return true;
+    }
+    if(special.id==='marching_in_circles'){
+      const hours=rng(6); const minutes=hours*60;
+      state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+minutes;
+      advanceClock(minutes,`Dense jungle and broken ground cost the party ${hours} hour${hours===1?'':'s'} marching in circles in the same hex.`);
+      write(`The party loses ${hours} hour${hours===1?'':'s'} before realizing the terrain has led them in a circle. They are still in the same hex.`,'warning');
+      performKaiWildernessEncounterCheck('extra check after marching in circles');
+      return true;
+    }
+    return false;
+  }
+  function processWildernessHazards(){
+    if(currentRegionId()!=='kai_besil') return;
+    const now=absoluteCampaignMinute(), here=hexKey(state.hex.q,state.hex.r);
+    for(const h of state.wildernessHazards||[]){
+      if(h.resolved || h.kind!=='hollow_child_handiwork' || h.hex!==here || now<=Number(h.dueAbsoluteMinute||0)) continue;
+      h.resolved=true;
+      const count=rollExprSimple('1d6');
+      write(`${count} Hollow Child${count===1?' returns':'ren return'} through the greenery and immediately rush${count===1?'es':''} the party. The grisly figure was their handiwork.`,'error');
+      startCampaignEncounter(count,'hollow_child',{source:'kai_besil_special',hostile:true,distanceOverride:10,foesSurpriseThreshold:2});
+      break;
+    }
+  }
+  function performKaiWildernessEncounterCheck(reason='hourly wilderness check'){
+    if(currentRegionId()!=='kai_besil' || combatActive() || state.pendingEncounter) return false;
+    const hex=currentHex();
+    if(!hex || isKaiWaterTerrain(hex.terrain)) return false;
+    const check=rng(6); addEvent(`Kai Besil ${reason}: 1d6 = ${check}.`);
+    if(check!==6) return false;
+    const tableRoll=rng(8), entry=KAI_BESIL_WILDERNESS_ENCOUNTERS[tableRoll-1];
+    addEvent(`Kai Besil wilderness encounter table: 1d8 = ${tableRoll} — ${entry.label}.`);
+    if(entry.special) return resolveKaiSpecialEncounter(chooseKaiSpecialEncounter());
+    const count=rollExprSimple(entry.count);
+    return prepareKaiMonsterEncounter(entry,count);
+  }
+  function accrueWildernessEncounterTime(minutes,{secureCamp=false}={}){
+    if(currentRegionId()!=='kai_besil') return;
+    const hex=currentHex(); if(!hex || isKaiWaterTerrain(hex.terrain)) return;
+    const amount=Math.max(0,Number(minutes)||0);
+    if(secureCamp){
+      // The module replaces hourly checks with one check per eight hours in a relatively secure secluded camp.
+      state.wildernessEncounterMinutes=0;
+      if(amount>=480) performKaiWildernessEncounterCheck('secure-camp eight-hour encounter check');
+      return;
+    }
+    state.wildernessEncounterMinutes=Math.max(0,Number(state.wildernessEncounterMinutes)||0)+amount;
+    while(state.wildernessEncounterMinutes>=60 && !combatActive() && !state.pendingEncounter){
+      state.wildernessEncounterMinutes-=60;
+      performKaiWildernessEncounterCheck('hourly wilderness encounter check');
+    }
+  }
+
+  function prepareKaiMonsterEncounter(entry,count){
+    const pcSurprise=rng(6), foeSurprise=rng(6);
+    const pcsSurprised=pcSurprise<=2, foesSurprised=foeSurprise<=Number(entry.surpriseThreshold||2);
+    const dist=rollKaiEncounterDistance(pcsSurprised||foesSurprised);
+    let reaction=null;
+    if(entry.hostility==='reaction'){
+      const roll=rng(6)+rng(6); reaction={roll,...reactionResult(roll)};
+    }
+    const pending={kind:'kai_besil_monsters',entryRoll:entry.roll,type:entry.type,label:entry.label,count,pcsSurprised,foesSurprised,pcSurpriseRoll:pcSurprise,foeSurpriseRoll:foeSurprise,distance:dist.distance,distanceUnit:'yd',distanceTrace:dist,reaction,hex:{...state.hex},createdAt:absoluteCampaignMinute()};
+    void refereeLog(`KAI BESIL ENCOUNTER — ${count} ${entry.label}; surprise PCs ${pcSurprise}${pcsSurprised?' SURPRISED':''}, foes ${foeSurprise}${foesSurprised?' SURPRISED':''}; distance ${dist.dice}=${dist.rolls.join('+')} → ${dist.distance} yd${reaction?`; reaction 2d6=${reaction.roll} (${reaction.code})`:''}.`,{type:'kai_besil_encounter',...pending});
+
+    if(pcsSurprised && !foesSurprised){
+      write(`WILDERNESS ENCOUNTER — ${count} ${entry.label}. They catch the party by surprise at about ${dist.distance} yards.`,'error');
+      return startCampaignEncounter(count,entry.type,{source:'kai_besil_wilderness',distanceOverride:dist.distance,pcsSurprised:true,foesSurprised:false,automaticFoeSurpriseRound:true});
+    }
+    if(!pcsSurprised && foesSurprised){
+      state.pendingEncounter=pending;
+      write(`WILDERNESS ENCOUNTER — the party spots ${count} ${entry.label} at about ${dist.distance} yards before they notice the party. The party may attack, avoid the encounter, or try something else.`,'warning');
+      return true;
+    }
+    if(reaction && reaction.code!=='attack'){
+      state.pendingEncounter=pending;
+      write(`WILDERNESS ENCOUNTER — ${count} ${entry.label} at about ${dist.distance} yards. ${COMBAT_MONSTERS[entry.type]?.name||'The creatures'} ${reaction.text}. They have not attacked. What does the party do?`,'warning');
+      return true;
+    }
+    write(`WILDERNESS ENCOUNTER — ${count} ${entry.label} at about ${dist.distance} yards. Hostilities begin.`,'error');
+    return startCampaignEncounter(count,entry.type,{source:'kai_besil_wilderness',distanceOverride:dist.distance,pcsSurprised,foesSurprised});
+  }
+
+  function evasionBaseChance(partyCount,monsterCount){
+    if(partyCount<=4){ if(monsterCount<=1)return 50;if(monsterCount<=3)return 70;return 90; }
+    if(partyCount<=12){ if(monsterCount<=3)return 35;if(monsterCount<=8)return 50;return 70; }
+    if(partyCount<=24){ if(monsterCount<=6)return 25;if(monsterCount<=16)return 35;return 50; }
+    if(monsterCount<=10)return 10;if(monsterCount<=30)return 25;return 35;
+  }
+  function resolvePendingEncounterEvasion(){
+    const e=state.pendingEncounter; if(!e || e.kind!=='kai_besil_monsters') return false;
+    if(!e.pcsSurprised && e.foesSurprised){
+      state.pendingEncounter=null; write('Because the party surprised the other group, it slips away before being detected. Evasion succeeds automatically.','system'); addEvent('Party automatically evaded a surprised wilderness encounter.'); return true;
+    }
+    const profile=COMBAT_MONSTERS[e.type]||{};
+    const pursuit=rng(6)+rng(6)<=Number(profile.morale||7);
+    if(!pursuit){ state.pendingEncounter=null; write('The party withdraws. The encountered creatures do not pursue.','system'); addEvent('Party left wilderness encounter without pursuit.'); return true; }
+    let chance=evasionBaseChance(livingParty().length,e.count);
+    const terrain=currentHex()?.terrain;
+    if(['light_jungle','heavy_jungle'].includes(terrain)) chance+=25;
+    const partySpeed=Math.min(...livingParty().map(pcEncounterSpeed));
+    const foeSpeed=Math.max(0,Number(profile.move)||0);
+    if(partySpeed>=foeSpeed*2) chance+=25; else if(foeSpeed>=partySpeed*2) chance-=25;
+    chance=Math.max(5,Math.min(95,chance)); const roll=rng(100);
+    void refereeLog(`EVASION — chance ${chance}%, d100 ${roll}: ${roll<=chance?'SUCCESS':'FAILURE'}.`,{type:'evasion',chance,roll,encounter:e});
+    if(roll<=chance){ state.pendingEncounter=null; write(`The party breaks contact and escapes the encounter (evasion ${roll} vs ${chance}%).`,'system'); addEvent('Party successfully evaded wilderness encounter.'); return true; }
+    state.pendingEncounter=null; write(`The creatures pursue successfully; the party fails to shake them (evasion ${roll} vs ${chance}%). Combat follows.`,'error');
+    startCampaignEncounter(e.count,e.type,{source:'kai_besil_wilderness',distanceOverride:e.distance,pcsSurprised:false,foesSurprised:false}); return true;
+  }
+  function attackPendingEncounter(){
+    const e=state.pendingEncounter; if(!e || e.kind!=='kai_besil_monsters') return false;
+    state.pendingEncounter=null;
+    startCampaignEncounter(e.count,e.type,{source:'kai_besil_wilderness',distanceOverride:e.distance,pcsSurprised:e.pcsSurprised,foesSurprised:e.foesSurprised,pcSurpriseRound:(!e.pcsSurprised&&e.foesSurprised)}); return true;
+  }
+  function handlePendingEncounterCommand(text){
+    const e=state.pendingEncounter; if(!e) return false;
+    const q=String(text||'').toLowerCase().replace(/\s+/g,' ').trim();
+    if(/\b(?:attack|charge|fight|engage)\b/.test(q)) return attackPendingEncounter();
+    if(/\b(?:avoid|evade|withdraw|leave|run away|sneak away|go around)\b/.test(q)) return resolvePendingEncounterEvasion();
+    if(/^(?:wait|watch|hold|do nothing|see what (?:it|they) do(?:es)?)$/.test(q) && e.reaction){
+      const modifier=e.reaction.code==='aggressive'?-4:e.reaction.code==='neutral'?4:0;
+      const raw=rng(6)+rng(6),total=raw+modifier,next=reactionResult(total); e.reactionRounds=(Number(e.reactionRounds)||1)+1; e.reaction={roll:raw,modifier,total,...next};
+      void refereeLog(`REACTION — follow-up 2d6 ${raw}${modifier?` ${modifier>0?'+':'-'} ${Math.abs(modifier)}`:''} = ${total}: ${next.code}.`,{type:'monster_reaction_followup',encounter:e,raw,modifier,total,result:next.code});
+      if(next.code==='attack' || (e.reactionRounds>=3 && !['neutral','friendly'].includes(next.code))){ state.pendingEncounter=null; write('The encounter turns hostile. Combat begins.','error'); startCampaignEncounter(e.count,e.type,{source:'kai_besil_wilderness',distanceOverride:e.distance}); return true; }
+      if(next.code==='friendly'){ state.pendingEncounter=null; write('The creatures settle into a friendly posture and do not threaten the party. The encounter ends without combat.','system'); return true; }
+      write(`The creatures ${next.text}. What does the party do?`,'warning'); return true;
+    }
+    return false;
+  }
+
+
+  function drinkContaminatedWater(allParty=true){
+    const bad=state.locationState?.bad_water; if(!bad?.contaminated) return false;
+    const drinkers=allParty?livingParty():livingParty().slice(0,1);
+    for(const pc of drinkers){ const sv=pcSave(pc,'poison',0,'contaminated water'); if(!sv.success) write(`${pc.name} immediately vomits after drinking the contaminated water.`,'warning'); }
+    return true;
+  }
+  function findFreshWater(){
+    const bad=state.locationState?.bad_water; if(!bad?.contaminated) return false;
+    const skilled=state.party.some(pc=>/jungle|survival/i.test(String(pc.background||'')));
+    const hours=skilled?1:rng(6); const minutes=hours*60;
+    state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+minutes; advanceClock(minutes,`Party searched for fresh water for ${hours} hour${hours===1?'':'s'}.`); accrueWildernessEncounterTime(minutes);
+    bad.contaminated=false; bad.freshWaterFound=true; write(`After ${hours} hour${hours===1?'':'s'} of searching, the party finds a usable source of fresh water.`,'system'); return true;
+  }
+
+  function clearCursedReefCompulsion(){
+    for(const pc of state.party){ delete pc.cursedReefCompelled; delete pc.cursedReefRestrained; }
+    if(state.pendingWildernessHazard?.kind==='cursed_reef') state.pendingWildernessHazard=null;
+  }
+  function enterCursedReef(){
+    const victims=[];
+    for(const pc of livingParty()){
+      const sv=pcSave(pc,'spells',0,'Cursed Reef');
+      if(!sv.success){ pc.cursedReefCompelled=true; victims.push(pc.name); }
+    }
+    if(!victims.length){ write('A malign pressure brushes at the party’s thoughts from the reef, but everyone resists it.','warning'); return; }
+    state.pendingWildernessHazard={kind:'cursed_reef',victims:victims.slice()};
+    write(`${victims.join(', ')} ${victims.length===1?'becomes':'become'} absolutely convinced that the secret of immortality waits in the coral below and ${victims.length===1?'tries':'try'} to leap into the sea. The unaffected party members can attempt to restrain them until the vessel clears the reef.`, 'error');
+  }
+  function restrainCursedReefVictims(){
+    const h=state.pendingWildernessHazard; if(!h || h.kind!=='cursed_reef') return false;
+    for(const name of h.victims||[]){ const pc=findPc(name); if(pc) pc.cursedReefRestrained=true; }
+    write(`The party restrains ${h.victims.join(', ')} while the malign compulsion persists. They must remain restrained until clear of the Cursed Reef.`,'system'); return true;
+  }
+  function resolveReefEntry(vessel,destination){
+    const d100=rng(100); addEvent(`Reef-entry hull check for ${vessel.name}: d100 = ${d100} (20% wreck chance).`);
+    if(d100<=20){ vessel.hullPercent=0; vessel.seaworthy=false; state.activeVesselId=null; write(`${vessel.name} strikes the reef hard enough to rip out its bottom. The vessel is wrecked among the coral.`,'error'); if(destination.cursedReef) enterCursedReef(); return false; }
+    const loss=rng(6)*10; vessel.hullPercent=Math.max(0,Number(vessel.hullPercent||100)-loss);
+    if(vessel.hullPercent<=0){ vessel.seaworthy=false; state.activeVesselId=null; write(`${vessel.name} scrapes across the reef, loses its remaining hull integrity, and becomes unseaworthy among the coral.`,'error'); if(destination.cursedReef) enterCursedReef(); return false; }
+    write(`${vessel.name} scrapes heavily across the reef and loses ${loss}% of its hull integrity; ${Math.round(vessel.hullPercent)}% remains.`,'warning');
+    if(destination.cursedReef) enterCursedReef();
+    return true;
   }
 
   function wildernessMove(direction) {
     const vector = HEX_DIRECTIONS[direction];
-    if (!vector) {
-      write('Wilderness travel uses north, northeast, southeast, south, southwest, or northwest.','warning');
-      return false;
+    if (!vector) { write('Wilderness travel uses north, northeast, southeast, south, southwest, or northwest.','warning'); return false; }
+    const current=currentHex();
+    if(!current){ write('The party is beyond the implemented wilderness map.','warning'); return false; }
+    const q=state.hex.q+vector.q, r=state.hex.r+vector.r, destination=getHex(q,r);
+    if(!destination){ write(currentRegionId()==='kai_besil'?'That direction leaves the mapped waters around Kai Besil.':'That direction leaves the portion of northern Karameikos currently implemented in this prototype.','warning'); return false; }
+
+    const kai=currentRegionId()==='kai_besil', vessel=kai?currentVessel():null;
+    const currentWater=kai&&isKaiWaterTerrain(current.terrain), destWater=kai&&isKaiWaterTerrain(destination.terrain);
+    if(kai){
+      if(destWater && !vessel){ write('Open water lies in that direction. The party needs to procure and board a suitable vessel before entering a water hex.','warning'); return false; }
+      if(vessel && !vessel.seaworthy){ state.activeVesselId=null; write(`${vessel.name} is no longer seaworthy.`,'warning'); return false; }
+      if(vessel && !currentWater && !destWater){ write(`${vessel.name} cannot travel across a land hex. Beach it and disembark before continuing overland.`,'warning'); return false; }
     }
-    const q = state.hex.q + vector.q;
-    const r = state.hex.r + vector.r;
-    const destination = getHex(q,r);
-    if (!destination) {
-      write(currentRegionId()==='kai_besil'?'The island shoreline and open water block overland travel in that direction.':'That direction leaves the portion of northern Karameikos currently implemented in this prototype.','warning');
-      return false;
-    }
-    if(destination.terrain==='reef'){
-      write('That hex is reef and open water. The party cannot enter it by ordinary overland movement.','warning');
-      return false;
-    }
-    const current = currentHex();
     const travel=wildernessTravelMinutes(destination,direction,current);
-    if(currentRegionId()!=='kai_besil' && state.travelUsed + travel.cost > DAILY_TRAVEL_ALLOWANCE) {
-      write('The party has insufficient daylight and travel allowance to cross that hex today. Make camp, then continue tomorrow.','warning');
-      return false;
+    if(kai && travel.deepWater && vessel && !Number.isFinite(Number(vessel.deepWaterMinutesPerHex))){
+      write(`The module gives deep-water movement as the ship's normal movement rate, but ${vessel.name} has no defined deep-water rate in the source material. Coast-hugging travel is supported; this vessel cannot be moved into deep-water hexes without a sourced rate.`,'warning'); return false;
     }
-    const origin = {q:state.hex.q,r:state.hex.r};
-    state.hex = {q,r};
-    state.previousHex = origin;
-    if(currentRegionId()==='kai_besil') state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+travel.minutes;
-    else state.travelUsed += travel.cost;
-    advanceClock(travel.minutes,`Party crossed one ${wildernessHexScaleLabel()} hex ${direction}${travel.byRoad ? ' by road' : ''}.`);
-    if(currentRegionId()==='kai_besil') accrueWildernessEncounterTime(travel.minutes);
-    else {
-      const encounter = rng(6);
-      addEvent(`Hidden wilderness encounter check after hex movement: 1d6 = ${encounter}.`);
-      if (encounter === 1) {
-        const signs = ['Fresh tracks cross the party’s route and disappear into cover.','A distant horn sounds once from somewhere beyond the next ridge.','A flight of crows rises suddenly from the country ahead.'];
-        write(signs[rng(signs.length)-1],'warning');
-      }
-    }
-    look();
-    return true;
-  }
+    if(!kai && state.travelUsed+travel.cost>DAILY_TRAVEL_ALLOWANCE){ write('The party has insufficient daylight and travel allowance to cross that hex today. Make camp, then continue tomorrow.','warning'); return false; }
+    const minutes=travel.deepWater?Number(vessel.deepWaterMinutesPerHex):travel.minutes;
+    const origin={q:state.hex.q,r:state.hex.r}; state.hex={q,r}; state.previousHex=origin;
+    if(kai) state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+minutes; else state.travelUsed+=travel.cost;
+    if(vessel){ vessel.hex={q,r}; vessel.location=null; }
+    advanceClock(minutes,`Party crossed one ${wildernessHexScaleLabel()} hex ${direction}${travel.bySea?' by vessel':travel.byRoad?' by road':''}.`);
 
-  function siteMove(direction) {
-    const site = currentSite();
-    let destination = site.exits?.[direction];
-    if (!destination && site.secret && hasSecret(state.location) && site.secret.direction === direction) {
-      destination = site.secret.destination;
+    if(kai){
+      if(current.cursedReef && !destination.cursedReef) clearCursedReefCompulsion();
+      if(destination.terrain==='reef' && vessel) resolveReefEntry(vessel,destination);
+      if(!destWater) accrueWildernessEncounterTime(minutes);
+      processWildernessHazards();
+      if(combatActive()||state.pendingEncounter) return true;
+    } else {
+      const encounter=rng(6); addEvent(`Hidden wilderness encounter check after hex movement: 1d6 = ${encounter}.`);
+      if(encounter===1){ const signs=['Fresh tracks cross the party’s route and disappear into cover.','A distant horn sounds once from somewhere beyond the next ridge.','A flight of crows rises suddenly from the country ahead.']; write(signs[rng(signs.length)-1],'warning'); }
     }
-    if (!destination) {
-      write(`You cannot go ${direction} from here.`,'warning');
-      return false;
-    }
-    if (!sites[destination].outdoor && !state.torchLit) {
-      write('The way ahead is dark. Light a torch before proceeding.','warning');
-      return false;
-    }
-    state.location = destination;
-    learnLocalPlace(destination,false);
-    advanceExploration(10,`Party moved ${direction} to ${sites[destination].name}.`);
-    look();
-    return true;
-  }
-
-  function move(direction) {
-    if (state.mode === 'wilderness') return wildernessMove(direction);
-    return siteMove(direction);
+    look(); return true;
   }
 
   function enterSite() {
@@ -2857,6 +3247,16 @@ W: swollen wooden door · E: cellar`;
     learnLocalPlace(hex.site,false);
     advanceExploration(10,`Party entered ${sites[hex.site].name}.`);
     if(hex.site==='talamau' && handleTalamauFirstArrival()) return true;
+    if(hex.site==='pirate_camp' && !state.locationState?.pirate_camp?.cleared){
+      ensureKaiBesilWorldState();
+      const reactionRoll=rng(6)+rng(6), reaction=reactionResult(reactionRoll);
+      write(`Fifteen pirates occupy the camp under Captain Harshaw. The damaged Sorrowful Gull is beached nearby. ${reaction.code==='attack'?'The pirates reach for their weapons.':'Harshaw and his crew watch the armed strangers warily rather than attacking at once.'}`,'warning');
+      if(reaction.code==='attack'){
+        const monsters=[]; for(let i=1;i<=15;i++) monsters.push(createCombatMonster('pirate',i)); monsters.push(createCombatMonster('captain_harshaw',1));
+        startCampaignMixedEncounter(monsters,{source:'kai_besil_pirate_camp',distanceOverride:40});
+      } else { state.locationState.pirate_camp={...(state.locationState.pirate_camp||{}),met:true,reaction:reaction.code,reactionRoll}; }
+      return true;
+    }
     look();
     return true;
   }
@@ -3078,6 +3478,7 @@ W: swollen wooden door · E: cellar`;
         advanceClock(minutes,`Party searched the current Kai Besil hex for ${hours} hour${hours===1?'':'s'}.`);
         state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+minutes;
         accrueWildernessEncounterTime(minutes);
+        if(combatActive()||state.pendingEncounter) return;
         learnPlace(hex.site);
         write(`After ${hours} hour${hours===1?'':'s'} of searching, the party discovers ${hex.siteLabel || sites[hex.site].name}.`);
         return;
@@ -3087,6 +3488,7 @@ W: swollen wooden door · E: cellar`;
       if(currentRegionId()==='kai_besil'){
         state.travelMinutesToday=(Number(state.travelMinutesToday)||0)+minutes;
         accrueWildernessEncounterTime(minutes);
+        if(combatActive()||state.pendingEncounter) return;
       }
       if (hex.site && !hex.hiddenSite) {
         learnPlace(hex.site);
@@ -3158,6 +3560,24 @@ W: swollen wooden door · E: cellar`;
     addEvent(`Party camped overnight and consumed ${rationCost} person-days of rations; daily memorized spells refreshed.`);
     write('The party breaks camp at approximately eight in the morning.');
     updatePanels();
+  }
+
+
+  function secureCamp(){
+    if(state.mode!=='wilderness'){ write('Make camp after returning to the wilderness.','warning'); return; }
+    if(currentRegionId()!=='kai_besil'){ return camp(); }
+    const partySize=state.party.length, rationCost=Math.min(state.rations,partySize); state.rations-=rationCost;
+    if(rationCost<partySize) write('The party does not have enough rations for everyone.','warning');
+    accrueWildernessEncounterTime(8*60,{secureCamp:true});
+    advanceClock(8*60,'Party rested eight hours at a relatively secure, secluded Kai Besil campsite.');
+    for(const pc of state.party) if(!pc.dead){ pc.hp=Math.min(pc.maxHp,pc.hp+1); if(pc.spellbook){pc.spellReady=true;pc.spellPendingRest=false;} }
+    write(`The party completes eight hours at the secluded campsite. The module's reduced encounter procedure uses one check for the eight-hour rest.`,'system');
+  }
+  function removeParasites(){
+    const victims=state.party.filter(pc=>pc.parasiteInfested); if(!victims.length) return false;
+    advanceClock(60,'Party spent an hour removing fly larvae and cleaning infested wounds.');
+    for(const pc of victims){ pc.parasiteInfested=false; pc.maxHp=Math.max(pc.maxHp,Number(pc.parasiteOriginalMaxHp)||pc.maxHp+1); delete pc.parasiteOriginalMaxHp; }
+    write(`After an hour of careful work, the parasite infestation is removed and the affected maximum hit points are restored.`,'system'); return true;
   }
 
   function lightTorch() {
@@ -3513,7 +3933,15 @@ W: swollen wooden door · E: cellar`;
     kobold:{name:'Kobold',ac:7,hd:0.5,hpKind:'1d4',move:30,thac0:19,morale:6,intelligence:9,alignment:'Chaotic',xp:5,size:'small',protection:'soft',armorDesc:'light leather armor',saveSpells:16,kind:'humanoid',weaponId:'spear',damageMod:-1,daylightPenalty:0},
     orc:{name:'Orc',ac:6,hd:1,hpKind:'1d8',move:40,thac0:19,morale:8,intelligence:7,alignment:'Chaotic',xp:10,size:'medium',protection:'soft',armorDesc:'hide and leather armor with a shield',saveSpells:16,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:-1},
     skeleton:{name:'Skeleton',ac:7,hd:1,hpKind:'1d8',move:20,thac0:19,morale:12,intelligence:0,alignment:'Chaotic',xp:10,size:'medium',protection:'hard',armorDesc:'exposed rigid bone with scraps of old gear',saveSpells:16,kind:'undead',weaponId:'sword_normal',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true},
-    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:16,kind:'animal',naturalDamage:'1d6',meleeRangePreference:'close',damageMod:0,daylightPenalty:0}
+    wolf:{name:'Wolf',ac:7,hd:2.25,hpKind:'2d8+2',move:60,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:25,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:16,kind:'animal',naturalDamage:'1d6',meleeRangePreference:'close',damageMod:0,daylightPenalty:0},
+    giant_beetle:{name:'Giant Beetle',ac:4,hd:2,hpKind:'2d8',move:40,thac0:18,morale:8,intelligence:0,alignment:'Neutral',xp:38,size:'medium',protection:'hard',armorDesc:'a hard beetle carapace',saveSpells:16,savePoison:14,kind:'lowlife',naturalDamage:'1d6',damageMod:0,daylightPenalty:0},
+    jaguar:{name:'Rabid Jaguar',ac:4,hd:4,hpKind:'4d8',move:70,thac0:17,morale:8,intelligence:2,alignment:'Neutral',xp:80,size:'medium',protection:'soft',armorDesc:'fur and hide; no armor',saveSpells:14,savePoison:12,kind:'animal',attacks:[{name:'claw',damage:'1d4'},{name:'claw',damage:'1d4'},{name:'bite',damage:'1d8',rabies:true}],damageMod:0,daylightPenalty:0},
+    giant_centipede:{name:'Giant Centipede',ac:9,hd:0.5,hpKind:'1d4',move:20,thac0:19,morale:7,intelligence:0,alignment:'Neutral',xp:6,size:'small',protection:'soft',armorDesc:'a small segmented body',saveSpells:16,savePoison:16,kind:'lowlife',specialAttack:'centipede_poison',damageMod:0,daylightPenalty:0},
+    hollow_child:{name:'Hollow Child',ac:7,hd:1,hpKind:'1d8',move:30,thac0:19,morale:10,intelligence:5,alignment:'Chaotic',xp:40,size:'small',protection:'soft',armorDesc:'a small artificial body of wood, silk, porcelain, and decaying organic matter',saveSpells:16,kind:'construct',weaponId:'dagger',specialAttack:'worry',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true,immunePoison:true},
+    giant_crab_spider:{name:'Giant Crab Spider',ac:7,hd:2,hpKind:'2d8',move:40,thac0:18,morale:7,intelligence:0,alignment:'Neutral',xp:38,size:'medium',protection:'soft',armorDesc:'a mottled chameleon-like carapace',saveSpells:16,kind:'lowlife',naturalDamage:'1d8',specialAttack:'crab_spider_poison',damageMod:0,daylightPenalty:0},
+    zombie_native:{name:'Zombie Native',ac:8,hd:2,hpKind:'2d8',move:40,thac0:18,morale:12,intelligence:0,alignment:'Chaotic',xp:29,size:'medium',protection:'hard',armorDesc:'dead flesh and rigid bone',saveSpells:16,kind:'undead',naturalDamage:'1d8',damageMod:0,daylightPenalty:0,immuneSleep:true,immuneCharm:true,immunePoison:true},
+    pirate:{name:'Pirate',ac:7,hd:1,hpKind:'1d8',move:40,thac0:19,morale:7,intelligence:10,alignment:'Chaotic',xp:30,size:'medium',protection:'soft',armorDesc:'light clothing and scraps of leather',saveSpells:16,kind:'humanoid',weaponId:'sword_short',damageMod:0,daylightPenalty:0},
+    captain_harshaw:{name:'Captain Harshaw',ac:5,hd:3,hpKind:'3d8',move:30,thac0:18,morale:9,intelligence:11,alignment:'Chaotic',xp:80,size:'medium',protection:'soft',armorDesc:'sturdy pirate gear and defensive equipment',saveSpells:14,kind:'humanoid',weaponId:'sword_normal',damageMod:0,daylightPenalty:0}
   };
 
   const AMMO_RULES = {
@@ -3671,12 +4099,20 @@ W: swollen wooden door · E: cellar`;
     if(/orcs?/.test(n)) return 'orc';
     if(/skeletons?/.test(n)) return 'skeleton';
     if(/wolves|wolf/.test(n)) return 'wolf';
+    if(/giant beetles?|beetles?/.test(n)) return 'giant_beetle';
+    if(/jaguars?/.test(n)) return 'jaguar';
+    if(/giant centipedes?|centipedes?/.test(n)) return 'giant_centipede';
+    if(/hollow children|hollow child/.test(n)) return 'hollow_child';
+    if(/crab spiders?|giant crab spiders?/.test(n)) return 'giant_crab_spider';
+    if(/zombie natives?/.test(n)) return 'zombie_native';
+    if(/captain harshaw|harshaw/.test(n)) return 'captain_harshaw';
+    if(/pirates?/.test(n)) return 'pirate';
     return null;
   }
 
   function createCombatMonster(type,index){
     const p=COMBAT_MONSTERS[type]; const hp=rollMonsterHp(p);
-    return {id:`${type}-${index}`,name:`${p.name} ${index}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,meleeRangePreference:p.meleeRangePreference||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
+    return {id:`${type}-${index}`,name:`${p.name}${type==='captain_harshaw'?'':` ${index}`}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,savePoison:p.savePoison||16,kind:p.kind,weaponId:p.weaponId||null,naturalDamage:p.naturalDamage||null,attacks:Array.isArray(p.attacks)?p.attacks.map(a=>({...a})):null,specialAttack:p.specialAttack||null,meleeRangePreference:p.meleeRangePreference||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),immunePoison:Boolean(p.immunePoison),dead:false,fled:false,sleeping:false,charmed:false,moraleFirstHit:false,moraleQuarterHp:false};
   }
 
   function archiveCombatEncounterRoster(combat){
@@ -3696,7 +4132,7 @@ W: swollen wooden door · E: cellar`;
   function startTestEncounter(count,type){
     if(combatActive()){ write('A combat is already in progress.','warning'); return; }
     if(!livingParty().length){ write('There is no living adventurer available to fight.','warning'); return; }
-    const key=monsterTypeKey(type); if(!key){ write('Test encounters currently support goblins, kobolds, orcs, skeletons, and wolves.','warning'); return; }
+    const key=monsterTypeKey(type); if(!key){ write('Test encounters support the core creatures plus the Kai Besil encounter creatures currently loaded in this build.','warning'); return; }
     count=Math.max(1,Math.min(24,Math.floor(Number(count)||1)));
     const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
     const outdoor=state.mode==='wilderness';
@@ -3730,6 +4166,37 @@ W: swollen wooden door · E: cellar`;
     write(`COMBAT BEGINS — ${count} ${COMBAT_MONSTERS[key].name}${count===1?'':'s'} at approximately ${distanceUnit==='yd'?encounterDistance+' yd':encounterDistance+"'"}.
 This is an explicit combat-engine test encounter, not a keyed campaign encounter. Test encounters begin hostile and intentionally bypass the normal encounter/reaction procedure. Distance is tracked from the start of the encounter; combatants must close using encounter movement before melee engagement. Type “combat” or “combat map” at any time to review the situation.`,'system');
     combatStatus(); updatePanels();
+  }
+
+
+  function startCampaignEncounter(count,type,opts={}){
+    if(combatActive()) return false;
+    if(!livingParty().length) return false;
+    const key=monsterTypeKey(type)||type; const profile=COMBAT_MONSTERS[key]; if(!profile) return false;
+    count=Math.max(1,Math.min(40,Math.floor(Number(count)||1)))
+    const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
+    const encounterDistance=Math.max(0,Number(opts.distanceOverride)||0), distanceUnit='yd';
+    const positions={pcs:{},monsters:{}}; for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0; for(const m of monsters) positions.monsters[m.id]=encounterDistance;
+    state.combat={active:true,round:1,source:opts.source||'campaign',monsters,pcOrders:{},monsterOrders:{},monsterGroups:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:count,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit,encounterDistanceTrace:{procedure:'Kai Besil module encounter',context:'Module encounter procedure with BECMI surprise/distance.',result:encounterDistance,unit:'yd'},positions,surprise:{pcsSurprised:Boolean(opts.pcsSurprised),foesSurprised:Boolean(opts.foesSurprised)},surpriseRoundPending:opts.pcSurpriseRound?'pc':null};
+    ensureDefaultPartyGroup({announce:false}); ensureMonsterTacticalGroups(); archiveCombatEncounterRoster(state.combat);
+    addEvent(`Campaign encounter began: ${count} ${profile.name}${count===1?'':'s'} at ${encounterDistance} yd.`);
+    write(`COMBAT BEGINS — ${count} ${profile.name}${count===1?'':'s'} at approximately ${encounterDistance} yd.${opts.pcSurpriseRound?' The party has a free surprise round before normal combat begins.':''}`,'system');
+    if(opts.automaticFoeSurpriseRound){
+      write('The party was surprised. The creatures receive one free surprise round before normal initiative begins.','error');
+      chooseMonsterOrders(); movementPhase('foes'); if(!combatConcluded()){ missilePhase('foes'); magicPhase('foes'); meleePhase('foes'); }
+      state.combat.monsterOrders={};
+      if(finishCombatIfConcluded()) return true;
+    }
+    combatStatus(); updatePanels(); return true;
+  }
+
+
+  function startCampaignMixedEncounter(monsters,opts={}){
+    if(combatActive()||!livingParty().length) return false;
+    const encounterDistance=Math.max(0,Number(opts.distanceOverride)||40),positions={pcs:{},monsters:{}};
+    for(const pc of livingParty()) positions.pcs[pc.name.toLowerCase()]=0; for(const m of monsters) positions.monsters[m.id]=encounterDistance;
+    state.combat={active:true,round:1,source:opts.source||'campaign',monsters,pcOrders:{},monsterOrders:{},monsterGroups:{},engagements:{},meleeSites:{},initiative:null,awaitingMoveChoice:false,awaitingWeaponChanges:false,pendingResolution:null,meleeDistanceResolvedRound:0,moveOrder:null,monsterMoralePending:false,monsterMoraleQueue:[],monsterFirstDeath:false,halfDisabledTriggered:false,initialMonsterCount:monsters.length,auditCounter:0,recentMeleeAttempts:[],encounterDistance,distanceUnit:'yd',positions};
+    ensureDefaultPartyGroup({announce:false}); ensureMonsterTacticalGroups(); archiveCombatEncounterRoster(state.combat); write(`COMBAT BEGINS — ${monsters.length} opponents at approximately ${encounterDistance} yd.`,'system'); combatStatus(); return true;
   }
 
   function engagementKey(pcName,monsterId){ return `${pcName.toLowerCase()}|${monsterId}`; }
@@ -4497,25 +4964,43 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return;
-    if(combatActive() && combatSeparation(pc,monster)>0){
-      write(`${monster.name}'s hand-to-hand attack on ${pc.name} is blocked: ${combatDistanceLabel(Math.round(combatSeparation(pc,monster)))} remain.`,'warning');
-      return;
+    if(combatActive() && combatSeparation(pc,monster)>0){ write(`${monster.name}'s hand-to-hand attack on ${pc.name} is blocked: ${combatDistanceLabel(Math.round(combatSeparation(pc,monster)))} remain.`,'warning'); return; }
+
+    if(monster.specialAttack==='worry' && monster.worryingTarget){
+      const victim=findPc(monster.worryingTarget);
+      if(victim && !victim.dead && victim.hp>0){ const damage=rng(4); write(`${monster.name} remains latched onto ${victim.name}, worrying the victim for ${damage} automatic damage.`,'error'); damagePc(victim,damage,`${monster.name}'s worrying attack`); return; }
+      monster.worryingTarget=null;
     }
-    const result=attackRoll(monster,pc,'melee',pc.retreatingThisRound?2:0);
-    const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
-    const weapon=monsterWeaponItem(monster);
-    const attackName=monster.naturalDamage?'bite':(weapon?.name||'weapon');
-    void refereeLog(`ATTACK — ${monster.name} → ${pc.name} with ${attackName}: d20 ${result.d20}${result.mod?`${result.mod>0?' + ':' - '}${Math.abs(result.mod)}`:''} = ${result.total}; THAC0 ${monster.thac0||19} vs AC ${result.targetAc}, needs ${result.needed} → ${result.hit?'HIT':'MISS'}.`,{type:'monster_attack',round:state.combat?.round,monsterId:monster.id,target:pc.name,d20:result.d20,modifier:result.mod,total:result.total,thac0:monster.thac0||19,targetAc:result.targetAc,needed:result.needed,hit:result.hit});
-    write(`${monster.name} attacks ${pc.name} with ${attackName} — ${result.hit?'HIT':'miss'}.`);
-    if(!result.hit) return;
-    let damage=0;
-    if(monster.naturalDamage){ damage=Math.max(0,rollDamageExpression(monster.naturalDamage).total+(monster.damageMod||0)); }
-    else {
-      const engagement=getEngagement(pc,monster); const band=engagement?.range||'normal';
-      const dmg=rollComparedWeaponDamage(weapon,pc,band,monster.damageMod||0); writeWeaponAudit(monster,pc,dmg); damage=dmg.applied;
+    const attacks=Array.isArray(monster.attacks)&&monster.attacks.length?monster.attacks:[{name:monster.naturalDamage?'bite':(monsterWeaponItem(monster)?.name||'weapon'),damage:monster.naturalDamage||null,special:monster.specialAttack||null}];
+    for(const spec of attacks){
+      if(pc.dead||pc.hp<=0) break;
+      const result=attackRoll(monster,pc,'melee',pc.retreatingThisRound?2:0);
+      const weapon=monsterWeaponItem(monster), attackName=monster.specialAttack==='centipede_poison'?'bite':(spec.name||weapon?.name||'attack');
+      void refereeLog(`ATTACK — ${monster.name} → ${pc.name} with ${attackName}: d20 ${result.d20}${result.mod?`${result.mod>0?' + ':' - '}${Math.abs(result.mod)}`:''} = ${result.total}; THAC0 ${monster.thac0||19} vs AC ${result.targetAc}, needs ${result.needed} → ${result.hit?'HIT':'MISS'}.`,{type:'monster_attack',round:state.combat?.round,monsterId:monster.id,target:pc.name,d20:result.d20,modifier:result.mod,total:result.total,thac0:monster.thac0||19,targetAc:result.targetAc,needed:result.needed,hit:result.hit,attackName});
+      write(`${monster.name} attacks ${pc.name} with ${attackName} — ${result.hit?'HIT':'miss'}.`); if(!result.hit) continue;
+      let damage=0;
+      if(spec.damage){ damage=Math.max(0,rollDamageExpression(spec.damage).total+(monster.damageMod||0)); }
+      else if(monster.specialAttack==='centipede_poison'){ damage=0; }
+      else if(monster.naturalDamage){ damage=Math.max(0,rollDamageExpression(monster.naturalDamage).total+(monster.damageMod||0)); }
+      else { const engagement=getEngagement(pc,monster),band=engagement?.range||'normal'; const dmg=rollComparedWeaponDamage(weapon,pc,band,monster.damageMod||0); writeWeaponAudit(monster,pc,dmg); damage=dmg.applied; }
+      if(damage){ write(`${monster.name} deals ${damage} damage to ${pc.name}.`); damagePc(pc,damage,monster.name); }
+      else write(`${monster.name}'s hit causes no direct damage.`);
+      if(pc.dead) continue;
+
+      if(monster.specialAttack==='worry'){ monster.worryingTarget=pc.name; write(`${monster.name} latches onto ${pc.name}; until the Hollow Child is killed or removed, it will automatically worry the victim for 1d4 damage each round.`,'error'); }
+      if(monster.specialAttack==='centipede_poison'){
+        const sv=pcSave(pc,'poison',0,'giant centipede bite');
+        if(!sv.success){ pc.centipedeSickUntilAbsoluteMinute=absoluteCampaignMinute()+10*1440; write(`${pc.name} becomes violently ill from the centipede's poison: movement is halved and physical actions are impaired for ten days unless cured.`,'error'); }
+      }
+      if(monster.specialAttack==='crab_spider_poison'){
+        const sv=pcSave(pc,'poison',2,'giant crab spider venom');
+        if(!sv.success){ const turns=rng(4); pc.fatalPoisonDueMinute=absoluteCampaignMinute()+turns*10; write(`${pc.name} succumbs to the crab spider's venom. Without a cure, the poison will become fatal soon.`,'error'); void refereeLog(`CRAB SPIDER VENOM — ${pc.name} will die in ${turns} turn(s) unless cured.`,{type:'delayed_poison',pc:pc.name,turns,dueAbsoluteMinute:pc.fatalPoisonDueMinute}); }
+      }
+      if(spec.rabies){
+        const sv=pcSave(pc,'poison',0,'rabid jaguar bite');
+        if(!sv.success){ pc.rabiesInfected=true; pc.rabiesFatalMonths=rng(6); write(`${pc.name} is bitten deeply by the rabid jaguar. The wound carries a dangerous infection.`,'warning'); void refereeLog(`RABIES — ${pc.name} failed the poison save; without Cure Disease the infection is fatal in ${pc.rabiesFatalMonths} month(s).`,{type:'rabies',pc:pc.name,months:pc.rabiesFatalMonths}); }
+      }
     }
-    write(`${monster.name} deals ${damage} damage to ${pc.name}.`);
-    damagePc(pc,damage,monster.name);
   }
 
   function monsterSavingThrow(monster,type='spells',modifier=0){
@@ -6480,6 +6965,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       write(`COMBAT ENDS — opposition neutralized.${killed.length?` Killed: ${killed.length}.`:''}${fled.length?` Fled: ${fled.length}.`:''}${neutralized.length?` Asleep/charmed: ${neutralized.length}.`:''} XP is not distributed at combat end; adventure-end XP will be handled by the campaign/company system.`,'system');
       addEvent('Combat ended; XP distribution deferred to adventure-end company accounting.');
     }
+    if(pcs.length && !hostile.length && c.source==='kai_besil_pirate_camp'){ if(!state.locationState.pirate_camp) state.locationState.pirate_camp={}; state.locationState.pirate_camp.cleared=true; addEvent('Pirate resistance at the camp was neutralized; control of the Sorrowful Gull may now be contested or claimed.'); }
+    if(pcs.length && !hostile.length && c.source==='kai_besil_wilderness') state.pendingEncounter=null;
     c.active=false; c.initiative=null; c.awaitingMoveChoice=false; c.awaitingWeaponChanges=false; c.pendingResolution=null; c.moveOrder=null; clearPendingClarification(); updatePanels(); return true;
   }
 
@@ -6493,7 +6980,16 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function resolveCombatRound(){
     if(!combatActive()){write('No combat is in progress.','warning');return;}
-    const c=state.combat; if(c.awaitingMoveChoice){write('Choose movement order first: “move us first” or “make them move first”.','warning');return;}
+    const c=state.combat;
+    if(c.surpriseRoundPending==='pc'){
+      const missing=livingParty().filter(pc=>!c.pcOrders?.[pc.name.toLowerCase()]);
+      if(missing.length){ write(`The party has a free surprise round. Give orders for ${missing.map(pc=>pc.name).join(', ')} before resolving it.`,'warning'); return; }
+      write('SURPRISE ROUND — only the player characters act.','system');
+      movementPhase('pc'); if(!combatConcluded()){ missilePhase('pc'); magicPhase('pc'); meleePhase('pc'); }
+      c.surpriseRoundPending=null; c.pcOrders={}; c.monsterOrders={};
+      if(finishCombatIfConcluded()) return;
+      write('The surprise round ends. Normal combat now begins with round 1 and initiative.','system'); updatePanels(); return;
+    } if(c.awaitingMoveChoice){write('Choose movement order first: “move us first” or “make them move first”.','warning');return;}
     if(c.awaitingWeaponChanges){write('Distance is resolved. Switch weapons if desired, then type “continue round”.','warning');return;}
     if(c.initiative){write('This round is already being resolved.','warning');return;}
     if(!livingParty().length || !livingHostiles().length){finishCombatIfConcluded();return;}
@@ -6642,7 +7138,7 @@ Terrain: ${TERRAIN[hex.terrain].name}
 Hex scale: ${wildernessHexScaleLabel()}
 Time: ${clockText()}
 Travel used today: ${travelLine}
-Party size: ${state.party.length}
+Party size: ${state.party.length}${currentRegionId()==='kai_besil'&&currentVessel()?`\nVessel: ${currentVessel().name} (hull ${Math.round(currentVessel().hullPercent)}%)`:''}${state.pendingEncounter?`\nEncounter pending: ${state.pendingEncounter.count} ${state.pendingEncounter.label}`:''}
 Treasury: ${formatMoney(state.treasuryCp)}
 Weapon damage: ${state.rules.weaponDamageMode}
 Initiative: ${state.rules.initiativeMode||'RAW'}
@@ -6945,6 +7441,23 @@ AI backend: ${WORKER_URL}`);
     return result;
   }
 
+  function versionParts(v){ return String(v||'0').split('.').map(x=>Number(x)||0); }
+  function versionAtMost(v,target){ const a=versionParts(v),b=versionParts(target); for(let i=0;i<Math.max(a.length,b.length);i++){ const av=a[i]||0,bv=b[i]||0; if(av<bv)return true; if(av>bv)return false; } return true; }
+  function migrateKaiBesil046Hex(oldHex){
+    const q=Number(oldHex?.q)||0,r=Number(oldHex?.r)||0,key=`${q},${r}`;
+    const exact={'4,-2':{q:7,r:12},'3,-2':{q:6,r:12},'-1,-1':{q:1,r:15},'-3,-2':{q:2,r:12},'-5,0':{q:-2,r:15},'-3,3':{q:-9,r:31}};
+    if(exact[key]) return {...exact[key]};
+    const pq=.48956661*q-2.27447833*r-.42857143;
+    const pr=.45425361*q+4.02728732*r+19.42857143;
+    let best=null,bestD=Infinity;
+    for(const [coord,hex] of Object.entries(kaiBesilHexes)){
+      if(!isKaiLandTerrain(hex.terrain)) continue;
+      const [nq,nr]=coord.split(',').map(Number); const d=(nq-pq)**2+(nr-pr)**2;
+      if(d<bestD){bestD=d;best={q:nq,r:nr};}
+    }
+    return best||{q:7,r:12};
+  }
+
   function migrateSave(loaded) {
     const base=initialState();
     // v0.3.44 and earlier had no region field and were Karameikos campaigns.
@@ -6968,14 +7481,31 @@ AI backend: ${WORKER_URL}`);
     merged.partyGroups=loaded.partyGroups&&typeof loaded.partyGroups==='object'&&!Array.isArray(loaded.partyGroups)?loaded.partyGroups:{};
     merged.rumorsHeard=Array.isArray(loaded.rumorsHeard)?loaded.rumorsHeard:[];
     merged.combatHistory=Array.isArray(loaded.combatHistory)?loaded.combatHistory:[];
+    merged.vessels=loaded.vessels&&typeof loaded.vessels==='object'&&!Array.isArray(loaded.vessels)?loaded.vessels:base.vessels;
+    merged.activeVesselId=loaded.activeVesselId||null;
+    merged.pendingEncounter=loaded.pendingEncounter&&typeof loaded.pendingEncounter==='object'?loaded.pendingEncounter:null;
+    merged.specialEncounterHistory=Array.isArray(loaded.specialEncounterHistory)?loaded.specialEncounterHistory:[];
+    merged.wildernessHazards=Array.isArray(loaded.wildernessHazards)?loaded.wildernessHazards:[];
     merged.pendingClarification=loaded.pendingClarification&&typeof loaded.pendingClarification==='object'?loaded.pendingClarification:null;
     merged.discourse={...base.discourse,...(loaded.discourse&&typeof loaded.discourse==='object'?loaded.discourse:{})};
     merged.discourse.recentEntities=Array.isArray(merged.discourse.recentEntities)?merged.discourse.recentEntities.slice(-12):[];
     if(loaded.treasuryCp==null) merged.treasuryCp=Math.round((Number(loaded.gold)||0)*100);
     merged.campaignCreated=Boolean(loaded.campaignCreated || merged.party.length);
+    if(merged.region==='kai_besil' && versionAtMost(loaded?.version,'0.3.46')){
+      const root=sites[merged.location]?.localParent || merged.location;
+      if(root && SITE_LOCATIONS[root]?.region==='kai_besil') merged.hex={q:SITE_LOCATIONS[root].q,r:SITE_LOCATIONS[root].r};
+      else merged.hex=migrateKaiBesil046Hex(loaded?.hex);
+      merged.previousHex=null;
+      merged.activeVesselId=null;
+      merged.vessels=defaultKaiBesilVessels();
+      merged.pendingEncounter=null;
+      merged.specialEncounterHistory=[];
+      merged.wildernessHazards=[];
+    }
     state=merged;
     if(state.region==='kai_besil'){
       if(!state.locationState.talamau || typeof state.locationState.talamau!=='object') state.locationState.talamau={kitraReceptionComplete:false};
+      ensureKaiBesilWorldState();
     }
     ensureKnowledgeState();
     for(const g of Object.values(state.partyGroups||{})){ g.initiativeSideId='pc'; normalizePartyGroupRoles(g); }
@@ -7019,6 +7549,7 @@ map / local map — redraw the current local mapping aid
 journal / log — open the permanent searchable campaign journal
 log Bargle — open the journal and search for Bargle
 hex view — current wilderness hex plus one surrounding ring of actual hex-shaped cells
+Kai Besil water travel — procure and board a local boat/ship; coastwise water and reef hexes use the module rates, while deep water uses the vessel's RC movement class
 town view — known locations and obvious facts in the current settlement
 room view — current keyed room/site
 combat map / position — current combat bands, distances, and melee relationships
@@ -8044,7 +8575,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   }
 
   function parseNaturalDirection(input) {
-    const match = /^(?:go|walk|head|move|travel|proceed|continue|follow(?: the)? road)\s+(?:to\s+the\s+)?(north(?:\s*east|\s*west)?|south(?:\s*east|\s*west)?|east|west|up|down|n|ne|se|s|sw|nw|e|w|u|d)$/i.exec(input.trim());
+    const match = /^(?:go|walk|head|move|travel|sail|row|proceed|continue|follow(?: the)? road)\s+(?:to\s+the\s+)?(north(?:\s*east|\s*west)?|south(?:\s*east|\s*west)?|east|west|up|down|n|ne|se|s|sw|nw|e|w|u|d)$/i.exec(input.trim());
     return match ? normalizeDirection(match[1].replace(/\s+/g,' ')) : null;
   }
 
@@ -8103,6 +8634,19 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if (['groups','party groups','show groups','list groups'].includes(normalized)) { write(partyGroupSummary(),'system'); return; }
     const disband=/^(?:disband|delete|remove)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)$/i.exec(input);
     if(disband){ if(!disbandPartyGroup(disband[1])) write(`No named party group called ${disband[1]} exists.`,'warning'); return; }
+    if(state.pendingWildernessHazard?.kind==='boggy_hole' && !/\b(?:rope|pull|rescue|help|haul)\b/.test(normalized)){ write(`${state.pendingWildernessHazard.pcName} is still in the boggy hole and must be rescued before the party can continue.`, 'warning'); return; }
+    if(state.pendingWildernessHazard?.kind==='cursed_reef' && !state.pendingWildernessHazard.victims.every(name=>findPc(name)?.cursedReefRestrained) && !/\b(?:restrain|hold|tie|grab)\b/.test(normalized)){ write('Compelled party members are trying to throw themselves into the sea. Restrain them before attempting another action.','warning'); return; }
+    if(/\b(?:drink|use)\b.*\bwater\b/.test(normalized) && drinkContaminatedWater(/\b(?:we|party|everyone|all)\b/.test(normalized))) return;
+    if(/\b(?:find|search for|look for)\b.*\b(?:fresh|clean) water\b/.test(normalized) && findFreshWater()) return;
+    if(handlePendingEncounterCommand(input)) return;
+    if(state.pendingWildernessHazard?.kind==='cursed_reef' && /\b(?:restrain|hold|tie|grab)\b/.test(normalized)){ restrainCursedReefVictims(); return; }
+    if(state.pendingWildernessHazard?.kind==='boggy_hole' && /\b(?:rope|pull|rescue|help|haul)\b/.test(normalized)){ const h=state.pendingWildernessHazard,pc=findPc(h.pcName); state.pendingWildernessHazard=null; advanceClock(10,`Party rescued ${h.pcName} from the boggy hole.`); write(`${h.pcName} is hauled out of the mire before drowning.`,'system'); return; }
+    if(/^(?:remove|clean out|treat) (?:the )?parasites?$/i.test(input)){ if(!removeParasites()) write('No party member currently has the parasite infestation.','warning'); return; }
+    if(/\b(?:secure|secluded)\b.*\bcamp\b|\bcamp\b.*\b(?:secure|secluded)\b/.test(normalized)){ secureCamp(); return; }
+    if(vesselStatus && ['vessels','vessel status','boats','ships'].includes(normalized)){ vesselStatus(); return; }
+    if(acquireLocalVessel(input)) return;
+    if(boardLocalVessel(input)) return;
+    if(/^(?:disembark|go ashore|beach the (?:boat|ship|vessel))$/i.test(input)){ if(!disembarkVessel()) write('The party is not currently aboard a vessel.','warning'); return; }
     if (handleCombatDirect(input,normalized)) return;
     if (normalized === 'create party' || normalized === 'create character' || normalized === 'manage party') { openPartyCreator(false); return; }
     if (normalized === 'wares' || normalized === 'shop' || normalized === 'list wares') return listWares();
@@ -8278,7 +8822,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function installHarnessFixture(options={}){
     state=initialState();
-    state.mode='wilderness'; state.hex={q:0,r:0};
+    state.region='karameikos'; state.mode='wilderness'; state.hex={q:0,r:0};
     state.party=harnessPartyFixture();
     state.campaignCreated=true;
     state.rules={...state.rules,weaponDamageMode:'MATRIX',weaponAudit:true,initiativeMode:'PHASED',developerMode:true};
@@ -8321,9 +8865,67 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       {name:'New campaign defaults to persistent Shipwreck Beach on Kai Besil',run:()=>{
         const fresh=initialState();
         harnessAssert(fresh.region==='kai_besil' && fresh.mode==='wilderness','Fresh campaign did not start in the Kai Besil wilderness');
-        harnessEqual(fresh.hex,{q:4,r:-2},'Fresh campaign did not start in Shipwreck Beach hex');
+        harnessEqual(fresh.hex,{q:7,r:12},'Fresh campaign did not start in Shipwreck Beach hex');
         harnessAssert(fresh.locationState?.shipwreck?.searched===false,'Shipwreck state was not initialized persistently');
         harnessAssert(Array.isArray(fresh.knownPlaces)&&fresh.knownPlaces.length===0,'Fresh campaign began with hidden/keyed places already known');
+      }},
+      {name:'Kai Besil published map transcription includes full island terrain and surrounding water',run:()=>{
+        installKaiBesilHarnessFixture();
+        const cells=Object.values(kaiBesilHexes),land=cells.filter(h=>isKaiLandTerrain(h.terrain));
+        harnessAssert(land.length===164,`Expected 164 transcribed land hexes, found ${land.length}`);
+        harnessAssert(cells.some(h=>h.terrain==='reef') && cells.some(h=>h.terrain==='coastal_water') && cells.some(h=>h.terrain==='deep_water'),'Published-map water/reef terrain was not transcribed');
+        harnessEqual(SITE_LOCATIONS.talamau,{q:6,r:12,region:'kai_besil'},'Talamau keyed cell changed');
+        harnessEqual(SITE_LOCATIONS.temple_flame,{q:1,r:15,region:'kai_besil'},'Temple keyed cell changed');
+        harnessAssert(KAI_BESIL_CURSED_REEF_CELLS.size===9 && kaiBesilHexes['11,11'].cursedReef===true,'Cursed Reef field was not marked on eastern reef hexes');
+      }},
+      {name:'v0.3.46 Kai Besil coordinates migrate to the published map',run:()=>{
+        const legacy={...initialState(),version:'0.3.46',region:'kai_besil',hex:{q:4,r:-2},mode:'wilderness',location:null,party:harnessPartyFixture(),campaignCreated:true};
+        const migrated=migrateSave(legacy); harnessEqual(migrated.hex,{q:7,r:12},'Old Shipwreck Beach coordinate did not migrate');
+      }},
+      {name:'Water hexes require a procured and boarded vessel',run:()=>{
+        installKaiBesilHarnessFixture(); state.hex={q:6,r:12}; state.mode='wilderness';
+        harnessAssert(wildernessMove('northwest')===false,'Party entered coastal water on foot');
+        state.mode='site'; state.location='talamau_dock'; const v=state.vessels.talamau_fishing_boat; v.controlled=true;
+        harnessAssert(boardLocalVessel('board the fishing boat')===true && state.activeVesselId==='talamau_fishing_boat','Controlled fishing boat could not be boarded');
+        const before=absoluteCampaignMinute(); harnessAssert(wildernessMove('northwest')===true,'Boarded vessel could not enter adjacent coastal water');
+        harnessAssert(currentHex().terrain==='coastal_water' && absoluteCampaignMinute()-before===10,'Coast-hugging sea travel did not use six hexes/hour');
+      }},
+      {name:'Deep-water travel uses Rules Cyclopedia vessel movement adaptations',run:()=>{
+        installKaiBesilHarnessFixture(); state.hex={q:11,r:11}; state.mode='wilderness';
+        const v=state.vessels.sorrowful_gull; v.controlled=true; v.seaworthy=true; v.hex={q:11,r:11}; state.activeVesselId=v.id;
+        const before=absoluteCampaignMinute(); harnessAssert(wildernessMove('northeast')===true,'Sorrowful Gull could not enter an adjacent deep-water hex');
+        harnessAssert(currentHex().terrain==='deep_water' && absoluteCampaignMinute()-before===8,'Small-sailing-ship adaptation did not use 90 miles/day over 1/2-mile hexes');
+      }},
+      {name:'Reef entry applies module hull danger and Cursed Reef save procedure',run:()=>{
+        installKaiBesilHarnessFixture(); state.hex={q:10,r:11}; state.mode='wilderness'; state.seed=1;
+        for(const pc of state.party) pc.saves.spells=21;
+        const v=state.vessels.talamau_fishing_boat; v.controlled=true; v.seaworthy=true; v.hullPercent=100; v.hex={q:10,r:11}; state.activeVesselId=v.id;
+        harnessAssert(wildernessMove('southeast')===true,'Controlled vessel could not enter the mapped Cursed Reef hex');
+        harnessAssert(currentHex().cursedReef===true,'Reef move did not reach the Cursed Reef field');
+        harnessAssert(state.vessels.talamau_fishing_boat.hullPercent===70,'Seeded reef survival did not apply 1d6×10% hull loss');
+        harnessAssert(state.pendingWildernessHazard?.kind==='cursed_reef','Entering Cursed Reef did not invoke the save-vs-Spells compulsion procedure');
+      }},
+      {name:'Cursed Reef is a real mapped hazard and its compulsion clears after leaving',run:()=>{
+        installKaiBesilHarnessFixture(); state.hex={q:11,r:11}; state.mode='wilderness';
+        harnessAssert(currentHex().cursedReef===true && currentHex().terrain==='reef','Cursed Reef keyed cell is not a reef hazard');
+        const pc=state.party[0]; pc.cursedReefCompelled=true; pc.cursedReefRestrained=true; state.pendingWildernessHazard={kind:'cursed_reef',victims:[pc.name]};
+        clearCursedReefCompulsion(); harnessAssert(!pc.cursedReefCompelled && state.pendingWildernessHazard===null,'Cursed Reef compulsion did not clear outside the affected reef');
+      }},
+      {name:'Kai Besil encounter table instantiates module monster rosters',run:()=>{
+        installKaiBesilHarnessFixture();
+        const entry=KAI_BESIL_WILDERNESS_ENCOUNTERS[4];
+        const count=4; const originalPending=state.pendingEncounter; prepareKaiMonsterEncounter({...entry,hostility:'hostile',surpriseThreshold:99},count);
+        harnessAssert(combatActive() || state.pendingEncounter,'Module encounter did not produce a playable encounter state');
+        const type=combatActive()?state.combat.monsters[0].type:state.pendingEncounter.type;
+        harnessAssert(type==='giant_crab_spider','Module encounter instantiated the wrong monster profile');
+        state.pendingEncounter=originalPending;
+      }},
+      {name:'Kai Besil special encounters persist module-specific consequences',run:()=>{
+        installKaiBesilHarnessFixture();
+        resolveKaiSpecialEncounter(KAI_BESIL_SPECIAL_ENCOUNTERS.find(e=>e.id==='sorcerers_bones'));
+        harnessAssert(state.partyInventory.some(x=>x.itemId==='lan_yu_dagger_plus1'&&x.magicBonus===1),'Sorcerer bones did not add the module dagger +1');
+        resolveKaiSpecialEncounter(KAI_BESIL_SPECIAL_ENCOUNTERS.find(e=>e.id==='bad_water'));
+        harnessAssert(state.locationState.bad_water?.contaminated===true,'Bad Water did not persist contaminated-water state');
       }},
       {name:'Shipwreck Beach reveals but does not automatically identify Talamau',run:()=>{
         installKaiBesilHarnessFixture();
@@ -8339,7 +8941,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         await handle('go to the village');
         const after=state.day*1440+state.minutes;
         harnessAssert(state.mode==='site' && state.location==='talamau_elder','First Talamau entry did not place the party with Elder Kitra');
-        harnessEqual(state.hex,{q:3,r:-2},'Travel to Talamau ended in the wrong hex');
+        harnessEqual(state.hex,{q:6,r:12},'Travel to Talamau ended in the wrong hex');
         harnessAssert(after-before===40,'One light-jungle hex plus settlement entry did not consume 40 minutes');
         harnessAssert(state.knownPlaces.includes('talamau'),'Visiting Talamau did not convert the sighted settlement into known campaign knowledge');
         harnessAssert(talamauReceptionComplete(),'First Talamau entry did not persist the Kitra reception');
@@ -8364,7 +8966,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       }},
       {name:'Known Talamau destinations can be entered as local sites',run:()=>{
         installKaiBesilHarnessFixture();
-        state.hex={q:3,r:-2}; state.mode='site'; state.location='talamau';
+        state.hex={q:6,r:12}; state.mode='site'; state.location='talamau';
         handleTalamauFirstArrival();
         const r=resolveSemanticDestination('the healer');
         harnessAssert(r.id==='talamau_healer','Healer alias did not resolve to Kusar in current Talamau context');
@@ -8395,6 +8997,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       }},
       {name:'Natural investigate-current-hex command uses wilderness search procedure',run:async()=>{
         installKaiBesilHarnessFixture();
+        state.seed=1; // deterministic: this regression validates investigation, not encounter interruption
         await handle('investigate this hex');
         harnessAssert(state.mode==='wilderness','Investigating the starting hex unexpectedly entered the wreck');
         harnessAssert(state.knownPlaces.includes('shipwreck'),'Investigating the starting hex did not confirm the keyed wreck location');
@@ -8411,7 +9014,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       }},
       {name:'Hidden Temple of the Flame cannot be entered until its hex is searched',run:()=>{
         installKaiBesilHarnessFixture();
-        state.hex={q:-1,r:-1};
+        state.hex={q:1,r:15}; state.seed=1;
         state.knownPlaces=state.knownPlaces.filter(id=>id!=='temple_flame');
         const before=state.day*1440+state.minutes;
         harnessAssert(enterSite()===false && state.mode==='wilderness','Hidden temple was enterable before discovery');
