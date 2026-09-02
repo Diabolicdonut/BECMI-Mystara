@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.50';
+  const APP_VERSION = '0.3.51';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -879,7 +879,7 @@
   const KAI_BESIL_CURSED_REEF_CELLS=new Set(['13,6','13,7','13,8','12,9','11,11','10,13','9,14','9,15','9,16']);
   const KAI_BESIL_SITE_CELLS={
     '6,12':{site:'talamau',siteLabel:'Talamau'},
-    '7,12':{site:'shipwreck',siteLabel:'the wreck',visibleSites:[{id:'talamau',direction:'northwest',label:'a coastal settlement',distance:'about half a mile'}]},
+    '6,11':{site:'shipwreck',siteLabel:'the wreck',visibleSites:[{id:'talamau',direction:'south',label:'a coastal settlement',distance:'about half a mile'}]},
     '2,12':{site:'ruined_manor',siteLabel:'ruined manor'},
     '1,15':{site:'temple_flame',siteLabel:'Temple of the Flame',hiddenSite:true,searchHoursDice:'2d6'},
     '-2,15':{site:'pirate_camp',siteLabel:'pirate camp'},
@@ -909,7 +909,7 @@
       });
     }
     Object.assign(map['6,12'],{name:'Northeastern Coast',desc:'Cultivated paddies and cleared ground appear between light jungle and a sheltered inlet. Talamau stands here on the northeast coast.'});
-    Object.assign(map['7,12'],{name:'Shipwreck Beach',desc:'A narrow tropical beach lies between the surf and light jungle. Offshore, the broken remains of the ship grind against the reef while splintered wreckage has washed ashore. Along the coast to the northwest, about half a mile away, thatched roofs, cultivated paddies, and cooking smoke reveal a settlement. Inland, the smoking volcanic peak rises above the jungle.'});
+    Object.assign(map['6,11'],{name:'Shipwreck Beach',mapCode:'BCH',desc:'A narrow tropical beach lies between the surf and light jungle. Coastal water and reefs surround the strand to the north and west, where the broken remains of the ship grind in the shallows and splintered wreckage has washed ashore. Along the coast to the south, about half a mile away, thatched roofs, cultivated paddies, and cooking smoke reveal Talamau. Inland, the smoking volcanic peak rises above the jungle.'});
     Object.assign(map['2,12'],{name:'Jungle Ruins',desc:'Broken gray stone rises through vines and wet greenery where Lan Yu’s old residence has been swallowed by the hills and jungle.'});
     Object.assign(map['1,15'],{name:'Pillar of Lan Yu',desc:'The smoking volcanic slopes dominate the island. An old temple entrance is concealed somewhere amid the mountain approaches.'});
     Object.assign(map['-2,15'],{name:'Western Coastal Flats',desc:'Salt-stunted grass and scrub spread behind a rough western beach. Smoke from a makeshift camp is visible near the shore.'});
@@ -1487,7 +1487,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     campaignId:newCampaignId(),
     region:'kai_besil',
     mode:'wilderness',
-    hex:{q:7,r:12},
+    hex:{q:6,r:11},
     location:null,
     day:1,
     minutes:8*60,
@@ -1562,7 +1562,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     clearGeneratedRuntime(); hydrateGeneratedWorld();
     state.region='kai_besil';
     state.mode='wilderness';
-    state.hex={q:7,r:12};
+    state.hex={q:6,r:11};
     state.location=null;
     state.previousHex=null;
     state.travelUsed=0;
@@ -2221,7 +2221,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function wildernessHexData(q,r,label,isCurrent=false){
     const hex=getHex(q,r);
     if(!hex) return {label,terrain:'---',marks:'',name:'Beyond local view'};
-    const terrain=TERRAIN_MAP_CODE[hex.terrain]||String(hex.terrain||'?').slice(0,3).toUpperCase();
+    const terrain=hex.mapCode||TERRAIN_MAP_CODE[hex.terrain]||String(hex.terrain||'?').slice(0,3).toUpperCase();
     const marks=`${Array.isArray(hex.roadDirs)&&hex.roadDirs.length?'=':''}${Array.isArray(hex.riverDirs)&&hex.riverDirs.length?'~':''}${knownSiteVisibleInHex(hex,isCurrent)?'*':''}`;
     return {label:isCurrent?'@':label,terrain,marks,name:hex.name||'Unknown country'};
   }
@@ -8225,7 +8225,7 @@ AI backend: ${WORKER_URL}`);
     closePartyCreator(); terminal.innerHTML='';
     write(`SHIPWRECKED ON KAI BESIL — ${state.party.length} ADVENTURER${state.party.length===1?'':'S'}`,'system');
     write(`Starting treasury: ${formatMoney(state.treasuryCp)}. Whatever personal equipment each adventurer possessed when the ship went down has come ashore with the party.`,'system');
-    write('The surf has thrown the wreckage across a narrow tropical beach. Offshore, the broken hull grinds against the reef. Along the coast to the northwest, about half a mile away, thatched roofs, cultivated paddies, and cooking smoke reveal a settlement. Inland, a smoking volcanic peak rises above the jungle.');
+    write('The surf has thrown the wreckage across a narrow tropical beach. Coastal water and reefs surround the strand to the north and west, where the broken hull grinds in the shallows. Along the coast to the south, about half a mile away, the thatched roofs, cultivated paddies, and cooking smoke of Talamau are visible. Inland, a smoking volcanic peak rises above the jungle.');
     write('The wreck remains here as a persistent location. The party may travel, investigate the current hex, examine the wreck, or head toward the visible settlement.','system');
     write('The command bar remains docked at the bottom of the screen. Type what the party does and press ENTER.','system');
     look(); updatePanels(); save();
@@ -8264,7 +8264,7 @@ AI backend: ${WORKER_URL}`);
   function versionAtMost(v,target){ const a=versionParts(v),b=versionParts(target); for(let i=0;i<Math.max(a.length,b.length);i++){ const av=a[i]||0,bv=b[i]||0; if(av<bv)return true; if(av>bv)return false; } return true; }
   function migrateKaiBesil046Hex(oldHex){
     const q=Number(oldHex?.q)||0,r=Number(oldHex?.r)||0,key=`${q},${r}`;
-    const exact={'4,-2':{q:7,r:12},'3,-2':{q:6,r:12},'-1,-1':{q:1,r:15},'-3,-2':{q:2,r:12},'-5,0':{q:-2,r:15},'-3,3':{q:-9,r:31}};
+    const exact={'4,-2':{q:6,r:11},'3,-2':{q:6,r:12},'-1,-1':{q:1,r:15},'-3,-2':{q:2,r:12},'-5,0':{q:-2,r:15},'-3,3':{q:-9,r:31}};
     if(exact[key]) return {...exact[key]};
     const pq=.48956661*q-2.27447833*r-.42857143;
     const pr=.45425361*q+4.02728732*r+19.42857143;
@@ -8274,7 +8274,7 @@ AI backend: ${WORKER_URL}`);
       const [nq,nr]=coord.split(',').map(Number); const d=(nq-pq)**2+(nr-pr)**2;
       if(d<bestD){bestD=d;best={q:nq,r:nr};}
     }
-    return best||{q:7,r:12};
+    return best||{q:6,r:11};
   }
 
   function migrateSave(loaded) {
@@ -8282,7 +8282,7 @@ AI backend: ${WORKER_URL}`);
     const legacyRegion=loaded?.region==='karameikos' || (!loaded?.region && versionAtMost(loaded?.version,'0.3.44'));
     let merged={...base,...loaded,region:'kai_besil',version:APP_VERSION,campaignId:loaded.campaignId||base.campaignId};
     if(legacyRegion || !(loaded.mode && loaded.hex)){
-      merged={...merged,region:'kai_besil',mode:'wilderness',hex:{q:7,r:12},location:null,previousHex:null,travelUsed:0,travelMinutesToday:0,knownPlaces:[],visiblePlaces:[],knownSettlementPlaces:{talamau:['talamau']},locationState:base.locationState,pendingEncounter:null,combat:null};
+      merged={...merged,region:'kai_besil',mode:'wilderness',hex:{q:6,r:11},location:null,previousHex:null,travelUsed:0,travelMinutesToday:0,knownPlaces:[],visiblePlaces:[],knownSettlementPlaces:{talamau:['talamau']},locationState:base.locationState,pendingEncounter:null,combat:null};
     }
     merged.rules={...base.rules,...(loaded.rules||{})};
     merged.party=(loaded.party||[]).map(normalizeMember);
@@ -8326,6 +8326,18 @@ AI backend: ${WORKER_URL}`);
       merged.pendingEncounter=null;
       merged.specialEncounterHistory=[];
       merged.wildernessHazards=[];
+    }
+    // v0.3.47-v0.3.50 placed Shipwreck Beach one hex inland. Move only saves
+    // that are actually inside the wreck site or still untouched at that old
+    // day-one starting cell; travelers who later cross the cell are preserved.
+    if(!legacyRegion && versionAtMost(loaded?.version,'0.3.50')){
+      const root=sites[merged.location]?.localParent || merged.location;
+      const oldStart=Number(merged.hex?.q)===7 && Number(merged.hex?.r)===12;
+      const untouchedStart=merged.mode==='wilderness' && !merged.location && oldStart && !loaded?.previousHex && Number(loaded?.day||1)===1 && Number(loaded?.minutes||480)<=480 && Number(loaded?.travelUsed||0)===0 && Number(loaded?.travelMinutesToday||0)===0;
+      if(root==='shipwreck' || untouchedStart){
+        merged.hex={q:SITE_LOCATIONS.shipwreck.q,r:SITE_LOCATIONS.shipwreck.r};
+        merged.previousHex=null;
+      }
     }
     state=merged;
     if(!state.locationState.talamau || typeof state.locationState.talamau!=='object') state.locationState.talamau={kitraReceptionComplete:false};
@@ -9794,7 +9806,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function installHarnessFixture(options={}){
     state=initialState();
-    state.region='kai_besil'; state.mode='wilderness'; state.hex={q:7,r:12};
+    state.region='kai_besil'; state.mode='wilderness'; state.hex={q:6,r:11};
     state.party=harnessPartyFixture();
     state.campaignCreated=true;
     state.rules={...state.rules,weaponDamageMode:'MATRIX',weaponAudit:true,initiativeMode:'PHASED',developerMode:true};
@@ -9837,7 +9849,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       {name:'New campaign defaults to persistent Shipwreck Beach on Kai Besil',run:()=>{
         const fresh=initialState();
         harnessAssert(fresh.region==='kai_besil' && fresh.mode==='wilderness','Fresh campaign did not start in the Kai Besil wilderness');
-        harnessEqual(fresh.hex,{q:7,r:12},'Fresh campaign did not start in Shipwreck Beach hex');
+        harnessEqual(fresh.hex,{q:6,r:11},'Fresh campaign did not start in Shipwreck Beach hex');
         harnessAssert(fresh.locationState?.shipwreck?.searched===false,'Shipwreck state was not initialized persistently');
         harnessAssert(Array.isArray(fresh.knownPlaces)&&fresh.knownPlaces.length===0,'Fresh campaign began with hidden/keyed places already known');
       }},
@@ -9847,12 +9859,23 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(land.length===164,`Expected 164 transcribed land hexes, found ${land.length}`);
         harnessAssert(cells.some(h=>h.terrain==='reef') && cells.some(h=>h.terrain==='coastal_water') && cells.some(h=>h.terrain==='deep_water'),'Published-map water/reef terrain was not transcribed');
         harnessEqual(SITE_LOCATIONS.talamau,{q:6,r:12,region:'kai_besil'},'Talamau keyed cell changed');
+        harnessEqual(SITE_LOCATIONS.shipwreck,{q:6,r:11,region:'kai_besil'},'Shipwreck Beach is not on the coast beside Talamau');
+        const wreck=kaiBesilHexes['6,11'];
+        const adjacent=HEX_ORDER.map(direction=>{ const step=HEX_DIRECTIONS[direction]; return kaiBesilHexes[`${6+step.q},${11+step.r}`]; }).filter(Boolean);
+        harnessAssert(wreck.mapCode==='BCH' && adjacent.some(hex=>isKaiWaterTerrain(hex.terrain)),'Shipwreck Beach does not render as a beach beside mapped coastal water');
+        harnessAssert(directionBetween(6,11,6,12)==='south','Talamau is not directly adjacent to Shipwreck Beach');
         harnessEqual(SITE_LOCATIONS.temple_flame,{q:1,r:15,region:'kai_besil'},'Temple keyed cell changed');
         harnessAssert(KAI_BESIL_CURSED_REEF_CELLS.size===9 && kaiBesilHexes['11,11'].cursedReef===true,'Cursed Reef field was not marked on eastern reef hexes');
       }},
       {name:'v0.3.46 Kai Besil coordinates migrate to the published map',run:()=>{
         const legacy={...initialState(),version:'0.3.46',region:'kai_besil',hex:{q:4,r:-2},mode:'wilderness',location:null,party:harnessPartyFixture(),campaignCreated:true};
-        const migrated=migrateSave(legacy); harnessEqual(migrated.hex,{q:7,r:12},'Old Shipwreck Beach coordinate did not migrate');
+        const migrated=migrateSave(legacy); harnessEqual(migrated.hex,{q:6,r:11},'Old Shipwreck Beach coordinate did not migrate');
+      }},
+      {name:'v0.3.50 untouched Shipwreck Beach saves migrate from inland to the coast',run:()=>{
+        const legacy={...initialState(),version:'0.3.50',region:'kai_besil',hex:{q:7,r:12},mode:'wilderness',location:null,day:1,minutes:480,travelUsed:0,travelMinutesToday:0,previousHex:null,party:harnessPartyFixture(),campaignCreated:true,knownPlaces:['shipwreck'],visiblePlaces:['talamau']};
+        const migrated=migrateSave(legacy);
+        harnessEqual(migrated.hex,{q:6,r:11},'Untouched v0.3.50 campaign did not move to the corrected coastal wreck site');
+        harnessAssert(kaiBesilHexes[`${migrated.hex.q},${migrated.hex.r}`].site==='shipwreck','Migrated campaign did not remain at the persistent wreck site');
       }},
       {name:'Water hexes require a procured and boarded vessel',run:()=>{
         installKaiBesilHarnessFixture(); state.hex={q:6,r:12}; state.mode='wilderness';
@@ -10007,7 +10030,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const legacy={version:'0.3.44',campaignId:'legacy-harness',mode:'wilderness',hex:{q:0,r:0},location:null,day:1,minutes:480,party:harnessPartyFixture(),campaignCreated:true,knownPlaces:['obsolete_place'],knownSettlementPlaces:{old_port:['old_market']},rules:{weaponDamageMode:'MATRIX',weaponAudit:true,initiativeMode:'PHASED',developerMode:true}};
         const migrated=migrateSave(legacy);
         harnessAssert(migrated.region==='kai_besil','Earlier save did not migrate into the Kai Besil-only campaign');
-        harnessEqual(migrated.hex,{q:7,r:12},'Earlier save did not restart at Shipwreck Beach');
+        harnessEqual(migrated.hex,{q:6,r:11},'Earlier save did not restart at Shipwreck Beach');
         harnessAssert(migrated.party.length===harnessPartyFixture().length,'Earlier save migration discarded the existing party');
         harnessAssert(migrated.locationState?.shipwreck?.searched===false,'Kai Besil shipwreck state was not initialized during migration');
       }},
