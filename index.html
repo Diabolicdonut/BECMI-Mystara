@@ -431,7 +431,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.59';
+  const APP_VERSION = '0.3.60';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -637,27 +637,38 @@
     'Fire Priest': {hd:4, primes:['int'], armor:'none', weaponRule:'magic-user', spellbook:true, requires:a=>a.int>=9, unlock:'firePriest'}
   };
 
-  // BECMI advancement values used by this self-contained adventure. Thresholds
-  // are cumulative XP totals; Halflings retain their traditional level cap.
+  // Rules Cyclopedia cumulative XP totals. Human classes continue through 36th
+  // level; demihumans stop gaining class levels at their traditional caps.
   const XP_THRESHOLDS={
-    'Fighter':[0,2000,4000,8000,16000,32000,64000,120000,240000,360000],
-    'Cleric':[0,1500,3000,6000,12000,25000,50000,100000,200000,300000],
-    'Magic-User':[0,2500,5000,10000,20000,40000,80000,150000,300000,450000],
-    'Thief':[0,1200,2400,4800,9600,20000,40000,80000,160000,280000],
-    'Dwarf':[0,2200,4400,8800,17000,35000,70000,140000,270000,400000],
+    'Fighter':[0,2000,4000,8000,16000,32000,64000,120000,240000,360000,480000,600000,720000,840000,960000,1080000,1200000,1320000,1440000,1560000,1680000,1800000,1920000,2040000,2160000,2280000,2400000,2520000,2640000,2760000,2880000,3000000,3120000,3240000,3360000,3480000],
+    'Cleric':[0,1500,3000,6000,12000,25000,50000,100000,200000,300000,400000,500000,600000,700000,800000,900000,1000000,1100000,1200000,1300000,1400000,1500000,1600000,1700000,1800000,1900000,2000000,2100000,2200000,2300000,2400000,2500000,2600000,2700000,2800000,2900000],
+    'Magic-User':[0,2500,5000,10000,20000,40000,80000,150000,300000,450000,600000,750000,900000,1050000,1200000,1350000,1500000,1650000,1800000,1950000,2100000,2250000,2400000,2550000,2700000,2850000,3000000,3150000,3300000,3450000,3600000,3750000,3900000,4050000,4200000,4350000],
+    'Thief':[0,1200,2400,4800,9600,20000,40000,80000,160000,280000,400000,520000,640000,760000,880000,1000000,1120000,1240000,1360000,1480000,1600000,1720000,1840000,1960000,2080000,2200000,2320000,2440000,2560000,2680000,2800000,2920000,3040000,3160000,3280000,3400000],
+    'Dwarf':[0,2200,4400,8800,17000,35000,70000,140000,270000,400000,530000,660000],
     'Elf':[0,4000,8000,16000,32000,64000,120000,250000,400000,600000],
     'Halfling':[0,2000,4000,8000,16000,32000,64000,120000],
     'Fire Priest':[0,2501,5001,10001,20001,40001,80001,160001,320001,480002]
   };
-  const CLASS_LEVEL_CAP={'Halfling':8};
+  const CLASS_LEVEL_CAP={'Fighter':36,'Cleric':36,'Magic-User':36,'Thief':36,'Dwarf':12,'Elf':10,'Halfling':8,'Fire Priest':36};
+  const FIXED_HP_AFTER_NINTH={'Fighter':2,'Cleric':1,'Magic-User':1,'Thief':2,'Dwarf':3,'Elf':2,'Fire Priest':1};
   const CLASS_SAVE_BANDS={
-    'Fighter':[{level:1,v:[12,13,14,15,16]},{level:4,v:[10,11,12,13,14]},{level:7,v:[8,9,10,11,12]}],
-    'Cleric':[{level:1,v:[11,12,14,16,15]},{level:5,v:[9,10,12,14,13]},{level:9,v:[7,8,10,12,11]}],
-    'Magic-User':[{level:1,v:[13,14,13,16,15]},{level:6,v:[11,12,11,14,12]}],
-    'Thief':[{level:1,v:[13,14,13,16,15]},{level:5,v:[11,12,11,14,13]},{level:9,v:[9,10,9,12,11]}],
-    'Dwarf':[{level:1,v:[8,9,10,13,12]},{level:4,v:[6,7,8,10,10]},{level:7,v:[4,5,6,7,8]}],
-    'Elf':[{level:1,v:[12,13,13,15,15]},{level:4,v:[10,11,11,13,12]},{level:7,v:[8,9,9,10,10]}],
+    'Fighter':[{level:1,v:[12,13,14,15,16]},{level:4,v:[10,11,12,13,14]},{level:7,v:[8,9,10,11,12]},{level:10,v:[6,7,8,9,10]},{level:13,v:[6,6,7,8,9]},{level:16,v:[5,6,6,7,8]},{level:19,v:[5,5,6,6,7]},{level:22,v:[4,5,5,5,6]},{level:25,v:[4,4,5,4,5]},{level:28,v:[3,4,4,3,4]},{level:31,v:[3,3,3,2,3]},{level:34,v:[2,2,2,2,2]}],
+    'Cleric':[{level:1,v:[11,12,14,16,15]},{level:5,v:[9,10,12,14,13]},{level:9,v:[7,8,10,12,11]},{level:13,v:[6,7,8,10,9]},{level:17,v:[5,6,6,8,7]},{level:21,v:[4,5,5,6,5]},{level:25,v:[3,4,4,4,4]},{level:29,v:[2,3,3,3,3]},{level:33,v:[2,2,2,2,2]}],
+    'Magic-User':[{level:1,v:[13,14,13,16,15]},{level:6,v:[11,12,11,14,12]},{level:11,v:[9,10,9,12,9]},{level:16,v:[7,8,7,10,6]},{level:21,v:[5,6,5,8,4]},{level:25,v:[4,4,4,6,3]},{level:29,v:[3,3,3,4,2]},{level:33,v:[2,2,2,2,2]}],
+    'Thief':[{level:1,v:[13,14,13,16,15]},{level:5,v:[11,12,11,14,13]},{level:9,v:[9,10,9,12,11]},{level:13,v:[7,8,7,10,9]},{level:17,v:[5,6,5,8,7]},{level:21,v:[4,5,4,6,5]},{level:25,v:[3,4,3,4,4]},{level:29,v:[2,3,2,3,3]},{level:33,v:[2,2,2,2,2]}],
+    'Dwarf':[{level:1,v:[8,9,10,13,12]},{level:4,v:[6,7,8,10,9]},{level:7,v:[4,5,6,7,6]},{level:10,v:[2,3,4,4,3]}],
+    'Elf':[{level:1,v:[12,13,13,15,15]},{level:4,v:[8,10,10,11,11]},{level:7,v:[4,7,7,7,7]},{level:10,v:[2,4,4,3,3]}],
     'Halfling':[{level:1,v:[8,9,10,13,12]},{level:4,v:[5,6,7,9,8]},{level:7,v:[2,3,4,5,4]}]
+  };
+  const THIEF_SKILLS={
+    openLocks:[15,20,25,30,35,40,45,50,54,58,62,66,69,72,75,78,81,84,86,88,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120],
+    findTraps:[10,15,20,25,30,35,40,45,50,54,58,62,66,70,73,76,80,83,86,89,92,94,96,98,99,100,101,102,103,104,105,106,107,108,109,110],
+    removeTraps:[10,15,20,25,30,34,38,42,46,50,54,58,61,64,67,70,73,76,79,82,85,88,91,94,97,100,103,106,109,112,115,118,121,124,127,130],
+    climbWalls:[87,88,89,90,91,92,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,118,119,119,120],
+    moveSilently:[20,25,30,35,40,44,48,52,55,58,61,64,66,68,70,72,74,76,78,80,82,84,86,88,89,90,91,92,93,94,95,96,97,98,99,100],
+    hideShadows:[10,15,20,24,28,32,35,38,41,44,47,50,53,56,58,60,62,64,66,68,70,72,74,76,78,80,82,84,86,88,90,92,94,96,98,100],
+    pickPockets:[20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100,105,110,115,120,125,130,135,140,145,150,155,160,165,170,175,180,185,190,195],
+    hearNoise:[30,35,40,45,50,54,58,62,66,70,74,78,81,84,87,90,92,94,96,98,100,102,104,106,108,110,112,114,116,118,120,122,124,126,128,130]
   };
   // Mentzer/Rules Cyclopedia daily spell progressions. Human spellcasters are
   // represented through level 36; Elves retain their BECMI level-10 casting
@@ -1632,6 +1643,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     vessels:defaultKaiBesilVessels(),
     weather:{climateId:'tropical_island',day:null,landRoll:null,windRoll:null,windDirection:null,windOffset:0,history:[]},
     personnel:{sequence:0,roster:[],marketDay:null,market:{},lastPayrollDay:1},
+    retainerMarket:{searchedDay:null,reputationModifier:0,candidates:[]},
     logistics:{version:1,migrated:false,coinEn:0,coinAssignments:{},commodityAssignments:{},lastOptimizedAt:null},
     activeSpellEffects:[],
     pendingEncounter:null,
@@ -1669,6 +1681,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     xpLedger:{monsterXp:0,treasureXp:0,goalXp:0,awards:[],treasureKeys:{},settlements:[],nextAwardId:1},
     npcMemory:{},
     generatedWorld:{sequence:0,sites:{},hexSites:{},npcs:{},exploredHexes:{},specialEvents:{},discoveryPlan:null},
+    campaignOutcome:{status:'ongoing',completedAt:null,reason:null},
     campaignCreated:false,
     pendingMonsterXp:0,
     pendingClarification:null,
@@ -2123,6 +2136,70 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       if(state.treasuryCp>=cost){ state.treasuryCp-=cost; person.paidThroughDay=state.day+29; addEvent(`Automatically renewed ${person.name} through day ${person.paidThroughDay} for ${formatMoney(cost)}.`); }
       else { person.active=false; person.leftDay=state.day; addEvent(`${person.name} left when the expedition could not meet the next monthly wage.`); write(`${person.name} leaves service because the expedition cannot pay the next ${formatMoney(cost)} wage period.`,'warning'); }
     }
+    for(const retainer of state.party.filter(pc=>pc.isRetainer&&!pc.dead&&Number(pc.paidThroughDay)<Number(state.day))){
+      const cost=Math.max(0,Number(retainer.monthlyGp)||0)*100;
+      if(state.treasuryCp>=cost){ state.treasuryCp-=cost; retainer.paidThroughDay=state.day+29; addEvent(`Automatically renewed retainer ${retainer.name} through day ${retainer.paidThroughDay} for ${formatMoney(cost)}.`); }
+      else { retainer.retainerLeaving=true; retainer.retainerMorale=Math.max(2,Number(retainer.retainerMorale||7)-2); write(`${retainer.name}'s pay is overdue. The retainer will leave at the next safe settlement unless paid.`,'warning'); addEvent(`Retainer ${retainer.name} became unpaid on day ${state.day}.`); }
+    }
+  }
+
+  function ensureRetainerMarket(){
+    if(!state.retainerMarket||typeof state.retainerMarket!=='object'||Array.isArray(state.retainerMarket)) state.retainerMarket={searchedDay:null,reputationModifier:0,candidates:[]};
+    state.retainerMarket.candidates=Array.isArray(state.retainerMarket.candidates)?state.retainerMarket.candidates:[];
+    state.retainerMarket.reputationModifier=Math.max(-3,Math.min(3,Number(state.retainerMarket.reputationModifier)||0));
+    return state.retainerMarket;
+  }
+  function retainerEmployer(){ return livingParty().filter(pc=>!pc.isRetainer).sort((a,b)=>(b.abilities?.cha||0)-(a.abilities?.cha||0))[0]||null; }
+  function retainerLimit(){ const employer=retainerEmployer(); return employer?charismaProfile(employer.abilities?.cha||10).maxRetainers:0; }
+  function retainerKitIds(className){
+    return ({Fighter:['leather','shield','spear'],Cleric:['leather','shield','mace','holy_symbol'],'Magic-User':['dagger'],Thief:['leather','sword_short','thieves_tools'],Dwarf:['leather','shield','axe_hand'],Elf:['leather','shield','sword_short'],Halfling:['leather','shield','sword_short']})[className]||['dagger'];
+  }
+  function findRetainerCandidates(){
+    if(currentSettlementId()!=='talamau'){ write('Retainers can presently be sought only through local inquiry in Talamau.','warning'); return false; }
+    const market=ensureRetainerMarket();
+    if(Number(market.searchedDay)===Number(state.day)){ retainerMarketStatus(); return true; }
+    advanceClock(240,'The party spent four hours posting terms and interviewing possible adventuring retainers.'); market.searchedDay=state.day; market.candidates=[];
+    const count=rng(3)-1,classes=['Fighter','Fighter','Thief','Cleric','Magic-User'];
+    for(let i=0;i<count;i++){
+      const className=classes[rng(classes.length)-1],abilities={}; for(const key of ABILITIES) abilities[key]=rollDice(3,6).total;
+      if(!CLASS_RULES[className].requires||CLASS_RULES[className].requires(abilities)){
+        const sex=rng(2)===1?'Male':'Female',baseName=unusedNameFromPool(className,sex)||`Applicant ${i+1}`,name=market.candidates.some(row=>row.name===baseName)?`${baseName} ${i+2}`:baseName;
+        const built=buildLevelOneMember(name,className,abilities,randomAlignmentForClass(className),'A local adventurer seeking retainer service.',null,sex);
+        built.member.startingMoneyCp=0; built.member.startingMoneyUnspentCp=0;
+        market.candidates.push({id:`retainer-${state.day}-${i+1}`,name,className,member:built.member,interviewed:true});
+      }
+    }
+    addEvent(`Talamau retainer search produced ${market.candidates.length} suitable adventuring applicant${market.candidates.length===1?'':'s'}.`); retainerMarketStatus(); return true;
+  }
+  function retainerMarketStatus(){
+    const market=ensureRetainerMarket(),employer=retainerEmployer(),current=state.party.filter(pc=>pc.isRetainer&&!pc.dead).length;
+    const rows=market.candidates.map(candidate=>{ const m=candidate.member; return `${candidate.name} — ${candidate.className} 1; AC ${m.ac}; HP ${m.hp}; ${candidate.accepted?'already hired':'awaiting an offer'}`; });
+    write(`ADVENTURING RETAINERS — TALAMAU\nEmployer used for Charisma: ${employer?`${employer.name} (CHA ${employer.abilities?.cha}, adjustment ${employer.reactionAdjustment>=0?'+':''}${employer.reactionAdjustment})`:'none'}\nRetainer capacity: ${current}/${retainerLimit()}\n${rows.length?rows.join('\n'):'No suitable adventuring applicants have been found today.'}\nUse “seek retainers” once per day, then “offer <name> <gp> gp per month” (optionally add “and a treasure share”). Necessary starting armor and weapons are also bought from expedition funds if the offer is accepted.`,'system'); return true;
+  }
+  function offerRetainerContract(text){
+    if(currentSettlementId()!=='talamau'){ write('A retainer contract must be negotiated in Talamau.','warning'); return false; }
+    const market=ensureRetainerMarket(),available=market.candidates.filter(row=>!row.accepted),candidate=available.find(row=>String(text).toLowerCase().includes(row.name.toLowerCase()))||(available.length===1?available[0]:null);
+    if(!candidate){ write('Name exactly one current retainer applicant. Use “retainers” to review today’s interviews.','warning'); return false; }
+    const current=state.party.filter(pc=>pc.isRetainer&&!pc.dead).length;if(current>=retainerLimit()){ write('The party has reached the highest-Charisma employer’s BECMI retainer limit.','warning'); return false; }
+    const monthlyGp=Math.max(1,Math.floor(Number(/(\d+)\s*gp/i.exec(String(text||''))?.[1])||10)),treasureShare=/\btreasure share|share of treasure|half share|full share\b/i.test(text),employer=retainerEmployer();
+    const kitIds=retainerKitIds(candidate.className),kitCp=kitIds.reduce((sum,id)=>sum+Number(SHOP_ITEMS[id]?.priceCp||0),0),firstPayCp=monthlyGp*100,totalCp=kitCp+firstPayCp;
+    if(state.treasuryCp<totalCp){ write(`The first month plus necessary permanent equipment costs ${formatMoney(totalCp)}, but the treasury holds ${formatMoney(state.treasuryCp)}.`,'warning'); return false; }
+    let modifier=(Number(employer?.reactionAdjustment)||0)+(Number(market.reputationModifier)||0);
+    modifier+=(monthlyGp>=50?2:monthlyGp>=20?1:monthlyGp<10?-1:0)+(treasureShare?1:0);
+    let roll=0,adjusted=0,tries=0; do{ roll=rng(6)+rng(6); adjusted=Math.max(2,Math.min(12,roll+modifier)); tries++; }while(adjusted>=6&&adjusted<=8&&tries<4);
+    addEvent(`Retainer reaction: ${candidate.name}; 2d6 ${roll}; modifiers ${modifier>=0?'+':''}${modifier}; adjusted ${adjusted}; ${adjusted>=9?'accept':'refuse'}.`);
+    if(adjusted<9){ if(adjusted===2) market.reputationModifier=Math.max(-3,market.reputationModifier-1); write(`${candidate.name} refuses the offer${adjusted===2?' and is insulted; other local applicants will hear of it':''}.`,'warning'); return false; }
+    const member=candidate.member; member.isRetainer=true; member.retainerEmployer=employer?.name||null; member.monthlyGp=monthlyGp; member.paidThroughDay=state.day+29; member.treasureSharePromised=treasureShare; member.retainerMorale=Math.max(2,Math.min(12,Number(employer?.retainerMorale)||7)+(adjusted===12?1:0));
+    for(const itemId of kitIds) grantAutoItem(member,itemId);
+    state.treasuryCp-=totalCp; state.party.push(member); candidate.accepted=true; candidate.acceptedDay=state.day;
+    ensureLogisticsState({optimize:true}); addEvent(`${member.name} hired as an adventuring retainer for ${monthlyGp} gp/month; equipment ${formatMoney(kitCp)}; morale ${member.retainerMorale}.`);
+    write(`${member.name} accepts and joins as a ${member.className} retainer. First month ${monthlyGp} gp plus ${formatMoney(kitCp)} in permanent necessary equipment has been paid.${treasureShare?' A treasure share was also promised.':''} Retainer morale is ${member.retainerMorale}; the retainer counts against Charisma capacity and receives the campaign’s established half XP share.`,'system'); updatePanels(); return true;
+  }
+  function releaseRetainer(text){
+    const q=String(text||'').toLowerCase(),retainer=state.party.find(pc=>pc.isRetainer&&q.includes(pc.name.toLowerCase()));
+    if(!retainer) return false;
+    if(currentSettlementId()!=='talamau'){ write('A living retainer can be released safely only in a settlement, unless the NPC independently deserts because of morale or unpaid wages.','warning'); return true; }
+    state.party=state.party.filter(pc=>pc!==retainer); addEvent(`${retainer.name} was released from retainer service in Talamau.`); ensureLogisticsState({optimize:true}); write(`${retainer.name} leaves the expedition with personal equipment and receives no refund of prepaid wages.`,'system'); return true;
   }
 
   function ensureLogisticsState({optimize=false}={}){
@@ -2413,6 +2490,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     for(const pc of party){
       factor=Math.max(factor,1/deprivationProfile(pc).movementFraction);
       if(Number(pc.centipedeSickUntilAbsoluteMinute)>absoluteCampaignMinute()) factor=Math.max(factor,2);
+      if(pc.swimmingExhausted) factor=Math.max(factor,2);
     }
     return factor/longDistanceMovementFraction()/dailyLandWeatherMovementMultiplier();
   }
@@ -3138,7 +3216,24 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     write('Kitra points out the village dock; Kuwat’s Smithy & Chandlery, where rope, torches, rations, oil, and other provisions can be bought; Old Yuda’s carpenter yard; Batari’s guesthouse; Eko’s weaving house; Heinrich’s huntsman hut; the Old Academy; her own home; Kusar the healer; and the village shrine. The party is free to visit them or leave Talamau.','system');
     addEvent('Elder Kitra received the shipwrecked party, explained the failing volcanic wards, and oriented them to Talamau’s public locations.');
     look();
+    completeCampaignIfReady();
     return true;
+  }
+
+  function completeCampaignIfReady(){
+    const t=templeState();
+    if(!t.wardsRestored || currentSettlementId()!=='talamau') return false;
+    if(!state.campaignOutcome||typeof state.campaignOutcome!=='object') state.campaignOutcome={status:'ongoing',completedAt:null,reason:null};
+    if(state.campaignOutcome.status==='victory') return true;
+    state.campaignOutcome={status:'victory',completedAt:{day:state.day,minutes:state.minutes,location:state.location},reason:'The golden lantern and volcanic wards were restored, and the expedition returned safely to Talamau.'};
+    write('THE SMOKING PILLAR OF LAN YU — EXPEDITION COMPLETE. The warning brazier burns pure blue. Elder Kitra receives the returning party as the people of Talamau gather to hear that the ancient wards are restored. The campaign remains open for unfinished island sites, trade, recovery, and further expeditions.','system');
+    addEvent('Campaign victory recorded: wards restored and party returned to Talamau.'); updatePanels(); return true;
+  }
+  function campaignOutcomeStatus(){
+    const outcome=state.campaignOutcome||{status:'ongoing'};
+    const temple=templeState();
+    write(`CAMPAIGN OUTCOME\nStatus: ${String(outcome.status||'ongoing').toUpperCase()}\nGolden-lantern wards: ${temple.wardsRestored?'restored':temple.islandDestroyed?'failed; Kai Besil destroyed':'not yet restored'}\n${outcome.reason||'The expedition is still in progress.'}${outcome.completedAt?`\nRecorded: day ${outcome.completedAt.day}, ${clockText(outcome.completedAt.minutes)} at ${sites[outcome.completedAt.location]?.name||outcome.completedAt.location}`:''}`,'system');
+    return outcome.status;
   }
 
   function learnLocalPlace(siteId, announce=false){
@@ -4286,6 +4381,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     if(t.eruptionDueAbsoluteMinute && !t.wardsRestored && !t.islandDestroyed && afterAbsolute>=Number(t.eruptionDueAbsoluteMinute)){
       t.islandDestroyed=true; write('THE PILLAR OF LAN YU ERUPTS. Molten rock and scorching toxic gases overwhelm Kai Besil.','error'); addEvent('Kai Besil was destroyed by the eruption.');
       if(state.region==='kai_besil'){ for(const pc of state.party||[]) if(!pc.dead){ pc.hp=0; pc.dead=true; } }
+      state.campaignOutcome={status:'defeat',completedAt:{day:state.day,minutes:state.minutes,location:state.location},reason:'The volcanic wards failed and Kai Besil was destroyed.'};
     }
   }
   function advanceClock(minutes, reason) {
@@ -4358,7 +4454,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function canSee() {
     if (state.mode === 'wilderness') return true;
     const site = currentSite();
-    return Boolean(site?.outdoor || hasWorkingLight() || templeLocalLight());
+    return Boolean(site?.outdoor || hasWorkingLight() || templeLocalLight() || livingParty().some(pc=>['Dwarf','Elf'].includes(pc.className)));
   }
   function lightStatusText(){
     if(state.mode==='wilderness' || currentSite()?.outdoor) return daylight()?'daylight':'natural night/darkness';
@@ -4368,6 +4464,8 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const glowing=(state.party||[]).find(pc=>pc.glowingHands&&!pc.dead);
     if(glowing) return `${glowing.name}'s cursed glowing hands — torch-equivalent light`;
     if(templeLocalLight()) return state.location==='temple_12a'?'perpetual kitchen fire':'golden lantern light';
+    const infravision=livingParty().filter(pc=>['Dwarf','Elf'].includes(pc.className)).map(pc=>pc.name);
+    if(infravision.length) return `darkness — ${infravision.join(', ')} can guide by 60-foot infravision; other characters cannot see`;
     if(Number(state.torchMinutes)>0) return `complete darkness; a partially burned torch (${state.torchMinutes} minutes) is currently extinguished`;
     if(Number(state.lanternMinutes)>0) return `complete darkness; the lantern is out with ${state.lanternMinutes} minutes of oil remaining`;
     return 'complete darkness';
@@ -4815,6 +4913,52 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     advanceClock(10,`Crew spent one full turn repairing ${vessel.name} at sea.`); vessel.hullPoints++; vessel.hullPercent=Math.round(100*vessel.hullPoints/vessel.maxHullPoints); write(`Five or more crew spend a full turn repairing 1 hull point. ${vessel.name}: ${vessel.hullPoints}/${vessel.maxHullPoints} hull points.`,'system'); return true;
   }
 
+  function localWreck(){
+    return Object.values(state.vessels||{}).find(v=>!v.seaworthy&&Number(v.hex?.q)===Number(state.hex?.q)&&Number(v.hex?.r)===Number(state.hex?.r))||null;
+  }
+  function prepareToSwim(){
+    if(state.mode!=='wilderness'||!isKaiWaterTerrain(currentHex()?.terrain)){ write('Swimming-load preparation is only needed while stranded in a mapped water hex.','warning'); return false; }
+    const wreck=localWreck(); if(!wreck){ write('There is no local wreck or disabled craft on which to leave recoverable equipment. Transfer or discard loads explicitly before swimming.','warning'); return false; }
+    if(!Array.isArray(wreck.cargo)) wreck.cargo=[]; const moved=[];
+    for(const pc of livingParty()){
+      while(pcCarriedEncumbrance(pc)>400&&(pc.inventory||[]).length){
+        const ranked=(pc.inventory||[]).map((rec,index)=>({rec,index,total:(Number(rec.enc)||Number(SHOP_ITEMS[rec.itemId]?.enc)||0)*Math.max(1,Number(rec.qty)||1)})).sort((a,b)=>b.total-a.total);
+        const pick=ranked[0]; if(!pick||pick.total<=0) break;
+        const [rec]=pc.inventory.splice(pick.index,1); addInventoryRecord(wreck.cargo,{...rec,qty:undefined},Math.max(1,Number(rec.qty)||1)); moved.push(`${pc.name}: ${rec.name||SHOP_ITEMS[rec.itemId]?.name||rec.itemId}`);
+        if(pc.equippedWeapon?.itemId===rec.itemId) pc.equippedWeapon=null;
+        if(pc.equippedArmor?.itemId===rec.itemId) pc.equippedArmor=null;
+        if(rec.itemId==='shield') pc.equippedShield=false;
+        recalcMemberAc(pc);
+      }
+    }
+    const heavy=livingParty().filter(pc=>pcCarriedEncumbrance(pc)>400);
+    write(`${moved.length?`Recoverable loads are secured aboard ${wreck.name}: ${moved.join('; ')}.`:`No carried item needed to be left on ${wreck.name}.`}${heavy.length?` ${heavy.map(pc=>`${pc.name} (${pcCarriedEncumbrance(pc)} en)`).join(', ')} still exceed the 400 en BECMI swimming limit and must lighten their loads manually.`:' Every living adventurer is now at or below 400 en and can attempt a surface swim.'}`,heavy.length?'warning':'system');
+    return !heavy.length;
+  }
+  function swimWilderness(direction){
+    direction=normalizeDirection(direction)||String(direction||'').toLowerCase();
+    if(state.mode!=='wilderness'){ write('Long-distance swimming uses wilderness directions from the outdoor hex map.','warning'); return false; }
+    if(currentVessel()){ write(`The party is still aboard ${currentVessel().name}. Disembark or remain with the vessel rather than using the swimming procedure.`,'warning'); return false; }
+    const current=currentHex(),vector=HEX_DIRECTIONS[direction]; if(!vector){ write('Use swim north, northeast, southeast, south, southwest, or northwest.','warning'); return false; }
+    const destination=getHex(state.hex.q+vector.q,state.hex.r+vector.r); if(!destination){ write('That swim would leave the mapped waters around Kai Besil.','warning'); return false; }
+    if(!isKaiWaterTerrain(current?.terrain)&&!isKaiWaterTerrain(destination.terrain)){ write('There is no half-mile water crossing in that direction.','warning'); return false; }
+    const heavy=livingParty().filter(pc=>pcCarriedEncumbrance(pc)>400); if(heavy.length){ write(`BECMI weight drags down swimmers carrying more than 400 en. Lighten ${heavy.map(pc=>`${pc.name} (${pcCarriedEncumbrance(pc)} en)`).join(', ')} first${localWreck()?' or use “prepare to swim” to leave recoverable loads on the wreck':''}.`,'warning'); return false; }
+    const swimYardsPerRound=Math.max(1,Math.floor(Math.min(...livingParty().map(pc=>pcEncounterSpeed(pc)))*3/5));
+    let minutes=Math.max(10,Math.ceil((880/swimYardsPerRound)*10/60));
+    const weather=ensureDailyWeather(),dangerous=Boolean(current.terrain==='reef'||destination.terrain==='reef'||weather.windRoll>=10),failed=[];
+    if(dangerous&&livingParty().some(pc=>pc.swimmingExhausted)){ write('Exhausted swimmers must complete overnight rest before attempting another dangerous-water crossing.','warning'); return false; }
+    if(dangerous){
+      for(const pc of livingParty()){ const roll=rng(20),con=Math.max(1,Number(pc.abilities?.con)||10); addEvent(`Dangerous-water swimming check: ${pc.name} d20=${roll}, Constitution ${con}.`); if(roll>con) failed.push(pc); }
+      if(failed.length===livingParty().length){ for(const pc of failed) pc.swimmingExhausted=true; advanceClock(1,'The party attempted a dangerous-water swim but had to regain the wreckage or shore.'); write('Every swimmer loses headway in the rough water. The crossing is aborted before anyone is separated; all are exhausted and must rest before another dangerous swim.','error'); return false; }
+      if(failed.length){ for(const pc of failed) pc.swimmingExhausted=true; minutes*=2; write(`${failed.map(pc=>pc.name).join(', ')} ${failed.length===1?'falters':'falter'} in the rough water and ${failed.length===1?'is':'are'} supported by the other swimmers. The crossing takes twice as long, and the supported swimmers are exhausted until overnight rest.`,'warning'); }
+    }
+    if(!canSpendTravelEffort(minutes,{label:'make that surface swim'})) return false;
+    const origin={...state.hex}; state.hex={q:origin.q+vector.q,r:origin.r+vector.r}; state.previousHex=origin;
+    spendTravelEffort(minutes,`Party swam one half-mile hex ${direction} at one-fifth outdoor running speed.`,{countsAsTravel:true,encounters:!isKaiWaterTerrain(destination.terrain)});
+    if(destination.cursedReef) enterCursedReef(); resolveProceduralHexEntry(destination,state.hex); processWildernessHazards();
+    write(`The party completes the half-mile surface swim ${direction} in ${minutes} minutes and reaches ${destination.name}.`,'system'); updatePanels(); return true;
+  }
+
   function wildernessMove(direction,options={}) {
     direction=normalizeDirection(direction)||String(direction||'').toLowerCase();
     const believedVector = HEX_DIRECTIONS[direction];
@@ -4884,6 +5028,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       const roll=rng(100); galeShoreWreck=roll<=75;
       addEvent(`${vessel.name} gale shore-landing check: d100 ${roll}, wrecked on 01–75.`);
     }
+    for(const pc of livingParty()) if(pc.stealthState?.skill==='halflingHide') delete pc.stealthState;
     state.hex={q,r}; state.previousHex=origin;
     if(!options.backtracking) noteNavigationMovement(origin,direction);
     let createdTrail=null;
@@ -4952,9 +5097,15 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     if(dest==='sorrowful_gull_deck'&&!pirateCampShipAccess()){ write('Harshaw’s pirates block the way onto the Sorrowful Gull. The party needs permission, a successful bargain, or control of the camp before boarding the beached ship.','warning'); return false; }
     const blocked=doorBetween(state.location,dest); if(blocked){ state.pendingDoor={...blocked,direction}; if(blocked.braced) write(`The door ${direction} is physically braced shut. The brace must be removed, broken, or otherwise defeated before passage.`,'warning'); else write(`A locked door bars the way ${direction}. A thief may try to pick the lock; an appropriate key, Knock spell, or a physically destructive approach could also defeat the barrier.`,'warning'); return false; }
     if(state.pendingTempleHazard?.kind==='geyser' && state.location==='temple_14'){ state.pendingTempleHazard=null; write('The party scrambles clear just as boiling water blasts through the bathing chamber behind them.','system'); }
+    for(const pc of livingParty()) if(pc.stealthState?.skill==='halflingHide') delete pc.stealthState;
     const old=state.location; state.location=dest; state.pendingDoor=null; advanceExploration(10,`Party moved ${direction} from ${sites[old].name} to ${sites[dest].name}.`); look(); handleTempleRoomEntry(); handleGeneratedRoomEntry(); return true;
   }
-  function thiefLockChance(pc){ const table=[15,20,25]; return table[Math.min(2,Math.max(0,(Number(pc.level)||1)-1))]; }
+  function thiefSkillChance(pc,skill,modifier=0){
+    const table=THIEF_SKILLS[skill]||[];
+    const raw=Number(table[Math.min(table.length-1,Math.max(0,(Number(pc?.level)||1)-1))]||0)+Number(modifier||0);
+    return skill==='pickPockets'?Math.max(1,raw):Math.max(1,Math.min(99,raw));
+  }
+  function thiefLockChance(pc){ return thiefSkillChance(pc,'openLocks'); }
   function pickPendingLock(){
     const d=state.pendingDoor; if(!d?.locked){ write('There is no locked door currently blocking the party.','warning'); return false; }
     if(!partyHasItem('thieves_tools')){ write('Opening a lock with the thief ability requires thieves’ tools.','warning'); return false; }
@@ -4980,7 +5131,13 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     advanceExploration(10,`Party spent one exploration turn listening at ${currentSite().name}.`); let heard=false;
     const t=templeState();
     for(const pc of livingParty()){
-      const trained=['Dwarf','Elf','Halfling'].includes(pc.className)||(pc.className==='Thief'&&(pc.level||1)<=2); const roll=rng(6),success=roll<=(trained?2:1); addEvent(`Hidden listening check: ${pc.name} 1d6=${roll}; success ${trained?'1–2':'1'}.`); if(success) heard=true;
+      if(pc.className==='Thief'){
+        const roll=rng(100),chance=thiefSkillChance(pc,'hearNoise'),success=roll<=chance;
+        addEvent(`Hidden Hear Noise check: ${pc.name} d100=${roll}; needs ${chance}%.`); if(success) heard=true;
+      }else{
+        const trained=['Dwarf','Elf','Halfling'].includes(pc.className),roll=rng(6),success=roll<=(trained?2:1);
+        addEvent(`Hidden listening check: ${pc.name} 1d6=${roll}; success ${trained?'1–2':'1'}.`); if(success) heard=true;
+      }
     }
     let sound='No distinct sound can be made out.';
     if(heard && state.location==='temple_15' && !t.resolvedEncounters.room15) sound='Wet gnawing and tiny scraping noises come from within the dining hall.';
@@ -4992,11 +5149,101 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function searchForTraps(){
     if(state.mode!=='site'){ write('No specific dungeon feature is being examined for traps.','warning'); return false; }
     if(!canSee()){ write('The party cannot make a careful trap search in complete darkness.','warning'); return false; }
-    const thieves=livingParty().filter(pc=>pc.className==='Thief'); if(!thieves.length){ advanceExploration(10,'Party examined the area for obvious hazards.'); write('No thief is present to use the BECMI Find Traps ability. No obvious trap is found.','warning'); return false; }
-    advanceExploration(10,`Thieves searched ${currentSite().name} for traps.`); const trap=currentSite().trap||null; let found=false;
-    for(const thief of thieves){ const t=templeState(),key=`trap:${state.location}:${thief.name.toLowerCase()}:L${thief.level||1}`; if(t.lockAttempts[key]) continue; t.lockAttempts[key]=true; const chance=[10,15,20][Math.min(2,Math.max(0,(Number(thief.level)||1)-1))],roll=rng(100); addEvent(`Hidden Find Traps: ${thief.name} d100=${roll}, needs ${chance}%.`); if(trap&&roll<=chance) found=true; }
+    const thieves=livingParty().filter(pc=>pc.className==='Thief'),dwarves=livingParty().filter(pc=>pc.className==='Dwarf');
+    if(!thieves.length&&!dwarves.length){ advanceExploration(10,'Party examined the area for obvious hazards.'); write('No thief is present to use Find Traps and no dwarf is present to inspect stonework. No obvious trap is found.','warning'); return false; }
+    advanceExploration(10,`Party searched ${currentSite().name} for traps.`); const trap=currentSite().trap||null; let found=false;
+    for(const thief of thieves){ const t=templeState(),key=`trap:${state.location}:${thief.name.toLowerCase()}:L${thief.level||1}`; if(t.lockAttempts[key]) continue; t.lockAttempts[key]=true; const chance=thiefSkillChance(thief,'findTraps'),roll=rng(100); addEvent(`Hidden Find Traps: ${thief.name} d100=${roll}, needs ${chance}%.`); if(trap&&roll<=chance) found=true; }
+    // Dwarves detect traps only when they are built into stonework or heavy
+    // construction.  This is a separate 1-in-3 racial procedure, not a second
+    // use of the thief percentage table.
+    if(trap&&trap.stonework!==false){
+      for(const dwarf of dwarves){ const attempts=templeState().lockAttempts,key=`dwarf-stonework:${state.location}:${trap.id||'trap'}:${dwarf.name.toLowerCase()}`; if(attempts[key]) continue; attempts[key]=true; const roll=rng(6); addEvent(`Hidden dwarf stonework detection: ${dwarf.name} 1d6=${roll}, succeeds on 1–2.`); if(roll<=2) found=true; }
+    }
     if(found) ensurePhysicalState().knownTraps[state.location]=true;
     write(found?(trap.playerText||'A trap is discovered.'):'The search reveals no trap.'); return found;
+  }
+  function removeCurrentTrap(){
+    if(state.mode!=='site'){ write('There is no identified dungeon trap here to remove.','warning'); return false; }
+    const trap=currentSite()?.trap,ps=ensurePhysicalState();
+    if(!trap || !ps.knownTraps[state.location]){ write('The party must find a specific trap before a thief can remove it.','warning'); return false; }
+    const objectKey=`trap:${state.location}:${trap.id||'trap'}`,obj=physicalObjectState(objectKey,{kind:'trap',triggeredCount:0,disabled:false});
+    if(obj.disabled){ write('That trap has already been disabled.'); return true; }
+    const thief=livingParty().filter(pc=>pc.className==='Thief').sort((a,b)=>thiefSkillChance(b,'removeTraps')-thiefSkillChance(a,'removeTraps'))[0];
+    if(!thief){ write('No thief is present to use Remove Traps.','warning'); return false; }
+    const attempts=templeState().lockAttempts,key=`remove:${state.location}:${trap.id||'trap'}:${thief.name.toLowerCase()}:L${thief.level||1}`;
+    if(attempts[key]){ write(`${thief.name} cannot try to remove this trap again until gaining a level.`,'warning'); return false; }
+    attempts[key]=true; advanceExploration(10,`${thief.name} attempted to remove the identified trap.`);
+    const chance=thiefSkillChance(thief,'removeTraps'),roll=rng(100); addEvent(`Hidden Remove Traps: ${thief.name} d100=${roll}, needs ${chance}%.`);
+    if(roll<=chance){ obj.disabled=true; write(`${thief.name} disables the ${trap.label||'trap'}.`,'system'); return true; }
+    obj.triggeredCount=(Number(obj.triggeredCount)||0)+1;
+    const expr=trap.effect?.damageDice||trap.damageDice||null;
+    if(expr){ const damage=rollDamageExpression(expr).total; damagePc(thief,damage,`${trap.label||'trap'} triggered during removal`); write(`${thief.name}'s failed removal triggers the ${trap.label||'trap'} for ${damage} damage.`,'error'); }
+    else write(`${thief.name}'s failed removal triggers the ${trap.label||'trap'}. Resolve its described effect now.`,'error');
+    return false;
+  }
+  function attemptThiefStealth(text,skill){
+    const named=namedPcsInText(text).filter(pc=>pc.className==='Thief'),thief=named[0]||livingParty().find(pc=>pc.className==='Thief');
+    if(!thief){ write('No thief is available to attempt that ability.','warning'); return false; }
+    const chance=thiefSkillChance(thief,skill),roll=rng(100),success=roll<=chance;
+    thief.stealthState={skill,hidden:success,attemptedAt:{day:state.day,minutes:state.minutes,location:state.location||`${state.hex.q},${state.hex.r}`}};
+    if(state.mode==='site') advanceExploration(10,`${thief.name} attempted ${skill==='moveSilently'?'to move silently':'to hide in shadows'}.`); else advanceClock(10,`${thief.name} attempted ${skill==='moveSilently'?'to move silently':'to hide in shadows'}.`);
+    addEvent(`Hidden ${skill==='moveSilently'?'Move Silently':'Hide in Shadows'}: ${thief.name} d100=${roll}, needs ${chance}%.`);
+    write(`${thief.name} ${skill==='moveSilently'?'moves with painstaking care':'settles into the available shadows'}. As in BECMI play, the thief cannot know whether the attempt fooled every observer.`,'system'); return true;
+  }
+  function attemptThiefClimb(text){
+    const named=namedPcsInText(text).filter(pc=>pc.className==='Thief'),thief=named[0]||livingParty().find(pc=>pc.className==='Thief');
+    if(!thief){ write('No thief is available to use Climb Walls.','warning'); return false; }
+    const feet=Math.max(10,Math.min(1000,Number(/(\d+)\s*(?:ft|feet|foot)/i.exec(String(text||''))?.[1])||10));
+    const checks=Math.max(1,Math.ceil(feet/100)),chance=thiefSkillChance(thief,'climbWalls');
+    for(let segment=1;segment<=checks;segment++){
+      const roll=rng(100); addEvent(`Hidden Climb Walls check ${segment}/${checks}: ${thief.name} d100=${roll}, needs ${chance}%.`);
+      if(roll>chance){ const climbed=Math.min(feet,(segment-1)*100+50),units=Math.max(1,Math.floor(climbed/10)),damage=climbed<=10?1:rollDice(units,6).total; damagePc(thief,damage,'fall while climbing'); write(`${thief.name} slips about halfway through a climb segment, falls ${Math.max(10,climbed)} feet, and takes ${damage} damage.`,'error'); return false; }
+    }
+    const minutes=Math.max(10,checks*10); if(state.mode==='site') advanceExploration(minutes,`${thief.name} climbed ${feet} feet of sheer surface.`); else advanceClock(minutes,`${thief.name} climbed ${feet} feet of sheer surface.`);
+    write(`${thief.name} successfully climbs the ${feet}-foot surface.`,'system'); return true;
+  }
+  function attemptThiefPickPockets(text){
+    const named=namedPcsInText(text).filter(pc=>pc.className==='Thief'),thief=named[0]||livingParty().find(pc=>pc.className==='Thief');
+    if(!thief){ write('No thief is available to use Pick Pockets.','warning'); return false; }
+    const targetText=String(text||'').replace(/^.*?pick(?:s)? (?:the )?pockets? (?:of )?/i,'').trim(),npc=resolveSceneNpc(targetText);
+    if(!npc){ write('Name one NPC who is actually present. The engine will not invent a victim or pocket contents.','warning'); return false; }
+    const victimLevel=Math.max(0,Number(npc.profile.level)||0),chance=thiefSkillChance(thief,'pickPockets',-5*victimLevel),roll=rng(100),success=roll<=chance,caught=!success&&(roll===100||roll>2*chance);
+    advanceClock(10,`${thief.name} attempted to pick ${npc.profile.name}'s pocket.`);
+    addEvent(`Hidden Pick Pockets: ${thief.name} d100=${roll}, adjusted chance ${chance}% against ${npc.profile.name}${victimLevel?` (level/HD ${victimLevel})`:''}; ${success?'success':caught?'caught':'failure'}.`);
+    const memory=ensureNpcMemory(npc.id,npc.profile); memory.met=true; memory.lastDay=state.day; memory.lastMinute=state.minutes;
+    if(success){ memory.exchanges.push({day:state.day,minutes:state.minutes,verb:'pick_pockets',topic:'unnoticed attempt',outcome:'success'}); write(`${thief.name}'s hand reaches the intended pocket without attracting notice. No object is taken because none was named or established in the NPC's carried possessions.`,'system'); }
+    else if(caught){ memory.trust=Math.max(-5,memory.trust-2); memory.exchanges.push({day:state.day,minutes:state.minutes,verb:'pick_pockets',topic:'caught',outcome:'caught'}); write(`${npc.profile.name} catches ${thief.name} in the act. Trust falls sharply, and the social consequence is now persistent.`,'error'); }
+    else write(`${thief.name} cannot reach the intended pocket, but the failure goes unnoticed.`,'warning');
+    memory.exchanges=memory.exchanges.slice(-40); return success;
+  }
+  function attemptThiefReadLanguages(text){
+    const named=namedPcsInText(text).filter(pc=>pc.className==='Thief'),thief=named[0]||livingParty().find(pc=>pc.className==='Thief');
+    if(!thief || Number(thief.level)<4){ write('Read Languages requires a thief of 4th level or higher.','warning'); return false; }
+    const key=`read:${state.location||`${state.hex.q},${state.hex.r}`}:${String(text||'writing').toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(-60)}:L${thief.level}`;
+    const attempts=templeState().lockAttempts;
+    if(attempts[key]){ write(`${thief.name} cannot retry this writing until gaining a level.`,'warning'); return false; }
+    attempts[key]=true; const roll=rng(100),success=roll<=80; advanceClock(10,`${thief.name} attempted to read unfamiliar writing.`); addEvent(`Hidden Read Languages: ${thief.name} d100=${roll}, needs 80%.`);
+    write(success?`${thief.name} can interpret the ordinary writing, code, or map. Describe the established text to the referee for its exact meaning.`:`${thief.name} cannot decipher it and may not try this same writing again until gaining a level.`,success?'system':'warning'); return success;
+  }
+  function attemptHalflingHide(text){
+    const named=namedPcsInText(text).filter(pc=>pc.className==='Halfling'),halfling=named[0]||livingParty().find(pc=>pc.className==='Halfling');
+    if(!halfling){ write('No halfling is available to use the woodland hiding ability.','warning'); return false; }
+    const hex=state.mode==='wilderness'?currentHex():null,site=currentSite();
+    const outdoors=state.mode==='wilderness'||Boolean(site?.outdoor),woodland=outdoors&&Boolean(state.mode!=='wilderness'||['light_jungle','heavy_jungle','forest','swamp'].includes(hex?.terrain));
+    const brilliantIndoor=state.mode==='site'&&!site?.outdoor&&Boolean(state.incenseLit||templeLocalLight());
+    const chance=woodland?90:(!outdoors&&!brilliantIndoor?33:0);
+    if(!chance){ write(outdoors?'There is not enough woodland cover here for the halfling’s 90% hiding ability.':'The present light leaves no deep shadow or cover for the halfling’s indoor hiding ability.','warning'); return false; }
+    const roll=rng(100),success=roll<=chance;
+    halfling.stealthState={skill:'halflingHide',hidden:success,motionless:true,attemptedAt:{day:state.day,minutes:state.minutes,location:state.location||`${state.hex.q},${state.hex.r}`}};
+    if(state.mode==='site') advanceExploration(10,`${halfling.name} concealed themself motionless in ${woodland?'woodland cover':'deep indoor shadow'}.`); else advanceClock(10,`${halfling.name} concealed themself motionless in woodland cover.`);
+    addEvent(`Hidden halfling hiding check: ${halfling.name} d100=${roll}, needs ${chance}%.`);
+    write(`${halfling.name} settles motionless into ${woodland?'the natural cover':'deep shadow'}. As with thief stealth, the character cannot know whether every observer was fooled.`,'system'); return true;
+  }
+  function thiefAbilityStatus(query=''){
+    const thieves=String(query||'').trim()?[findPc(query)].filter(pc=>pc?.className==='Thief'):state.party.filter(pc=>pc.className==='Thief');
+    if(!thieves.length){ write('No matching thief is in the party.','warning'); return false; }
+    const label={openLocks:'OL',findTraps:'FT',removeTraps:'RT',climbWalls:'CW',moveSilently:'MS',hideShadows:'HS',pickPockets:'PP',hearNoise:'HN'};
+    write(`THIEF ABILITIES\n${thieves.map(pc=>`${pc.name} — level ${pc.level}: ${Object.keys(label).map(skill=>`${label[skill]} ${thiefSkillChance(pc,skill)}%`).join('; ')}; Backstab +4 / double weapon damage; ${pc.level>=4?'Read Languages 80%':'Read Languages at level 4'}; ${pc.level>=10?'may use magic-user scrolls with 10% backfire':'magic-user scroll use at level 10'}`).join('\n')}`,'system'); return true;
   }
   function useMirror(direction=null){
     if(!partyHasItem('mirror')){ write('The party has no hand mirror.','warning'); return false; } if(!canSee()){ write('A mirror cannot show anything without light.','warning'); return false; }
@@ -5071,6 +5318,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     advanceExploration(10,`Party entered ${sites[hex.site].name}.`);
     if(currentSafeHavenId()) settlePendingXp({automatic:true});
     if(hex.site==='talamau' && handleTalamauFirstArrival()) return true;
+    if(hex.site==='talamau') completeCampaignIfReady();
     if(hex.site==='pirate_camp' && !ensurePirateCampState().cleared){
       ensureKaiBesilWorldState();
       const camp=ensurePirateCampState();
@@ -5258,6 +5506,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     state.location = siteId;
     advanceClock(10,`Party went to ${site.name}.`);
     if(currentSafeHavenId()) settlePendingXp({automatic:true});
+    completeCampaignIfReady();
     look();
     return true;
   }
@@ -5372,6 +5621,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
   function finishOvernightRest(progress){
     const t=ensureTravelSystemState();
+    for(const pc of livingParty()) delete pc.swimmingExhausted;
     if(t.traveledSinceRest) t.unrestedTravelDays++;
     if(t.forcedMarchUsed) t.forcedRestDaysOwed=Math.max(1,t.forcedRestDaysOwed);
     state.travelMinutesToday=0; state.travelUsed=0; state.wildernessEncounterMinutes=0;
@@ -5395,6 +5645,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
   function finishFullRestDay(progress){
     const t=ensureTravelSystemState(), healing=healAfterFullRestDay();
+    for(const pc of livingParty()) delete pc.swimmingExhausted;
     state.travelMinutesToday=0; state.travelUsed=0; state.wildernessEncounterMinutes=0;
     t.unrestedTravelDays=0; t.forcedRestDaysOwed=0; t.forcedMarchDeclared=false; t.forcedMarchUsed=false; t.foragingWhileTraveling=false; t.foragingResolved=false; t.traveledSinceRest=false; t.campProgress=null;
     restoreDailySpells();
@@ -5518,7 +5769,10 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const [death,wands,paralysis,breath,spells]=chosen.v;
     return {death,wands,paralysis,breath,spells};
   }
-  function thac0ForLevel(level=1){ return level>=10?13:level>=7?15:level>=4?17:19; }
+  function thac0ForLevel(level=1){
+    const l=Math.max(1,Math.min(36,Number(level)||1));
+    return 19-2*Math.floor((l-1)/3);
+  }
   function spellSlotsFor(className,level=1){
     const table=SPELL_SLOTS[className]; if(!table) return [];
     return [...(table[Math.min(Number(level)||1,table.length-1)]||[])];
@@ -5659,13 +5913,16 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       const needed=nextLevelXp(member); if(needed==null || Number(member.xp||0)<needed) break;
       member.level=(member.level||1)+1; gained++;
       const hd=CLASS_RULES[member.className]?.hd||4;
-      const hpRoll=rollDice(1,hd).total;
-      const hpGain=Math.max(1,hpRoll+abilityAdjustment(member.abilities?.con||10));
+      const afterNinth=member.level>=10;
+      const hpRoll=afterNinth?null:rollDice(1,hd);
+      const hpGain=afterNinth
+        ? Math.max(1,Number(FIXED_HP_AFTER_NINTH[member.className])||1)
+        : Math.max(1,hpRoll.total+abilityAdjustment(member.abilities?.con||10));
       member.maxHp=Math.max(1,Number(member.maxHp)||1)+hpGain;
       if(!member.dead) member.hp=Math.min(member.maxHp,Math.max(1,Number(member.hp)||1)+hpGain);
       refreshMemberAdvancement(member);
       const teacherSpell=grantTeacherSpell(member,member.level,{announce:false});
-      write(`${member.name} advances to ${member.className} level ${member.level}, gaining ${hpGain} hit point${hpGain===1?'':'s'}.`,'system');
+      write(`${member.name} advances to ${member.className} level ${member.level}, gaining ${hpGain} hit point${hpGain===1?'':'s'}${afterNinth?' (fixed post-9th-level increase; no Constitution adjustment)':''}.`,'system');
       if(teacherSpell) write(`${member.name}'s teacher-supplied lesson is entered in the spellbook: ${teacherSpell.spell} (level ${teacherSpell.spellLevel}). It may be prepared after a full night's rest.`,'system');
       addEvent(`${member.name} advanced to ${member.className} ${member.level}; hit points increased by ${hpGain}${teacherSpell?`; teacher spell ${teacherSpell.spell} added`:''}.`);
     }
@@ -5826,7 +6083,8 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       const sv=member.saves||{}; const saveLine=sv.death?`\n  Saves: Death/Poison ${sv.death}; Wands ${sv.wands}; Paralysis/Stone ${sv.paralysis}; Breath ${sv.breath}; Rod/Staff/Spell ${sv.spells}${member.spellSaveAdjustment?` (Wis ${member.spellSaveAdjustment>0?'+':''}${member.spellSaveAdjustment} to roll)`:''}`:'';
       const survival=(member.rationlessDays||member.deprivationHpLost)?`\n  Survival: ${member.rationlessDays||0} rationless day(s), ${member.deprivationHpLost||0} deprivation HP lost; movement ×${deprivationProfile(member).movementFraction}, attack ${deprivationProfile(member).attackPenalty}, overnight rest ${Math.max(8,deprivationProfile(member).restHours)} hr`:'';
       const held=heldByName.get(member.name)||0;
-      return `${member.name}${life} — ${member.className || member.role} ${member.level || 1}; ${member.alignment}; XP ${member.xp || 0}${held?` + ${held} held until safe return`:''} (${advancement}); HP ${member.hp}/${member.maxHp}; AC ${member.ac}; THAC0 ${member.thac0||19}\n  ${stats}\n  Weapon: ${weapon}; Armor: ${armor}${shield}${spells}${fire}${saveLine}${survival}`;
+      const retainer=member.isRetainer?`\n  Retainer: employer ${member.retainerEmployer||'party'}; ${member.monthlyGp||0} gp/month through day ${member.paidThroughDay??'—'}; morale ${member.retainerMorale||7}${member.treasureSharePromised?'; treasure share promised':''}`:'';
+      return `${member.name}${life} — ${member.className || member.role} ${member.level || 1}; ${member.alignment}; XP ${member.xp || 0}${held?` + ${held} held until safe return`:''} (${advancement}); HP ${member.hp}/${member.maxHp}; AC ${member.ac}; THAC0 ${member.thac0||19}\n  ${stats}\n  Languages: ${(member.languages||startingLanguages(member.className,member.alignment)).join(', ')}\n  Weapon: ${weapon}; Armor: ${armor}${shield}${retainer}${spells}${fire}${saveLine}${survival}`;
     }).join('\n\n'));
   }
 
@@ -6242,6 +6500,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     }
     c.pcOrders=c.pcOrders&&typeof c.pcOrders==='object'?c.pcOrders:{};
     c.monsterOrders=c.monsterOrders&&typeof c.monsterOrders==='object'?c.monsterOrders:{};
+    c.turnAttempts=c.turnAttempts&&typeof c.turnAttempts==='object'&&!Array.isArray(c.turnAttempts)?c.turnAttempts:{};
     // Referee-defined tactical formations. Unlike partyGroups these are encounter-
     // scoped because hostile organization can change from one encounter to the next.
     c.monsterGroups=c.monsterGroups&&typeof c.monsterGroups==='object'&&!Array.isArray(c.monsterGroups)?c.monsterGroups:{};
@@ -6590,7 +6849,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function setCombatPcPosition(pc,value){
     if(!combatActive()) return;
     if(!state.combat.positions) state.combat.positions={pcs:{},monsters:{}};
-    state.combat.positions.pcs[pc.name.toLowerCase()]=Number(value)||0;
+    const before=Number(state.combat.positions.pcs[pc.name.toLowerCase()])||0,after=Number(value)||0;
+    if(before!==after&&pc.stealthState?.skill==='halflingHide') delete pc.stealthState;
+    state.combat.positions.pcs[pc.name.toLowerCase()]=after;
   }
   function setCombatMonsterPosition(monster,value){
     if(!combatActive()) return;
@@ -6633,6 +6894,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const step=Math.min(speed,gap);
     const next=start+(target>start?step:-step);
     setCombatMonsterPosition(monster,next);
+    const chargeThreshold=combatDistanceUnit()==='yd'?20:60,order=state.combat?.monsterOrders?.[monster.id];
+    if(order?.charge&&step>=chargeThreshold) monster.chargedThisRound=true;
     const remain=Math.abs(target-next);
     if(remain<=0){ setEngagement(pc,monster); write(`${monster.name} closes ${combatDistanceLabel(step)} and engages ${pc.name}.`,'system'); return true; }
     write(`${monster.name} advances ${combatDistanceLabel(step)} toward ${pc.name}; ${combatDistanceLabel(remain)} remain.`,'system');
@@ -6676,6 +6939,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       }
     }
     const ends=active.map(combatMonsterPosition);
+    const chargeThreshold=combatDistanceUnit()==='yd'?20:60;
+    for(let i=0;i<active.length;i++) if(orders.get(active[i].id)?.charge&&Math.abs(ends[i]-starts[i])>=chargeThreshold) active[i].chargedThisRound=true;
     const formed=ends.every(pos=>Math.abs(pos-ends[0])<1e-9);
     if(formed){
       for(const monster of active){
@@ -7009,10 +7274,17 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     write(`WEAPON AUDIT — ${labelA} → ${labelT}: RAW ${result.raw} [${result.rawExpr}] · MATRIX ${result.matrix} [${result.matrixExpr}] · applied ${result.active} ${result.applied}.`,'system');
   }
 
-  function effectivePcAc(pc,attackKind='melee'){
+  function monsterLargerThanManSized(monster){
+    if(!monster?.type) return false;
+    if(['large','huge','giant','gargantuan','enormous'].includes(String(monster.size||'').toLowerCase())) return true;
+    return monster.kind!=='humanoid' && Number(monster.hd)>=4;
+  }
+
+  function effectivePcAc(pc,attackKind='melee',attacker=null){
     let ac=Number(pc.ac??9);
     if(pc.shieldSpellRounds>0) ac=Math.min(ac,attackKind==='missile'?2:4);
     if(pc.retreatingThisRound && pc.equippedShield) ac+=1;
+    if(pc.className==='Halfling'&&monsterLargerThanManSized(attacker)) ac-=2;
     return ac;
   }
 
@@ -7023,11 +7295,13 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       mod+=attacker.daylightPenalty && daylight() && outdoors ? attacker.daylightPenalty : 0;
     } else {
       mod+=abilityAdjustment(kind==='melee'?(attacker.abilities?.str??10):(attacker.abilities?.dex??10));
+      if(kind==='missile'&&attacker.className==='Halfling') mod+=1;
       mod+=Number(attacker.equippedWeapon?.magicBonus||0);
       if(attacker.stitchedTo) mod-=2;
+      if(attacker.swimmingExhausted) mod-=2;
       mod+=deprivationProfile(attacker).attackPenalty+longDistanceTravelPenalty();
     }
-    const targetAc=target.type ? target.ac : effectivePcAc(target,kind);
+    const targetAc=target.type ? target.ac : effectivePcAc(target,kind,attacker);
     const thac0=attacker.thac0||19; const needed=thac0-targetAc;
     const total=d20+mod;
     // The RC attack tables can require totals above 20 against extreme ACs. A
@@ -7166,27 +7440,64 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(kind==='missile'){
       if(!missileCapable(item)){ write(`${pc.name}'s ${item.name} is not currently being treated as a missile weapon in this core pass.`, 'warning'); return; }
       if(pcCurrentlyEngaged(pc) && item?.missile){ write(`${pc.name} is engaged hand-to-hand and cannot use a missile-fire device at melee distance.`,'warning'); return; }
+      if(item.itemId==='burning_oil'&&!hasWorkingLight()){ write(`${pc.name} needs a burning torch, lantern, or similar lit object to ignite and throw the oil in one round.`,'warning'); return; }
       if(item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18 && pc.heavyCrossbowNeedsReload){
         pc.heavyCrossbowNeedsReload=false;
         write(`${pc.name} spends the missile action reloading the heavy crossbow; Strength below 18 limits it to one shot every two rounds.`,'system'); return;
       }
       const ammo=consumeAmmo(pc,item.itemId); if(!ammo.ok){ write(`${pc.name} has no ${ammo.label}s available for ${item.name}.`,'warning'); return; }
     }
-    const result=attackRoll(pc,monster,kind,kind==='missile'?(rangeBand==='short'?1:rangeBand==='long'?-1:0):0);
+    const expendableThrown=kind==='missile'&&['holy_water','burning_oil'].includes(item?.itemId);
+    if(expendableThrown){
+      const own=takeOneItem(pc.inventory||[],item.itemId); if(!own&&!consumeInventoryItem(item.itemId,1)){ write(`${pc.name} has no ${item.name} left to throw.`,'warning'); return; }
+      if(!(pc.inventory||[]).some(rec=>rec.itemId===item.itemId&&Number(rec.qty)>0)) pc.equippedWeapon=null;
+    }
+    const order=state.combat?.pcOrders?.[pc.name.toLowerCase()]||{};
+    const forbiddenBackstabWeapons=new Set(['staff','spear','polearm','sword_twohanded','axe_battle','bow_short','bow_long','crossbow_light','crossbow_heavy']);
+    const backstabReady=kind==='melee' && Boolean(order.backstab) && item && !forbiddenBackstabWeapons.has(item.itemId) && (Boolean(pc.stealthState?.hidden)||state.combat?.surpriseRoundPending==='pc');
+    if(order.backstab && !backstabReady) write(`${pc.name} cannot make a BECMI backstab because the target is aware of the approach or the equipped weapon is not a one-handed melee weapon; this resolves as an ordinary attack.`,'warning');
+    const result=attackRoll(pc,monster,kind,(kind==='missile'?(rangeBand==='short'?1:rangeBand==='long'?-1:0):0)+(backstabReady?4:0));
     const modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
     const attackName=item?.name||'unarmed strike';
     write(`${pc.name} attacks ${monster.name} with ${attackName}: d20 ${result.d20}${modText} = ${result.total} — ${result.hit?'HIT':'miss'}.`);
     if(kind==='missile' && item.itemId==='crossbow_heavy' && (pc.abilities?.str??10)<18) pc.heavyCrossbowNeedsReload=true;
-    if(!result.hit) return;
+    if(!result.hit){ if(order.backstab) delete pc.stealthState; return; }
+    if(item.itemId==='holy_water'){
+      if(monster.kind!=='undead'){ write(`The holy water splashes ${monster.name}, but BECMI holy water inflicts weapon damage only on undead.`,'warning'); return; }
+      const damage=rng(8); write(`${pc.name}'s holy water burns the undead creature for ${damage} damage.`,'system'); damageMonster(monster,damage,`${pc.name}'s holy water`); return;
+    }
+    if(item.itemId==='burning_oil'){
+      monster.burningOilRounds=Math.max(2,Number(monster.burningOilRounds)||0);
+      write(`The flask bursts and ignites across ${monster.name}. It will take 1d8 fire damage in each of two rounds.`,'system'); return;
+    }
     if(!item){
       const damage=Math.max(0,1+abilityAdjustment(pc.abilities?.str??10)+longDistanceTravelPenalty());
       write(`${pc.name} deals ${damage} unarmed damage.`); damageMonster(monster,damage,`${pc.name}'s unarmed strike`); return;
     }
     const damageMod=((kind==='melee'||(kind==='missile'&&throwableCapable(item)))?abilityAdjustment(pc.abilities?.str??10):0) + Number(pc.equippedWeapon?.magicBonus||0) + longDistanceTravelPenalty();
     const band=kind==='missile'?(rangeBand==='short'?'close':rangeBand==='long'?'far':'normal'):(rangeBand||'normal');
-    const dmg=rollComparedWeaponDamage(item,monster,band,damageMod);
+    let dmg=rollComparedWeaponDamage(item,monster,band,backstabReady?0:damageMod);
+    if(backstabReady){
+      dmg={...dmg,raw:Math.max(0,dmg.raw*2+damageMod),matrix:Math.max(0,dmg.matrix*2+damageMod),applied:Math.max(0,dmg.applied*2+damageMod)};
+      write(`${pc.name} strikes from an unnoticed position: +4 to hit and twice the weapon damage before modifiers.`,'system');
+    }
     writeWeaponAudit(pc,monster,dmg); write(`${pc.name} deals ${dmg.applied} damage.`);
+    delete pc.stealthState;
     damageMonster(monster,dmg.applied,`${pc.name}'s ${item.name}`);
+  }
+
+  function resolveSetSpearVsCharge(pc,monster){
+    const order=state.combat?.pcOrders?.[pc.name.toLowerCase()];
+    if(order?.action!=='set_spear'||order.setSpearResolved||!monster?.chargedThisRound) return false;
+    if(order.targetId&&order.targetId!==monster.id) return false;
+    const item=equippedWeaponItem(pc),allowed=new Set(['spear','pike','lance','shield_sword']);
+    if(!item||!allowed.has(item.itemId)){ order.setSpearResolved=true; write(`${pc.name} cannot receive the charge because the readied weapon is not a spear, pike, lance, or sword shield.`,'warning'); return true; }
+    order.setSpearResolved=true; const result=attackRoll(pc,monster,'melee',0),modText=result.mod?` ${result.mod>0?'+':'-'} ${Math.abs(result.mod)}`:'';
+    write(`${pc.name} receives ${monster.name}'s charge with ${item.name}: d20 ${result.d20}${modText} = ${result.total} — ${result.hit?'HIT':'miss'}.`,'system');
+    if(!result.hit) return true;
+    const damageMod=abilityAdjustment(pc.abilities?.str??10)+Number(pc.equippedWeapon?.magicBonus||0)+longDistanceTravelPenalty(),band=getEngagement(pc,monster)?.range||'normal';
+    let dmg=rollComparedWeaponDamage(item,monster,band,0); dmg={...dmg,raw:Math.max(0,dmg.raw*2+damageMod),matrix:Math.max(0,dmg.matrix*2+damageMod),applied:Math.max(0,dmg.applied*2+damageMod)};
+    writeWeaponAudit(pc,monster,dmg); write(`Set Spear vs. Charge deals ${dmg.applied} damage: weapon dice doubled, then modifiers applied.`,'system'); damageMonster(monster,dmg.applied,`${pc.name}'s set spear vs. charge`); return true;
   }
 
   function monsterWeaponItem(monster){
@@ -7196,6 +7507,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return;
     if(combatActive() && combatSeparation(pc,monster)>0){ write(`${monster.name}'s hand-to-hand attack on ${pc.name} is blocked: ${combatDistanceLabel(Math.round(combatSeparation(pc,monster)))} remain.`,'warning'); return; }
+    resolveSetSpearVsCharge(pc,monster); if(!monsterCanFight(monster)) return;
 
     if(monster.specialAttack==='worry' && monster.worryingTarget){
       const victim=findPc(monster.worryingTarget);
@@ -8686,7 +8998,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         const preferredRange=monsterPreferredMeleeRange(m,target,currentRange);
         const rangeIntent=rangeIntentToward(currentRange,preferredRange);
         const action=role==='missile'?'missile':'melee';
-        state.combat.monsterOrders[m.id]={action,targetName:target.name,movementTargetName:anchor.name,movementMode:'together',movementGroup:formation.id,rangeIntent,preferredRange,sideId:monsterInitiativeSideId(m)};
+        const charge=!engaged.length&&m.kind==='animal'&&combatSeparation(target,m)>=(combatDistanceUnit()==='yd'?20:60);
+        state.combat.monsterOrders[m.id]={action,targetName:target.name,movementTargetName:anchor.name,movementMode:'together',movementGroup:formation.id,rangeIntent,preferredRange,sideId:monsterInitiativeSideId(m),charge};
         assigned.add(m.id);
       }
       audit.push(`${formation.name} ×${members.length}: ${role.toUpperCase()} formation; moves together toward ${anchor.name}.`);
@@ -8700,7 +9013,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const preferredRange=monsterPreferredMeleeRange(m,target,currentRange);
       const rangeIntent=rangeIntentToward(currentRange,preferredRange);
       const reason=engaged.length?`already engaged with ${target.name}`:'ordinary target selection (FRONT weight 2 / REAR weight 1)';
-      state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name,rangeIntent,preferredRange,sideId:monsterInitiativeSideId(m)};
+      const charge=!engaged.length&&m.kind==='animal'&&combatSeparation(target,m)>=(combatDistanceUnit()==='yd'?20:60);
+      state.combat.monsterOrders[m.id]={action:'melee',targetName:target.name,rangeIntent,preferredRange,sideId:monsterInitiativeSideId(m),charge};
       audit.push(`${m.name}: MELEE ${target.name} (${reason}); prefers ${preferredRange.toUpperCase()}${rangeIntent!=='hold'?` → ${rangeIntent.toUpperCase()}`:' → HOLD'}`);
     }
     if(audit.length) void refereeLog(`ROUND ${state.combat.round} — MONSTER ORDERS\n${audit.join('\n')}`,{type:'monster_orders',round:state.combat.round,orders:{...state.combat.monsterOrders},monsterGroups:debugClone(state.combat.monsterGroups||{})});
@@ -9065,9 +9379,81 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     // profiles can plug into this phase later without changing the round engine.
   }
 
+  const TURN_UNDEAD_ORDER=['skeleton','zombie','ghoul','wight','wraith','mummy','spectre','vampire','phantom','haunt','spirit','nightshade','lich','special'];
+  function turningTableColumn(level=1){
+    const l=Math.max(1,Math.min(36,Number(level)||1));
+    if(l<=8) return l;
+    if(l<=10) return 9;
+    if(l<=12) return 10;
+    if(l<=14) return 11;
+    if(l<=16) return 12;
+    if(l<=20) return 13;
+    if(l<=24) return 14;
+    if(l<=28) return 15;
+    if(l<=32) return 16;
+    return 17;
+  }
+  function undeadTurningRank(monster){
+    const q=`${monster?.type||''} ${monster?.name||''}`.toLowerCase();
+    const index=TURN_UNDEAD_ORDER.findIndex(name=>q.includes(name));
+    return index>=0?index:(monster?.kind==='undead'?TURN_UNDEAD_ORDER.length-1:null);
+  }
+  function turningTableResult(clericLevel,undeadRank){
+    if(undeadRank==null) return '-';
+    const column=turningTableColumn(clericLevel),startColumn=Math.max(1,undeadRank-1),initialNeed=undeadRank===0?7:undeadRank===1?9:11,progress=column-startColumn;
+    if(progress<0) return '-';
+    const need=initialNeed-2*progress;
+    let result=need>=7?need:(need>=3?'T':'D');
+    if(result==='D' && column>=15+undeadRank) result='DN';
+    else if(result==='D' && column>=10+undeadRank) result='D+';
+    return result;
+  }
+  function clearMonsterEngagements(monster){
+    for(const key of Object.keys(state.combat?.engagements||{})) if(state.combat.engagements[key].monsterId===monster.id) delete state.combat.engagements[key];
+  }
+  function resolveTurnUndead(cleric,order={},eligible=true,simultaneous=false){
+    if(!eligible || (!simultaneous&&(cleric.dead||Number(cleric.hp)<=0))) return false;
+    if(cleric.className!=='Cleric'){ write(`${cleric.name} is not a cleric and cannot turn undead.`,'warning'); return false; }
+    let candidates=livingHostiles().filter(monster=>monster.kind==='undead'||undeadTurningRank(monster)!=null);
+    const query=String(order.targetQuery||'').trim();
+    if(query){ const wanted=new Set(strictCombatTargetsFromText(query).map(monster=>monster.id)); candidates=candidates.filter(monster=>wanted.has(monster.id)); }
+    if(!candidates.length){ write(`${cleric.name} confronts the opposition with divine authority, but no eligible undead are present.`,'warning'); return false; }
+    candidates.sort((a,b)=>(undeadTurningRank(a)-undeadTurningRank(b))||(a.hd-b.hd)||a.id.localeCompare(b.id));
+    const rank=undeadTurningRank(candidates[0]),sameType=candidates.filter(monster=>undeadTurningRank(monster)===rank),typeName=TURN_UNDEAD_ORDER[rank]||'special undead';
+    if(!state.combat.turnAttempts||typeof state.combat.turnAttempts!=='object') state.combat.turnAttempts={};
+    const attemptKey=`${cleric.name.toLowerCase()}:${typeName}`;
+    if(state.combat.turnAttempts[attemptKey]){ write(`${cleric.name} has already attempted to turn this ${typeName} group in this fight.`,'warning'); return false; }
+    state.combat.turnAttempts[attemptKey]=true;
+    const table=turningTableResult(cleric.level||1,rank); let success=false,successRoll=null;
+    if(typeof table==='number'){ successRoll=rollDice(2,6); success=successRoll.total>=table; }
+    else success=table!=='-';
+    if(!success){
+      const detail=table==='-'?'the table gives no possible result at this level':`2d6 ${successRoll.total}, needing ${table}`;
+      write(`${cleric.name} attempts to turn the ${typeName} undead, but fails (${detail}). The same group cannot be tried again by this cleric in this fight.`,'warning');
+      addEvent(`Turn Undead failed: ${cleric.name} vs ${typeName}; result ${table}${successRoll?`, roll ${successRoll.total}`:''}.`); return false;
+    }
+    const diceCount=table==='D+'?3:table==='DN'?4:2,budgetRoll=rollDice(diceCount,6); let budget=budgetRoll.total;
+    const destroy=['D','D+','DN'].includes(table),affected=[];
+    for(const monster of sameType){
+      if(affected.length && Number(monster.hd)>budget) continue;
+      affected.push(monster); budget=Math.max(0,budget-Number(monster.hd||1));
+      if(destroy){ monster.dead=true; monster.hp=0; }
+      else monster.fled=true;
+      clearMonsterEngagements(monster);
+    }
+    const verb=destroy?'destroys':'turns';
+    write(`${cleric.name} ${verb} ${affected.length} ${typeName}${affected.length===1?'':'s'} (${table}${successRoll?`, success roll ${successRoll.total}`:''}; ${diceCount}d6 = ${budgetRoll.total} Hit Dice).`,'system');
+    addEvent(`Turn Undead: ${cleric.name} result ${table}; ${affected.map(monster=>monster.name).join(', ')} ${destroy?'destroyed':'turned'}.`);
+    checkHalfDisabledMorale(); return true;
+  }
+
   function magicPhase(side,eligibleIds=null){
     if(side!=='pc')return;
-    for(const pc of state.party){ const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()); const o=state.combat.pcOrders[pc.name.toLowerCase()]; if(o?.action==='spell') castPcSpell(pc,o,eligible,Boolean(eligibleIds)); }
+    for(const pc of state.party){
+      const eligible=!eligibleIds||eligibleIds.has(pc.name.toLowerCase()),o=state.combat.pcOrders[pc.name.toLowerCase()];
+      if(o?.action==='spell') castPcSpell(pc,o,eligible,Boolean(eligibleIds));
+      else if(o?.action==='turn_undead') resolveTurnUndead(pc,o,eligible,Boolean(eligibleIds));
+    }
   }
 
   function meleePhase(side,eligibleIds=null,deferredMode='all'){
@@ -9114,6 +9500,13 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       if(pc.shieldSpellRounds>0)pc.shieldSpellRounds=Math.max(0,pc.shieldSpellRounds-1);
       delete pc.retreatingThisRound; delete pc.withdrewThisRound; delete pc.attackInitiativeDeferred; delete pc.weaponSwitchedThisRound; delete pc.spellDisruptedRound; delete pc.spellResolvedRound;
     }
+    for(const monster of state.combat?.monsters||[]){
+      if(monster.dead||Number(monster.burningOilRounds)<=0) continue;
+      const damage=rng(8); monster.burningOilRounds=Math.max(0,Number(monster.burningOilRounds)-1);
+      write(`Burning oil deals ${damage} fire damage to ${monster.name}${monster.burningOilRounds?`; it continues burning for one more round`:''}.`,'system');
+      damageMonster(monster,damage,'burning oil');
+    }
+    for(const monster of state.combat?.monsters||[]) delete monster.chargedThisRound;
   }
 
   function sideLabel(side){
@@ -9403,6 +9796,9 @@ monster group Skeleton Line = skeleton 1, skeleton 2; side Necromancer; role mel
 Aldric attacks goblin 1 — melee order; if separated, the character approaches by encounter movement before melee can occur
 Corwin shoots goblin 2 — missile order (equipped missile weapon + ammunition required)
 Elwyn casts sleep / magic missile at goblin 1 / shield / charm person at goblin 1
+Serena turns undead / Serena turns the skeletons — clerical Turn Undead occupies the magic action for the round
+Locke backstabs goblin 1 — +4 to hit and double weapon damage only if the thief is genuinely unnoticed and uses a one-handed melee weapon
+Aldric sets spear against charge — forgo an ordinary attack to receive a 20-yard-or-longer charge; a hit doubles weapon dice before modifiers
 Aldric presses goblin 1 — the PC initiative side tries to shift that whole melee one shared band inward
 Aldric opens from goblin 1 — the PC initiative side tries to shift that whole melee one shared band outward
 Aldric withdraws — fighting withdrawal
@@ -9465,6 +9861,14 @@ PHASED mode: with two sides, the initiative winner chooses movement order as bef
   function handleCombatDirect(input,normalized){
     if(handleDeveloperMonsterGroupCommand(input)) return true;
     if(combatActive()){
+      const setCharge=/^(.+?)\s+(?:sets?|braces?)\s+(?:their\s+|the\s+)?(?:spear|pike|lance|sword shield)(?:\s+(?:against|vs\.?|versus)\s+(?:a\s+|the\s+)?(?:charge|(.+)))?$/i.exec(input.trim());
+      if(setCharge){ const pc=findPc(setCharge[1]); if(!pc){ write('Which adventurer is setting the weapon against a charge?','warning'); return true; } if(!['Fighter','Dwarf','Elf','Halfling'].includes(pc.className)){ write(`${pc.name}'s class cannot use Set Spear vs. Charge.`,'warning'); return true; } const item=equippedWeaponItem(pc); if(!['spear','pike','lance','shield_sword'].includes(item?.itemId)){ write(`${pc.name} must equip a spear, pike, lance, or sword shield before setting it against a charge.`,'warning'); return true; } const target=setCharge[2]?findMonster(setCharge[2]):null; if(setCharge[2]&&!target){ write('Which visible foe is the expected charger?','warning'); return true; } return setPcCombatOrder(pc,{action:'set_spear',movement:'hold',targetId:target?.id||null,targetQuery:setCharge[2]||'any charger'}); }
+      let turn=/^(.+?)\s+(?:turns?|attempts? to turn)\s+(?:the\s+)?(.+?)$/i.exec(input.trim());
+      if(turn){ const pc=findPc(turn[1]); if(!pc){ write('Which cleric is attempting to turn undead?','warning'); return true; } return setPcCombatOrder(pc,{action:'turn_undead',movement:'hold',targetQuery:turn[2]}); }
+      turn=/^(.+?)\s+(?:turns?|attempts? to turn)\s+undead$/i.exec(input.trim());
+      if(turn){ const pc=findPc(turn[1]); if(!pc){ write('Which cleric is attempting to turn undead?','warning'); return true; } return setPcCombatOrder(pc,{action:'turn_undead',movement:'hold',targetQuery:'undead'}); }
+      const backstab=/^(.+?)\s+(?:backstabs?|strikes? from (?:hiding|the shadows|behind))\s+(.+)$/i.exec(input.trim());
+      if(backstab){ const pc=findPc(backstab[1]),target=findMonster(backstab[2]); if(!pc){ write('Which thief is attempting the backstab?','warning'); return true; } if(pc.className!=='Thief'){ write(`${pc.name} does not have the thief Backstab ability.`,'warning'); return true; } if(!target){ write('Which foe is the backstab target?','warning'); return true; } return setPcCombatOrder(pc,{action:'melee',movement:'hold',targetId:target.id,backstab:true}); }
       let dm=/^(.+?)\s+(?:douses|splashes|pours|throws|empties|uses)\b.*?\b(?:water|waterskin|liquid)\b.*?(?:on|over|at|against)\s+(.+)$/i.exec(input.trim());
       if(!dm) dm=/^(.+?)\s+(?:douses|splashes)\s+(.+?)\s+with\s+(?:a\s+)?(?:waterskin|water|liquid)$/i.exec(input.trim());
       if(dm){ const pc=findPc(dm[1]),target=findMonster(dm[2]); if(!pc){ write(`Which party member is using the water?`,'warning'); return true; } if(!target){ write(`Which foe is being doused?`,'warning'); return true; } return setPcCombatOrder(pc,{action:'douse',movement:'hold',targetId:target.id}); }
@@ -9527,6 +9931,14 @@ AI backend: ${WORKER_URL}`);
     }
   }
 
+  function rulesAuditStatus(){
+    write(`BECMI / B/X CORE AUDIT — v${APP_VERSION}
+DETERMINISTIC CORE: character creation; class/alignment/languages; complete level/XP/THAC0/save/slot tables; individual inventory and encumbrance; expedition supplies; dungeon turns/light/doors/search/traps; complete thief percentages; demihuman senses and class bonuses; surprise/reaction/distance/evasion/pursuit; side initiative and combat phases; morale; Turning Undead; ordinary attacks, backstab, Set Spear vs. Charge, holy water, and burning oil; wilderness time/rest/forced march/rations/deprivation/foraging/getting lost/weather; vessels/wind/crew/hull/reef danger; swimming escape; hirelings/retainers; safe-haven XP; persistent NPCs/sites; module ritual and victory/defeat.
+CAMPAIGN ADAPTATIONS: half-mile hex timing; one contextual lost check per day; food and water unified as ration person-days; ration deprivation is 1d2 hp/day with healing blocked; safe-haven XP settlement; retainers receive half shares; generated discoveries are sparse and persistent.
+REFEREE-MEDIATED: open-ended or world-altering spell outcomes, unusual drowning circumstances, improvised rulings without a bounded procedure, and the uncommon special effects of advanced Cyclopedia weapons.
+OPTIONAL / OUTSIDE THIS MODULE: general skills, Weapon Mastery, high-level fighter combat options, strongholds/dominions, mass combat, planar/Immortal play, and campaign economics beyond Talamau. These are not required to begin at Shipwreck Beach, complete the Smoking Pillar expedition, restore or fail the wards, and return to Talamau.`,'system'); return true;
+  }
+
   function events() {
     if(journalCategory) journalCategory.value='all';
     void openJournalWindow('');
@@ -9567,6 +9979,13 @@ AI backend: ${WORKER_URL}`);
     const roll=rng(100); let cursor=0;
     for(const alignment of ['Neutral','Lawful','Chaotic']){ cursor+=Number(weights[alignment])||0; if(roll<=cursor) return alignment; }
     return 'Neutral';
+  }
+  function startingLanguages(className,alignment='Neutral'){
+    const languages=['Common',`${alignment} alignment tongue`];
+    if(className==='Dwarf') languages.push('Dwarf','Gnome','Goblin','Kobold');
+    if(className==='Elf') languages.push('Elf','Gnoll','Hobgoblin','Orc');
+    if(className==='Halfling') languages.push('Halfling');
+    return [...new Set(languages)];
   }
 
   function draftAbilityText() {
@@ -9701,7 +10120,7 @@ AI backend: ${WORKER_URL}`);
     const hpRoll=rollDice(1,rule.hd); const conAdj=abilityAdjustment(abilities.con); const hp=Math.max(1,hpRoll.total+conAdj);
     const moneyRoll=rollDice(3,6); const startingGp=moneyRoll.total*10; const startingMoneyCp=moneyCp(startingGp);
     const cha=charismaProfile(abilities.cha);
-    const member={name,sex:sex||null,className,role:`${className} 1`,level:1,xp:0,xpBonus:xpBonusFor(className,abilities),alignment,abilities:{...abilities},hp,maxHp:hp,ac:9-abilityAdjustment(abilities.dex),thac0:19,saves:{...LEVEL_ONE_SAVES[className]},spellSaveAdjustment:abilityAdjustment(abilities.wis),reactionAdjustment:cha.reaction,maxRetainers:cha.maxRetainers,retainerMorale:cha.retainerMorale,matrixSize:characterMatrixSize(className),inventory:[],equippedWeapon:null,equippedArmor:null,equippedShield:false,background,startingMoneyCp,startingMoneyUnspentCp:startingMoneyCp,weaponMastery:{enabled:false,latentChoices:className==='Fighter'?4:(rule.demihuman?0:2),demihumanBasicAll:Boolean(rule.demihuman)}};
+    const member={name,sex:sex||null,className,role:`${className} 1`,level:1,xp:0,xpBonus:xpBonusFor(className,abilities),alignment,languages:startingLanguages(className,alignment),abilities:{...abilities},hp,maxHp:hp,ac:9-abilityAdjustment(abilities.dex),thac0:19,saves:{...LEVEL_ONE_SAVES[className]},spellSaveAdjustment:abilityAdjustment(abilities.wis),reactionAdjustment:cha.reaction,maxRetainers:cha.maxRetainers,retainerMorale:cha.retainerMorale,matrixSize:characterMatrixSize(className),inventory:[],equippedWeapon:null,equippedArmor:null,equippedShield:false,background,startingMoneyCp,startingMoneyUnspentCp:startingMoneyCp,weaponMastery:{enabled:false,latentChoices:className==='Fighter'?4:(rule.demihuman?0:2),demihumanBasicAll:Boolean(rule.demihuman)}};
     if(rule.spellbook){
       if(className==='Fire Priest'){
         member.spellbook=[...FIRE_PRIEST_SPELLS[1]]; member.preparedSpells=[]; member.firePriest={gifts:[FIRE_PRIEST_GIFTS[0]],attunedGifts:[FIRE_PRIEST_GIFTS[0]],giftCapacity:1,friendOfLight:true,clericItemAccess:true};
@@ -9846,7 +10265,8 @@ AI backend: ${WORKER_URL}`);
     const abilities=member.abilities || {str:10,int:10,wis:10,dex:10,con:10,cha:10};
     const legacyRationlessDays=Math.max(0,Number(member.rationlessDays??Math.max(Number(member.foodlessDays)||0,Number(member.waterlessDays)||0))||0);
     const legacyDeprivationHp=Math.max(0,Number(member.deprivationHpLost??member.starvationHpLost)||0);
-    const cha=charismaProfile(abilities.cha??10); const result={name:member.name||'Adventurer',sex:member.sex||null,className,role:`${className} ${level}`,level,xp:member.xp||0,xpBonus:member.xpBonus??xpBonusFor(className,abilities),alignment:member.alignment||randomAlignmentForClass(className),abilities,hp:member.hp??1,maxHp:member.maxHp||Math.max(1,member.hp||1),dead:Boolean(member.dead || Number(member.hp)===0),ac:member.ac??9,thac0:member.thac0||thac0ForLevel(level),saves:member.saves||classSaveValues(className,level),spellSlots:Array.isArray(member.spellSlots)?member.spellSlots:spellSlotsFor(className,level),spellSaveAdjustment:member.spellSaveAdjustment??abilityAdjustment(abilities.wis??10),reactionAdjustment:member.reactionAdjustment??cha.reaction,maxRetainers:member.maxRetainers??cha.maxRetainers,retainerMorale:member.retainerMorale??cha.retainerMorale,matrixSize:member.matrixSize||characterMatrixSize(className),inventory:Array.isArray(member.inventory)?member.inventory:[],equippedWeapon:member.equippedWeapon||null,equippedArmor:member.equippedArmor||null,equippedShield:Boolean(member.equippedShield),background:member.background||'',startingMoneyCp:member.startingMoneyCp||0,startingMoneyUnspentCp:member.startingMoneyUnspentCp ?? member.startingMoneyCp ?? 0,isRetainer:Boolean(member.isRetainer),formerClass:member.formerClass||null,deprivationHpLost:legacyDeprivationHp,rationlessDays:legacyRationlessDays,rationDeprived:Boolean(member.rationDeprived||member.starving||legacyRationlessDays>0),weaponMastery:member.weaponMastery||{enabled:false,latentChoices:className==='Fighter'?4:(['Dwarf','Elf','Halfling'].includes(className)?0:2),demihumanBasicAll:['Dwarf','Elf','Halfling'].includes(className)}};
+    const alignment=member.alignment||randomAlignmentForClass(className);
+    const cha=charismaProfile(abilities.cha??10); const result={name:member.name||'Adventurer',sex:member.sex||null,className,role:`${className} ${level}`,level,xp:member.xp||0,xpBonus:member.xpBonus??xpBonusFor(className,abilities),alignment,languages:Array.isArray(member.languages)?[...member.languages]:startingLanguages(className,alignment),abilities,hp:member.hp??1,maxHp:member.maxHp||Math.max(1,member.hp||1),dead:Boolean(member.dead || Number(member.hp)===0),ac:member.ac??9,thac0:member.thac0||thac0ForLevel(level),saves:member.saves||classSaveValues(className,level),spellSlots:Array.isArray(member.spellSlots)?member.spellSlots:spellSlotsFor(className,level),spellSaveAdjustment:member.spellSaveAdjustment??abilityAdjustment(abilities.wis??10),reactionAdjustment:member.reactionAdjustment??cha.reaction,maxRetainers:member.maxRetainers??cha.maxRetainers,retainerMorale:member.retainerMorale??cha.retainerMorale,matrixSize:member.matrixSize||characterMatrixSize(className),inventory:Array.isArray(member.inventory)?member.inventory:[],equippedWeapon:member.equippedWeapon||null,equippedArmor:member.equippedArmor||null,equippedShield:Boolean(member.equippedShield),background:member.background||'',startingMoneyCp:member.startingMoneyCp||0,startingMoneyUnspentCp:member.startingMoneyUnspentCp ?? member.startingMoneyCp ?? 0,isRetainer:Boolean(member.isRetainer),retainerEmployer:member.retainerEmployer||null,monthlyGp:Number(member.monthlyGp)||0,paidThroughDay:member.paidThroughDay??null,treasureSharePromised:Boolean(member.treasureSharePromised),retainerLeaving:Boolean(member.retainerLeaving),formerClass:member.formerClass||null,deprivationHpLost:legacyDeprivationHp,rationlessDays:legacyRationlessDays,rationDeprived:Boolean(member.rationDeprived||member.starving||legacyRationlessDays>0),weaponMastery:member.weaponMastery||{enabled:false,latentChoices:className==='Fighter'?4:(['Dwarf','Elf','Halfling'].includes(className)?0:2),demihumanBasicAll:['Dwarf','Elf','Halfling'].includes(className)}};
     if(member.spellbook || className==='Cleric'){
       result.spellbook=Array.isArray(member.spellbook)?[...member.spellbook]:[]; result.memorizedSpell=member.memorizedSpell??result.spellbook[1]??result.spellbook[0]??null; result.spellReady=member.spellReady!==false; result.spellPendingRest=Boolean(member.spellPendingRest); result.shieldSpellRounds=Number(member.shieldSpellRounds)||0; result.spellTrainingLevel=Number(member.spellTrainingLevel)||1; result.spellStateVersion=Number(member.spellStateVersion)||1;
       if(Array.isArray(member.preparedSpells)) result.preparedSpells=member.preparedSpells.map(entry=>typeof entry==='string'?entry:{...entry});
@@ -9920,8 +10340,10 @@ AI backend: ${WORKER_URL}`);
     merged.activeVesselId=loaded.activeVesselId||null;
     merged.weather=loaded.weather&&typeof loaded.weather==='object'&&!Array.isArray(loaded.weather)?loaded.weather:base.weather;
     merged.personnel=loaded.personnel&&typeof loaded.personnel==='object'&&!Array.isArray(loaded.personnel)?loaded.personnel:base.personnel;
+    merged.retainerMarket=loaded.retainerMarket&&typeof loaded.retainerMarket==='object'&&!Array.isArray(loaded.retainerMarket)?loaded.retainerMarket:base.retainerMarket;
     merged.logistics=loaded.logistics&&typeof loaded.logistics==='object'&&!Array.isArray(loaded.logistics)?loaded.logistics:base.logistics;
     merged.activeSpellEffects=Array.isArray(loaded.activeSpellEffects)?loaded.activeSpellEffects:[];
+    merged.campaignOutcome=loaded.campaignOutcome&&typeof loaded.campaignOutcome==='object'?{...base.campaignOutcome,...loaded.campaignOutcome}:{...base.campaignOutcome};
     merged.pendingEncounter=loaded.pendingEncounter&&typeof loaded.pendingEncounter==='object'?loaded.pendingEncounter:null;
     merged.lanternLit=Boolean(loaded.lanternLit); merged.lanternMinutes=Math.max(0,Number(loaded.lanternMinutes)||0); merged.oilFlasks=Math.max(0,Number(loaded.oilFlasks)||0); merged.incenseLit=Boolean(loaded.incenseLit);
     const migratedWaterskinCapacity=(merged.partyInventory||[]).filter(x=>x.itemId==='waterskin').reduce((n,x)=>n+Math.max(0,Number(x.qty)||0),0)+(merged.party||[]).reduce((n,pc)=>n+(pc.inventory||[]).filter(x=>x.itemId==='waterskin').reduce((m,x)=>m+Math.max(0,Number(x.qty)||0),0),0);
@@ -9970,7 +10392,10 @@ AI backend: ${WORKER_URL}`);
     state=merged;
     if(!state.locationState.talamau || typeof state.locationState.talamau!=='object') state.locationState.talamau={kitraReceptionComplete:false};
     if(!state.locationState.temple_flame || typeof state.locationState.temple_flame!=='object') state.locationState.temple_flame={};
-    templeState(); syncRationStock(); ensureKaiBesilWorldState(); ensurePersonnelState(); ensureProvisionSchedule(absoluteCampaignMinute()); ensureDailyWeather(); ensureLogisticsState({optimize:true});
+    templeState();
+    if(templeState().islandDestroyed && merged.campaignOutcome.status==='ongoing') merged.campaignOutcome={status:'defeat',completedAt:null,reason:'The volcanic wards failed and Kai Besil was destroyed.'};
+    else if(templeState().wardsRestored && currentSettlementId()==='talamau' && merged.campaignOutcome.status==='ongoing') merged.campaignOutcome={status:'victory',completedAt:null,reason:'The golden lantern and volcanic wards were restored, and the expedition returned safely to Talamau.'};
+    syncRationStock(); ensureKaiBesilWorldState(); ensurePersonnelState(); ensureProvisionSchedule(absoluteCampaignMinute()); ensureDailyWeather(); ensureLogisticsState({optimize:true});
     const generated=ensureGeneratedWorld(),hadDiscoveryPlan=Boolean(generated.discoveryPlan&&Array.isArray(generated.discoveryPlan.siteHexes)&&Array.isArray(generated.discoveryPlan.eventHexes));
     clearGeneratedRuntime(); hydrateGeneratedWorld();
     if(!hadDiscoveryPlan){ markProceduralHexExplored(state.hex); if(state.previousHex) markProceduralHexExplored(state.previousHex); }
@@ -10030,6 +10455,8 @@ combat party — weapons, ammunition, spellbooks, and prepared spells
 encounter 4 goblins — explicit isolated engine test encounter
 combat — current round, party ready-reference, hostiles, orders, encounter position, and melee ranges
 Aldric attacks goblin 1 / Corwin shoots goblin 2 / Elwyn casts sleep
+Alyssa turns undead / Alyssa turns the skeletons — use the complete BECMI Turning Undead table as the cleric's action
+Locke backstabs goblin 1 — BECMI +4 to hit/double weapon damage when unnoticed with a one-handed melee weapon
 Aldric presses goblin 1 / opens from goblin 1 / withdraws / retreats
 auto orders — fill missing PC orders
 resolve round — roll initiative and resolve the combat round
@@ -10054,6 +10481,8 @@ funds — expedition treasury
 equip Aldric with normal sword — assign/equip purchased gear
 advancement / xp — show XP, prime-requisite modifiers, and progress to the next level
 settle xp — receive expedition XP at a safe settlement hub; wilderness and dungeon awards remain held until return
+campaign status — show whether the ward-restoration expedition is ongoing, victorious, or defeated
+rules audit — show deterministic, campaign-adapted, referee-mediated, optional, and out-of-module rules coverage
 study the Book of the Leaping Flame — unlock Fire Priest beside the golden lantern
 become fire priest — convert one eligible Magic-User or compatible Cleric at the lantern
 
@@ -10087,9 +10516,12 @@ enter / leave — enter or leave a settlement/site
 PERSONNEL, VESSELS, AND LOADS
 personnel — Talamau's daily market for applicable porters, camp hands, mercenaries, rowers, sailors, and a coastal captain
 hire 2 porters / dismiss porter — pay or release personnel; mercenaries use hazardous-expedition wages and refuse dungeons
+seek retainers / retainers — spend four hours interviewing the village's limited adventuring applicants
+offer <name> 20 gp per month and a treasure share — make a BECMI Charisma/reaction offer; accepted retainers receive permanent necessary gear, morale, wages, and the established half XP share
 vessels — hull, BECMI cargo capacity, required/available crew, shipping-water state, and today's wind-adjusted speed
 board boat / board Sorrowful Gull / disembark — embark or go ashore; the Gull requires a captain plus ten sailor stations, but PCs may work ordinary deck stations
 repair vessel — Yuda restores a vessel fully at Talamau for money; five or more crew can repair 1 hull point per turn away from port, up to half the damage
+prepare to swim / swim south — leave recoverable excess loads on a local wreck, then cross a half-mile surface-water hex at one-fifth outdoor running speed; more than 400 en prevents swimming and rough water uses Constitution checks
 inventory — complete physical manifests for every adventurer, hired carrier, pack animal, and boarded vessel; there is no magic group carrying capacity
 inventory optimize — intelligently distribute supplies, coin weight, and treasure loads without moving personal weapons, armor, spellbooks, or class tools
 inventory Nemiriel / give rope to Porter 1 — inspect one carrier or transfer an ordinary physical item
@@ -10098,9 +10530,13 @@ SITE AND DUNGEON EXPLORATION
 Each exploration turn is 10 minutes. Normal dungeon movement/searching consumes turns; a dungeon wandering-monster check is made every second turn.
 north, south, east, west, up, down — move through keyed exits when the party can see
 search — search the current keyed room/area; specific procedures may consume a full turn
-search for traps — use BECMI thief Find Traps when a thief is present
+search for traps — use BECMI thief Find Traps; dwarves separately detect stonework traps on 1–2 on 1d6
+remove trap — use BECMI Remove Traps after a trap has been found; failure triggers it
 listen / listen at door — BECMI listening procedure; the party must be quiet
 pick lock / use key / force door — resolve the currently blocking door
+thief abilities — show every thief percentage at the current level
+Locke moves silently / hides in shadows / climbs 80 feet / picks the pocket of Kitra — full thief procedures; stealth success remains secret
+Bree hides motionless in cover — halflings hide at 90% in woodland cover or 33% in deep indoor shadow; movement ends the concealment
 light torch / extinguish torch — torch gives 30-foot light for 6 turns; partial burn time is retained when extinguished
 light lantern / extinguish lantern — lantern gives 30-foot light for 24 turns per flask of oil; remaining oil is retained when extinguished
 use mirror [direction] — inspect angles/corners cautiously; requires light and a steel mirror
@@ -10115,7 +10551,7 @@ Standard rations spoil overnight in dungeon conditions; iron rations endure long
 
 SPELLS AND ADVANCEMENT
 spellbook / spellbook Nemiriel — known spells, daily slots, ready preparations, and next-rest plan
-All 108 Magic-User spells (levels 1–9) and all 56 Cleric spells (levels 1–7) have deterministic engine effects and persistent state where appropriate. Human caster slots follow the BECMI tables through level 36; Elves retain their level-10 casting ceiling.
+All 108 Magic-User spells (levels 1–9) and all 56 Cleric spells (levels 1–7) are registered, learnable/preparable, castable, and persistently tracked. Common bounded effects resolve directly; open-ended, transformational, planar, and world-altering effects preserve the casting state and require the referee to interpret their exact fictional result. Human caster slots follow the BECMI tables through level 36; Elves retain their level-10 casting ceiling.
 Experience and recovered treasure remain held until the expedition returns to a safe settlement. “settle xp” applies the awards and all resulting level advancement there.
 
 GENERAL
@@ -11296,12 +11732,20 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(/^(?:ask|persuade|hire|invite) heinrich (?:to )?(?:guide|join|come with)(?: us| the party| the expedition)?$/i.test(input) || /^(?:heinrich,? )?(?:guide us|join us as guide)$/i.test(input)){ recruitHeinrichGuide(); return; }
     if(/^(?:dismiss|release|send home) heinrich|^heinrich,? (?:leave|go home)$/i.test(input)){ dismissHeinrichGuide(); return; }
     if(['weather','weather status','wind','wind status','forecast'].includes(normalized)){ weatherStatus(); return; }
+    if(['retainers','retainer market','adventuring retainers','retainer applicants'].includes(normalized)){ retainerMarketStatus(); return; }
+    if(['seek retainers','find retainers','recruit retainers','interview retainers','post for retainers'].includes(normalized)){ findRetainerCandidates(); return; }
+    if(/^offer\s+/i.test(input)&&/\bgp\b/i.test(input)){ offerRetainerContract(input); return; }
+    if(/^hire\s+.+\bas (?:an? )?retainer\b/i.test(input)){ offerRetainerContract(input); return; }
+    if(/^(?:release|dismiss)\s+.+\bretainer\b/i.test(input)||state.party.some(pc=>pc.isRetainer&&new RegExp(`^(?:release|dismiss)\\s+${pc.name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}$`,'i').test(input))){ if(releaseRetainer(input)) return; }
     if(['hirelings','personnel','personnel market','find hirelings','recruitment','mercenaries','specialists'].includes(normalized)){ personnelMarketStatus(); return; }
     if(/^hire\s+/i.test(input)){ hirePersonnel(input); return; }
     if(/^(?:dismiss|release)\s+/i.test(input)){ dismissPersonnel(input); return; }
     if(/\b(?:secure|secluded)\b.*\bcamp\b|\bcamp\b.*\b(?:secure|secluded)\b/.test(normalized)){ secureCamp(); return; }
     if(vesselStatus && ['vessels','vessel status','boats','ships'].includes(normalized)){ vesselStatus(); return; }
     if(['repair vessel','repair ship','repair boat','make ship repairs','make vessel repairs'].includes(normalized)){ repairVessel(); return; }
+    if(['prepare to swim','prepare for swimming','lighten loads for swimming','secure gear on wreck'].includes(normalized)){ prepareToSwim(); return; }
+    let swimMatch=/^(?:swim|surface swim|swim toward shore)\s+(?:to the\s+)?(north|northeast|southeast|south|southwest|northwest|n|ne|se|s|sw|nw)$/i.exec(input);
+    if(swimMatch){ swimWilderness(normalizeDirection(swimMatch[1])); return; }
     if(acquireLocalVessel(input)) return;
     if(boardLocalVessel(input)) return;
     if(/^(?:disembark|go ashore|beach the (?:boat|ship|vessel))$/i.test(input)){ if(!disembarkVessel()) write('The party is not currently aboard a vessel.','warning'); return; }
@@ -11338,6 +11782,16 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(answerSettlementProfileQuestion(input)) return;
     if(['settle xp','claim xp','receive xp','settle expedition','reconcile expedition','train'].includes(normalized)) return settlePendingXp();
     if(['advancement','experience','xp','level status'].includes(normalized)) return advancementStatus();
+    if(['campaign status','campaign outcome','victory status','end game status'].includes(normalized)) return campaignOutcomeStatus();
+    if(['rules audit','becmi audit','rules coverage','implementation status'].includes(normalized)) return rulesAuditStatus();
+    if(normalized==='thief abilities'||normalized==='thief skills') return thiefAbilityStatus();
+    if(normalized.startsWith('thief abilities ')||normalized.startsWith('thief skills ')) return thiefAbilityStatus(input.slice(input.indexOf(' ')+1));
+    if(/\b(?:move|moves|sneak|sneaks) silently\b/i.test(input)) return attemptThiefStealth(input,'moveSilently');
+    if(/\b(?:hide|hides) in (?:the )?shadows\b/i.test(input)) return attemptThiefStealth(input,'hideShadows');
+    if(/\b(?:halfling hide|hide|hides|conceal|conceals)\b/i.test(input)&&/\b(?:motionless|woodland|cover|halfling)\b/i.test(input) && (namedPcsInText(input).some(pc=>pc.className==='Halfling')||livingParty().some(pc=>pc.className==='Halfling'))) return attemptHalflingHide(input);
+    if(/\b(?:climb|climbs)\b/i.test(input) && /\b(?:wall|walls|cliff|shaft|surface|feet|foot|ft)\b/i.test(input)) return attemptThiefClimb(input);
+    if(/\bpick(?:s)? (?:the )?pockets?\b/i.test(input)) return attemptThiefPickPockets(input);
+    if(/\b(?:read|decipher|decode)\b.*\b(?:language|writing|code|map|inscription)\b/i.test(input) && namedPcsInText(input).some(pc=>pc.className==='Thief')) return attemptThiefReadLanguages(input);
     if(normalized==='spellbook'||normalized==='spellbooks'||normalized==='spell preparation') return spellbookStatus();
     if(normalized.startsWith('spellbook ')) return spellbookStatus(input.slice(input.indexOf(' ')+1));
     let scrollCommand=/^(?:(.+?)\s+(?:casts?|uses?)\s+)?read magic\s+(?:on\s+)?(?:the\s+)?scroll(?:\s+(.+))?$/i.exec(input);
@@ -11359,7 +11813,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       return callReferee(input);
     }
 
-    const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','load','new game','restart','clear','test ai','test referee','self test','self tests','run tests','run self tests','regression tests','ai parser tests','ai parser smoke tests','run ai parser tests','test report','copy test report'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
+    const noPartyAllowed = ['developer mode on','developer mode off','dev mode on','dev mode off','developer mode','dev mode','referee log','developer log','engine log','look','l','look around','map','local map','hex view','wilderness map','town view','town map','settlement view','settlement map','room view','site map','combat map','position','journal','log','status','help','?','rules audit','becmi audit','rules coverage','implementation status','load','new game','restart','clear','test ai','test referee','self test','self tests','run tests','run self tests','regression tests','ai parser tests','ai parser smoke tests','run ai parser tests','test report','copy test report'].includes(normalized) || normalized.startsWith('journal ') || normalized.startsWith('log ') || normalized.startsWith('referee ') || normalized.startsWith('ask referee ') || normalized.startsWith('roll ');
     if (!state.party.length && !noPartyAllowed) {
       write('No adventuring party has been formed yet. Type “create party” or use CREATE / MANAGE PARTY in the sidebar.','warning'); return;
     }
@@ -11395,6 +11849,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if (normalized === 'camp' || normalized === 'make camp' || normalized === 'camp overnight') return camp();
     if (normalized === 'search') return search();
     if (/^(?:search|check|look) (?:for )?traps?$/i.test(input)) return searchForTraps();
+    if (/^(?:remove|disarm|disable) (?:the )?trap$/i.test(input)) return removeCurrentTrap();
     if (/^(?:listen|listen at (?:the )?door|listen carefully)$/i.test(input)) return listenAtCurrentLocation();
     if (/^(?:pick|open) (?:the )?lock$/i.test(input) || normalized==='pick lock') return pickPendingLock();
     if (/^(?:unlock|use (?:the )?key)/i.test(input)) return unlockPendingDoor();
@@ -11778,6 +12233,14 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(boardLocalVessel('board the fishing boat')===true && state.activeVesselId==='talamau_fishing_boat','Controlled fishing boat could not be boarded');
         const before=absoluteCampaignMinute(); harnessAssert(wildernessMove('northwest')===true,'Boarded vessel could not enter adjacent coastal water');
         harnessAssert(currentHex().terrain==='coastal_water' && absoluteCampaignMinute()-before===4,'BECMI sailing-boat rate did not convert 72 miles/day into four minutes per half-mile hex');
+      }},
+      {name:'A wrecked party can leave recoverable loads and swim a half-mile water hex',run:()=>{
+        installKaiBesilHarnessFixture(); let edge=null; for(const [key,hex] of Object.entries(kaiBesilHexes)) if(isKaiWaterTerrain(hex.terrain)){ const [q,r]=key.split(',').map(Number); for(const direction of HEX_ORDER){ const v=HEX_DIRECTIONS[direction],dest=getHex(q+v.q,r+v.r); if(dest&&isKaiLandTerrain(dest.terrain)){ edge={q,r,direction,dest}; break; } } if(edge) break; }
+        harnessAssert(Boolean(edge),'No water-to-land swimming edge exists'); state.hex={q:edge.q,r:edge.r}; state.mode='wilderness'; state.weather={climateId:'tropical_island',day:state.day,landRoll:7,windRoll:7,windDirection:'north',windOffset:0,land:{...CLIMATE_PROFILES.tropical_island.landWeather[2]},wind:{...WATER_WIND_TABLE[7]},history:[]};
+        const wreck=state.vessels.talamau_fishing_boat; wreck.hex={q:edge.q,r:edge.r}; wreck.seaworthy=false; wreck.hullPoints=0; wreck.hullPercent=0; state.activeVesselId=null;
+        harnessAssert(prepareToSwim()===true&&state.party.every(pc=>pcCarriedEncumbrance(pc)<=400),'Prepare-to-swim did not secure excess individual loads on the wreck');
+        const before=absoluteCampaignMinute(); harnessAssert(swimWilderness(edge.direction)===true,'Unencumbered party could not swim toward adjacent land in normal water');
+        harnessAssert(isKaiLandTerrain(currentHex().terrain)&&absoluteCampaignMinute()-before===10&&wreck.cargo.some(rec=>rec.itemId==='test_load'),'Surface swim did not reach land in the minimum 10-minute turn while preserving left gear');
       }},
       {name:'Deep-water travel uses Rules Cyclopedia ship rate and complete crew',run:()=>{
         installKaiBesilHarnessFixture(); state.hex={q:11,r:11}; state.mode='wilderness';
@@ -12248,11 +12711,18 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       }},
       {name:'Complete darkness blocks ordinary keyed dungeon navigation until light is provided',run:()=>{
         installKaiBesilHarnessFixture(); state.mode='site'; state.location='temple_5'; state.torchLit=false; state.torchMinutes=0; state.lanternLit=false; state.lanternMinutes=0; state.incenseLit=false;
+        state.party=state.party.filter(pc=>!['Dwarf','Elf'].includes(pc.className));
         for(const pc of state.party) delete pc.glowingHands;
         harnessAssert(canSee()===false,'Dark Temple fixture unexpectedly had a working light source');
         harnessAssert(move('southeast')===false && state.location==='temple_5','Party traversed a keyed dungeon exit in complete darkness');
         state.incenseLit=true;
         harnessAssert(move('southeast')===true && state.location==='temple_9','Providing a working light source did not restore keyed dungeon navigation');
+      }},
+      {name:'Dwarf and elf infravision can guide a party through ordinary dungeon darkness',run:()=>{
+        installKaiBesilHarnessFixture(); state.mode='site'; state.location='temple_5'; state.torchLit=false; state.torchMinutes=0; state.lanternLit=false; state.lanternMinutes=0; state.incenseLit=false;
+        for(const pc of state.party) delete pc.glowingHands;
+        harnessAssert(canSee()===true&&/infravision/.test(lightStatusText()),'A living elf did not provide 60-foot infravision guidance');
+        harnessAssert(move('southeast')===true&&state.location==='temple_9','Infravision did not permit ordinary dungeon navigation');
       }},
       {name:'Mirror and chalk are turn-consuming persistent dungeon tools',run:()=>{
         installKaiBesilHarnessFixture(); state.mode='site'; state.location='temple_5'; state.incenseLit=true; state.turn=0; state.seed=9;
@@ -12293,7 +12763,90 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         installKaiBesilHarnessFixture();
         const thief=normalizeMember({name:'Locke',className:'Thief',level:1,hp:4,maxHp:4,ac:7,abilities:{str:10,int:10,wis:10,dex:12,con:10,cha:10},inventory:[]});
         harnessAssert(thiefLockChance(thief)===15,'Level-one Open Locks chance is not 15%');
-        const table=[10,15,20]; harnessAssert(table[(thief.level||1)-1]===10,'Level-one Find/Remove Traps baseline is not 10%');
+        harnessAssert(thiefSkillChance(thief,'findTraps')===10&&thiefSkillChance(thief,'removeTraps')===10,'Level-one Find/Remove Traps baseline is not 10%');
+      }},
+      {name:'Complete thief table preserves low, expert, and high-level percentages',run:()=>{
+        installKaiBesilHarnessFixture();
+        const thief=level=>normalizeMember({name:`Thief ${level}`,className:'Thief',level,hp:4,maxHp:4,ac:7,abilities:{str:10,int:10,wis:10,dex:12,con:10,cha:10},inventory:[]});
+        harnessEqual([thiefSkillChance(thief(1),'openLocks'),thiefSkillChance(thief(10),'findTraps'),thiefSkillChance(thief(14),'removeTraps'),thiefSkillChance(thief(36),'hearNoise')],[15,54,64,99],'Thief percentages do not match the Rules Cyclopedia table/clamp');
+        harnessAssert(thiefSkillChance(thief(4),'climbWalls')===90&&thiefSkillChance(thief(10),'hideShadows')===44,'Climb Walls or Hide in Shadows progression changed');
+      }},
+      {name:'Demihuman class senses, languages, and halfling combat bonuses are active',run:()=>{
+        installKaiBesilHarnessFixture();
+        const dwarf=normalizeMember({name:'Dori',className:'Dwarf',level:1,hp:8,maxHp:8,ac:5,abilities:{str:12,int:10,wis:10,dex:10,con:12,cha:10},inventory:[]});
+        const halfling=normalizeMember({name:'Bree',className:'Halfling',level:1,hp:6,maxHp:6,ac:6,thac0:19,abilities:{str:10,int:10,wis:10,dex:13,con:10,cha:10},inventory:[]});
+        harnessAssert(dwarf.languages.includes('Dwarf')&&dwarf.languages.includes('Goblin')&&dwarf.languages.includes('Kobold'),'Dwarf starting languages are incomplete');
+        harnessAssert(halfling.languages.includes('Halfling')&&halfling.languages.includes('Common'),'Halfling starting languages are incomplete');
+        const large={...COMBAT_MONSTERS.jaguar,type:'jaguar',size:'large',hd:4,ac:7};
+        harnessAssert(effectivePcAc(halfling,'melee',large)===halfling.ac-2,'Halfling did not gain -2 AC against a larger-than-man-sized foe');
+        state.seed=73; const halfRoll=attackRoll(halfling,large,'missile'); state.seed=73; const fighterRoll=attackRoll({...halfling,className:'Fighter'},large,'missile');
+        harnessAssert(halfRoll.total===fighterRoll.total+1,'Halfling missile attack did not receive +1');
+        state.mode='site'; state.location='temple_5'; state.incenseLit=true; state.party=[dwarf]; const originalTrap=sites.temple_5.trap; sites.temple_5.trap={id:'stonework_harness',playerText:'Stonework trap found.',stonework:true};
+        try{ let found=false; for(let seed=1;seed<=40&&!found;seed++){ templeState().lockAttempts={}; state.seed=seed; found=searchForTraps(); } harnessAssert(found&&ensurePhysicalState().knownTraps.temple_5,'Dwarf 1-in-3 stonework-trap detection never succeeded'); }
+        finally{ sites.temple_5.trap=originalTrap; }
+      }},
+      {name:'Rules Cyclopedia advancement spans human levels and demihuman caps',run:()=>{
+        installKaiBesilHarnessFixture();
+        harnessAssert(XP_THRESHOLDS.Fighter.length===36&&XP_THRESHOLDS.Cleric[13]===700000&&XP_THRESHOLDS['Magic-User'][14]===1200000&&XP_THRESHOLDS.Thief[35]===3400000,'Complete human XP tables are missing or incorrect');
+        harnessEqual(CLASS_LEVEL_CAP,{Fighter:36,Cleric:36,'Magic-User':36,Thief:36,Dwarf:12,Elf:10,Halfling:8,'Fire Priest':36},'Class level caps changed');
+        harnessEqual([thac0ForLevel(1),thac0ForLevel(4),thac0ForLevel(10),thac0ForLevel(13),thac0ForLevel(36)],[19,17,13,11,-3],'Full attack-rank/THAC0 progression changed');
+        harnessEqual(classSaveValues('Elf',10),{death:2,wands:4,paralysis:4,breath:3,spells:3},'Elf level-10 saving throws changed');
+        harnessEqual(classSaveValues('Cleric',33),{death:2,wands:2,paralysis:2,breath:2,spells:2},'Cleric high-level saving throws changed');
+      }},
+      {name:'Post-ninth-level advancement uses fixed HP without Constitution',run:()=>{
+        installKaiBesilHarnessFixture(); state.mode='site'; state.location='talamau';
+        const fighter=normalizeMember({name:'Veteran',className:'Fighter',level:9,xp:360000,hp:30,maxHp:30,ac:3,abilities:{str:16,int:10,wis:10,dex:10,con:18,cha:10},inventory:[]});
+        state.party=[fighter]; const before=fighter.maxHp;
+        harnessAssert(applyLevelAdvancement(fighter,1,{safeHaven:true})===1&&fighter.level===10,'Eligible level-nine fighter did not advance in a safe haven');
+        harnessAssert(fighter.maxHp-before===2,'Level-ten fighter did not receive the fixed +2 HP with no Constitution adjustment');
+      }},
+      {name:'Turning Undead table and Hit-Dice resolution are implemented',run:()=>{
+        installKaiBesilHarnessFixture();
+        harnessEqual([turningTableResult(1,0),turningTableResult(1,1),turningTableResult(1,2),turningTableResult(4,0),turningTableResult(4,3),turningTableResult(11,0)],[7,9,11,'D',7,'D+'],'Turning Undead table values changed');
+        const cleric=normalizeMember({name:'Alyssa',className:'Cleric',level:4,hp:12,maxHp:12,ac:4,abilities:{str:10,int:10,wis:16,dex:10,con:10,cha:10},inventory:[]});
+        state.party=[cleric]; state.combat=harnessCombatFixture({distance:0,type:'skeleton',count:3}); normalizeCombatState(); state.seed=17;
+        harnessAssert(resolveTurnUndead(cleric,{targetQuery:'skeletons'},true,false)===true,'Level-four cleric did not automatically destroy skeletons');
+        harnessAssert(state.combat.monsters.filter(monster=>monster.dead).length>=1,'Successful destroy result affected no undead');
+        harnessAssert(resolveTurnUndead(cleric,{targetQuery:'skeletons'},true,false)===false,'Cleric retried the same undead group in one fight');
+      }},
+      {name:'Thief backstab doubles weapon dice after an unnoticed approach',run:()=>{
+        const run=backstab=>{
+          installKaiBesilHarnessFixture(); state.rules.weaponDamageMode='RAW'; state.rules.weaponAudit=false;
+          const thief=normalizeMember({name:'Locke',className:'Thief',level:1,hp:4,maxHp:4,ac:7,thac0:1,abilities:{str:10,int:10,wis:10,dex:18,con:10,cha:10},inventory:[{itemId:'dagger',name:'Dagger',qty:1,enc:10}],equippedWeapon:{itemId:'dagger',name:'Dagger',matrixId:'Dagger (RC)'}});
+          thief.thac0=1;
+          if(backstab) thief.stealthState={skill:'hideShadows',hidden:true}; state.party=[thief]; state.combat=harnessCombatFixture({distance:0,type:'skeleton',count:1}); normalizeCombatState();
+          const target=state.combat.monsters[0]; target.hp=target.maxHp=100; target.ac=9; state.combat.pcOrders.locke={action:'melee',targetId:target.id,backstab}; state.seed=123; const before=target.hp; pcWeaponAttack(thief,target,'melee','normal',true,false); return before-target.hp;
+        };
+        const ordinary=run(false),backstab=run(true); harnessAssert(ordinary>0&&backstab===ordinary*2,`Backstab damage was not double weapon dice (${ordinary} vs ${backstab})`);
+      }},
+      {name:'Holy water and burning oil use their BECMI consumable combat procedures',run:()=>{
+        installKaiBesilHarnessFixture(); state.rules.weaponDamageMode='RAW'; state.rules.weaponAudit=false;
+        const thrower=normalizeMember({name:'Vera',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,thac0:1,abilities:{str:10,int:10,wis:10,dex:18,con:10,cha:10},inventory:[{itemId:'holy_water',name:'Holy Water',qty:1,enc:1}],equippedWeapon:{itemId:'holy_water',name:'Holy Water',matrixId:'Holy Water (RC)'}}); thrower.thac0=1;
+        state.party=[thrower]; state.combat=harnessCombatFixture({distance:10,type:'skeleton',count:1}); normalizeCombatState(); const undead=state.combat.monsters[0]; undead.hp=undead.maxHp=100; state.seed=123; const before=undead.hp;
+        pcWeaponAttack(thrower,undead,'missile','short',true,false); harnessAssert(undead.hp<before&&partyItemQty('holy_water')===0,'Holy water was not consumed for 1d8 damage against undead');
+        thrower.inventory=[{itemId:'burning_oil',name:'Burning Oil Flask',qty:1,enc:10}]; thrower.equippedWeapon={itemId:'burning_oil',name:'Burning Oil Flask',matrixId:'Oil, Burning (RC)'}; state.torchLit=true; state.torchMinutes=60; state.seed=123; const oilBefore=undead.hp;
+        pcWeaponAttack(thrower,undead,'missile','short',true,false); harnessAssert(undead.burningOilRounds===2&&partyItemQty('burning_oil')===0,'Burning oil was not consumed and attached for two rounds');
+        decrementCombatEffects(); decrementCombatEffects(); harnessAssert(undead.hp<oilBefore&&undead.burningOilRounds===0,'Burning oil did not inflict 1d8 damage in each of two rounds');
+      }},
+      {name:'Set Spear vs. Charge doubles weapon dice before modifiers',run:()=>{
+        const run=set=>{ installKaiBesilHarnessFixture(); state.rules.weaponDamageMode='RAW'; state.rules.weaponAudit=false; const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,thac0:1,abilities:{str:10,int:10,wis:10,dex:10,con:10,cha:10},inventory:[{itemId:'spear',name:'Spear',qty:1,enc:30}],equippedWeapon:{itemId:'spear',name:'Spear',matrixId:'Spear (RC)'}}); fighter.thac0=1; state.party=[fighter]; state.combat=harnessCombatFixture({distance:0,type:'jaguar',count:1}); normalizeCombatState(); const target=state.combat.monsters[0]; target.hp=target.maxHp=100; state.seed=123; const before=target.hp; if(set){ state.combat.pcOrders.aldric={action:'set_spear',movement:'hold',targetId:target.id}; target.chargedThisRound=true; resolveSetSpearVsCharge(fighter,target); } else pcWeaponAttack(fighter,target,'melee','normal',true,false); return before-target.hp; };
+        const ordinary=run(false),set=run(true); harnessAssert(ordinary>0&&set===ordinary*2,`Set Spear did not double weapon dice (${ordinary} vs ${set})`);
+      }},
+      {name:'Talamau retainer offer uses Charisma, capacity, wages, and permanent gear',run:()=>{
+        installKaiBesilHarnessFixture(); state.mode='site'; state.location='talamau'; state.treasuryCp=100000;
+        const employer=normalizeMember({name:'Marwen',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:13,int:10,wis:10,dex:10,con:10,cha:18},inventory:[]}); state.party=[employer];
+        const recruit=buildLevelOneMember('Sella','Thief',{str:10,int:10,wis:10,dex:15,con:10,cha:10},'Neutral','Retainer applicant.').member; recruit.startingMoneyCp=0; recruit.startingMoneyUnspentCp=0;
+        state.retainerMarket={searchedDay:state.day,reputationModifier:3,candidates:[{id:'candidate-sella',name:'Sella',className:'Thief',member:recruit}]};
+        const before=state.treasuryCp; harnessAssert(offerRetainerContract('offer Sella 50 gp per month and a treasure share')===true,'Strong retainer offer was not accepted');
+        const hired=state.party.find(pc=>pc.name==='Sella'); harnessAssert(hired?.isRetainer&&hired.monthlyGp===50&&hired.treasureSharePromised,'Accepted applicant did not become a contracted retainer');
+        harnessAssert(hired.inventory.some(item=>item.itemId==='leather')&&hired.inventory.some(item=>item.itemId==='thieves_tools')&&state.treasuryCp<before,'Retainer equipment or costs were not applied');
+      }},
+      {name:'Ward restoration plus safe return records a complete campaign victory',run:()=>{
+        installKaiBesilHarnessFixture(); state.mode='site'; state.location='temple_6'; state.incenseLit=true;
+        grantCampaignItem('jacinth_snuffer','Jacinth Snuffer',{enc:10}); grantCampaignItem('book_leaping_flame','Book of the Leaping Flame',{enc:50}); grantCampaignItem('incandescent_incense','Incandescent Incense',{enc:6,qty:1});
+        harnessAssert(performFlameRitual()===true&&templeState().wardsRestored,'End-to-end ritual did not restore the wards');
+        state.mode='wilderness'; state.location=null; state.hex={q:6,r:12}; state.locationState.talamau.kitraReceptionComplete=true;
+        harnessAssert(enterSite()===true&&state.campaignOutcome.status==='victory','Returning to Talamau after restoration did not record victory');
       }},
       {name:'Ash Walker takes automatic 1d10 damage from a waterskin of liquid',run:()=>{
         installKaiBesilHarnessFixture(); state.mode='site'; state.location='temple_13'; state.seed=17;
