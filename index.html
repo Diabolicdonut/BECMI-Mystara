@@ -111,7 +111,7 @@
   .map-window-panel { margin:0; min-height:280px; max-height:68dvh; padding:14px; border:1px solid var(--line); background:#050704; color:var(--ink); font:14px/1.42 Consolas,"Courier New",monospace; white-space:pre; overflow:auto; }
   .map-window-header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .map-window-header-row button { padding:6px 10px; font-size:12px; }
-  body.map-open, body.journal-open { overflow:hidden; }
+  body.map-open, body.journal-open, body.reference-open { overflow:hidden; }
   .journal-window-modal { width:min(900px,100%); }
   .journal-toolbar { display:grid; grid-template-columns:minmax(0,1fr) 150px auto auto; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); background:#0a0e09; }
   .journal-toolbar input, .journal-toolbar select { width:100%; background:#050704; color:var(--ink); border:1px solid #53634a; padding:8px; font:inherit; }
@@ -125,8 +125,23 @@
   .journal-text.ai { color:#c6d8f0; }
   .journal-text.engine { color:#efc071; }
   .journal-empty { color:var(--dim); padding:16px 4px; }
+  .reference-window-modal { width:min(940px,100%); }
+  .reference-toolbar { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); background:#0a0e09; }
+  .reference-toolbar input { width:100%; }
+  .reference-body { padding:14px; }
+  .reference-results { min-height:320px; max-height:70dvh; overflow:auto; border:1px solid var(--line); background:#050704; padding:8px 14px; }
+  .reference-section { padding:13px 0; border-bottom:1px solid #283123; }
+  .reference-section:last-child { border-bottom:0; }
+  .reference-section h3 { margin:0 0 7px; color:var(--accent); font-size:14px; }
+  .reference-section p, .reference-section li { color:var(--ink); font-size:12px; line-height:1.5; }
+  .reference-section p { margin:5px 0; }
+  .reference-section ul { margin:7px 0 0; padding-left:20px; }
+  .reference-section code { color:#e7f28a; background:#11180e; border:1px solid #2f3d29; padding:1px 4px; overflow-wrap:anywhere; }
+  .reference-command { display:grid; grid-template-columns:minmax(220px,38%) minmax(0,1fr); gap:10px; padding:7px 0; border-top:1px dotted #263221; }
+  .reference-command:first-of-type { border-top:0; }
+  .reference-command div { color:var(--dim); font-size:11px; line-height:1.45; }
   @media (min-width:801px) { html, body { height:100%; overflow:hidden; } }
-  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } .journal-toolbar { grid-template-columns:1fr 1fr; } .journal-toolbar input { grid-column:1 / -1; } .journal-results { min-height:52dvh; max-height:68dvh; } }
+  @media (max-width:800px) { .modal-body { grid-template-columns:1fr; } .abilities { grid-template-columns:repeat(3,1fr); } .creator-grid { grid-template-columns:1fr; } .map-window-panel { min-height:52dvh; max-height:70dvh; font-size:13px; } .journal-toolbar { grid-template-columns:1fr 1fr; } .journal-toolbar input { grid-column:1 / -1; } .journal-results { min-height:52dvh; max-height:68dvh; } .reference-command { grid-template-columns:1fr; gap:4px; } }
   @media (max-width:800px) {
     :root { --mobile-footer-h:104px; --mobile-situation-h:66px; --mobile-fixed-safe:190px; }
     html, body { min-height:100%; height:auto; overflow-x:hidden; overflow-y:auto; scroll-padding-bottom:var(--mobile-fixed-safe); }
@@ -201,6 +216,12 @@
         <p id="journalStatus" class="map-note">Permanent searchable transcript is stored locally in this browser.</p>
       </section>
 
+      <section>
+        <h2>PLAYER HANDBOOK</h2>
+        <div class="button-row"><button type="button" id="showPlayerHandbookButton">OPEN RULES REFERENCE</button></div>
+        <p class="map-note">Search the procedures, commands, table aids, and campaign rulings actually used by this build.</p>
+      </section>
+
       <details class="sidebar-collapse" id="quickCommandsDetails">
         <summary>QUICK COMMANDS</summary>
         <div class="collapse-body">
@@ -259,6 +280,7 @@
           </div>
           <div class="button-row" style="margin-top:8px">
             <button type="button" id="exportDebugButton" hidden>EXPORT DEBUG SESSION</button>
+            <button type="button" id="showDeveloperCommandsButton" hidden>DEVELOPER COMMANDS</button>
           </div>
           <p class="tiny" id="debugExportHelp" hidden><strong>Debug Export:</strong> creates one JSON file containing the complete campaign/session journal, referee-only engine records, current full state, combat geometry and orders, parser/discourse traces, AI request/response diagnostics, runtime errors, and regression reports. It deliberately excludes the GAME_TOKEN and other credentials. Upload this file when reporting a difficult bug.</p>
           <p class="tiny"><strong>Regression Harness:</strong> RUN SELF-TESTS checks deterministic parser helpers, semantic-plan normalization, entity/group resolution, transactional combat plans, group movement, and melee-distance invariants without calling AI or changing the campaign. AI PARSER SMOKE TESTS are optional and use the configured referee connection to test several natural-language interpretations across combat, travel, social, and inventory play. The harness is also exposed as <code>window.KnownWorldTestHarness</code> for future browser/CI automation.</p>
@@ -280,7 +302,7 @@
       <section>
         <h2>COMBAT</h2>
         <div id="combatPanel"><p>No combat in progress.</p></div>
-        <p class="tiny">Type <strong>combat</strong> for the full combat state, <strong>combat party</strong> for a quick weapons/ammunition/spells reference, or <strong>combat help</strong> for commands. For isolated engine testing, <strong>encounter 4 goblins</strong> creates a clearly labeled test encounter without adding it to the campaign map.</p>
+        <p class="tiny">Type <strong>combat</strong> for the full combat state, <strong>combat party</strong> for a quick weapons/ammunition/spells reference, or <strong>combat help</strong> for commands. Isolated test encounters and other state-changing diagnostics are available through the Developer Mode command reference.</p>
       </section>
 
       <section>
@@ -363,6 +385,25 @@
   </div>
 </div>
 
+<div id="referenceWindow" class="modal-backdrop" aria-hidden="true">
+  <div class="modal reference-window-modal" role="dialog" aria-modal="true" aria-labelledby="referenceWindowTitle">
+    <header>
+      <div class="map-window-header-row">
+        <h2 id="referenceWindowTitle">PLAYER HANDBOOK</h2>
+        <button type="button" id="closeReferenceButton">CLOSE</button>
+      </div>
+      <div class="subtitle" id="referenceWindowSubtitle">Searchable procedures and commands for the current build</div>
+    </header>
+    <div class="reference-toolbar">
+      <input id="referenceSearch" autocomplete="off" spellcheck="false" placeholder="Search movement, mapping, combat, spells, fortifications…">
+      <button type="button" id="referenceClearButton">CLEAR</button>
+    </div>
+    <div class="reference-body">
+      <div id="referenceResults" class="reference-results"><div class="journal-empty">Reference is loading…</div></div>
+    </div>
+  </div>
+</div>
+
 <div id="partyCreator" class="modal-backdrop" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="creatorTitle">
     <header>
@@ -438,7 +479,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION = '0.3.64';
+  const APP_VERSION = '0.3.66';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -492,6 +533,8 @@
   let situationPreference = 'auto';
   const mapWindow = document.getElementById('mapWindow');
   const showJournalButton = document.getElementById('showJournalButton');
+  const showPlayerHandbookButton = document.getElementById('showPlayerHandbookButton');
+  const showDeveloperCommandsButton = document.getElementById('showDeveloperCommandsButton');
   const journalStatus = document.getElementById('journalStatus');
   const journalWindow = document.getElementById('journalWindow');
   const closeJournalButton = document.getElementById('closeJournalButton');
@@ -503,6 +546,14 @@
   const exportCampaignButton = document.getElementById('exportCampaignButton');
   const importCampaignButton = document.getElementById('importCampaignButton');
   const importCampaignFile = document.getElementById('importCampaignFile');
+  const referenceWindow = document.getElementById('referenceWindow');
+  const referenceWindowTitle = document.getElementById('referenceWindowTitle');
+  const referenceWindowSubtitle = document.getElementById('referenceWindowSubtitle');
+  const referenceSearchInput = document.getElementById('referenceSearch');
+  const referenceClearButton = document.getElementById('referenceClearButton');
+  const referenceResults = document.getElementById('referenceResults');
+  const closeReferenceButton = document.getElementById('closeReferenceButton');
+  let referenceKind = 'player';
   const mapWindowPanel = document.getElementById('mapWindowPanel');
   const mapWindowTitle = document.getElementById('mapWindowTitle');
   const closeMapButton = document.getElementById('closeMapButton');
@@ -647,15 +698,18 @@
     'Fire Priest': {hd:4, primes:['int'], armor:'none', weaponRule:'magic-user', spellbook:true, requires:a=>a.int>=9, unlock:'firePriest'}
   };
 
-  // Rules Cyclopedia name level and Chapter 12 stronghold/dominion procedures.
-  // Fighters may build a home or even a castle at any level, but it has no
-  // official sanction before Name level. Halflings may build a stronghold at
-  // any level and a suitably placed one can attract a clan community. These
-  // thresholds govern formal titles, territorial authority, and dominion
-  // income. The campaign's optional Fire Priest follows the cleric path.
+  // Rules Cyclopedia name level and Chapter 12 construction/dominion procedures.
+  // In this engine a fortification is the physical manor, tower, keep, castle,
+  // or stockade. It can be commissioned at any level and becomes a secure base
+  // when complete. "Stronghold" is reserved for a completed fortification that
+  // a Name-level character has made the recognized seat of a dominion. The
+  // Halfling's exceptional early clan community remains distinct from dominion
+  // subjects, taxes, title, and ruler XP. The optional Fire Priest follows the
+  // cleric path for Name-level authority.
   const NAME_LEVEL={'Fighter':9,'Cleric':9,'Magic-User':9,'Thief':9,'Dwarf':9,'Elf':9,'Halfling':8,'Fire Priest':9};
   const STRONGHOLD_COMPONENTS={
-    barbican:{label:'barbican',aliases:['barbican'],costGp:37000,material:'stone',ac:'-4/6',hp:700,br:14},
+    barbican:{label:'stone barbican',aliases:['stone barbican','barbican'],costGp:37000,material:'stone',ac:'-4/6',hp:700,br:14},
+    timber_barbican:{label:'timber barbican',aliases:['timber barbican','wood barbican','wooden barbican'],costGp:7400,material:'wood',ac:'-4/6',hp:420,br:7,fireVulnerable:true,timberAnalogueOf:'barbican'},
     battlement:{label:'100-foot battlement',aliases:['battlement','battlements'],costGp:500,material:'stone',ac:'-4/6',hp:50,br:1},
     wood_building:{label:'wood building',aliases:['wood building','wooden building','timber building','timber hall'],costGp:1500,material:'wood',ac:'-4/6',hp:40,br:2,fireVulnerable:true},
     stone_building:{label:'stone building',aliases:['stone building'],costGp:3000,material:'stone',ac:'-4/6',hp:60,br:6},
@@ -664,7 +718,8 @@
     dungeon_corridor:{label:'10-foot dungeon corridor',aliases:['dungeon corridor','corridor'],costGp:500,material:'stone',ac:null,hp:null,br:0},
     wood_gate:{label:'wood gate',aliases:['wood gate','wooden gate','timber gate','gate'],costGp:1000,material:'wood',ac:'-8/2',hp:100,br:0,fireVulnerable:true},
     gatehouse:{label:'gatehouse',aliases:['gatehouse','gate house'],costGp:6500,material:'stone',ac:'-4/6',hp:550,br:11},
-    square_keep:{label:'square keep',aliases:['square keep','keep'],costGp:75000,material:'stone',ac:'-4/6',hp:2500,br:50},
+    square_keep:{label:'stone square keep',aliases:['stone square keep','stone keep','square keep','keep'],costGp:75000,material:'stone',ac:'-4/6',hp:2500,br:50},
+    timber_square_keep:{label:'timber square keep',aliases:['timber square keep','timber keep','wood keep','wooden keep'],costGp:15000,material:'wood',ac:'-4/6',hp:1500,br:25,fireVulnerable:true,timberAnalogueOf:'square_keep'},
     dry_moat:{label:'100-foot unfilled moat',aliases:['dry moat','unfilled moat','moat'],costGp:400,material:'earth',ac:null,hp:null,br:16},
     filled_moat:{label:'100-foot filled moat',aliases:['filled moat','water moat'],costGp:800,material:'earth',ac:null,hp:null,br:32},
     bastion:{label:'bastion tower',aliases:['bastion','bastion tower'],costGp:9000,material:'stone',ac:'-4/6',hp:300,br:6},
@@ -674,15 +729,27 @@
     wood_wall:{label:'100-foot wood stockade',aliases:['wood wall','wooden wall','timber wall','wood stockade','timber stockade','stockade'],costGp:1000,material:'wood',ac:'-4/6',hp:300,br:5,fireVulnerable:true},
     barred_window:{label:'barred window',aliases:['barred window','window'],costGp:20,material:'stone',ac:'-15/0',hp:null,br:0}
   };
-  // Presets are only convenient bundles of the published construction blocks;
-  // their costs, time, durability, and BR are always recalculated from the table.
+  // Presets are convenient Name-level design bundles made from construction
+  // blocks. Timber keeps and barbicans are ordinary components, not a separate
+  // "minor stronghold" preset.
   const STRONGHOLD_PRESETS={
     keep:{label:'border keep',classes:['Fighter'],components:{square_keep:1,stone_building:2,castle_wall:4,gatehouse:1}},
     sanctuary:{label:'clerical sanctuary',classes:['Cleric','Fire Priest'],components:{stone_building:2,castle_wall:4,gatehouse:1,bastion:2}},
     tower:{label:"magic-user's tower",classes:['Magic-User'],components:{round_tower_wide:1,stone_building:1,iron_door:1}},
     hideout:{label:"thieves' hideout",classes:['Thief'],components:{stone_building:1,dungeon_corridor:12,iron_door:2}},
-    clanhold:{label:'demihuman clanhold',classes:['Dwarf','Elf','Halfling'],components:{square_keep:1,stone_building:2,castle_wall:4,gatehouse:1}},
-    stockade:{label:'minor timber stockade',classes:['Fighter','Cleric','Magic-User','Thief','Dwarf','Elf','Halfling','Fire Priest'],components:{wood_building:2,wood_wall:4,wood_gate:1}}
+    clanhold:{label:'demihuman clanhold',classes:['Dwarf','Elf','Halfling'],components:{square_keep:1,stone_building:2,castle_wall:4,gatehouse:1}}
+  };
+  const STRONGHOLD_LAYOUTS={
+    three_story_timber_keep:{
+      label:'three-story timber keep and palisaded courtyard',
+      summary:'One substantial three-story timber keep, approximately 30 by 40 feet, stands in an open courtyard enclosed by a square 400-foot palisade. One reinforced wooden gate is the compound’s sole formal entrance.',
+      floors:[
+        'Ground floor: common hall, kitchen, stores, workshop space, and the principal reinforced entrance.',
+        'Second floor: barracks, armory, officers’ room, and an interior fighting position overlooking the courtyard.',
+        'Third floor: owner’s quarters, secure treasury, council room, and a roof-access watch chamber.'
+      ],
+      costing:'The keep uses two 1,500 gp wooden-building construction units combined into one continuous building under the Rules Cyclopedia layout rule; they are not two detached structures.'
+    }
   };
   const DOMINION_RESOURCE_RULES={animal:{label:'animal',gpPerFamily:2},vegetable:{label:'vegetable',gpPerFamily:1},mineral:{label:'mineral',gpPerFamily:3}};
   const DOMINION_MONTH_MINUTES=30*1440, DOMINION_YEAR_MINUTES=12*DOMINION_MONTH_MINUTES;
@@ -1367,6 +1434,61 @@
     document.body.classList.remove('journal-open'); command?.focus();
   }
 
+  function referenceSectionsFor(kind='player'){
+    if(kind!=='developer') return PLAYER_RULE_REFERENCE_SECTIONS;
+    const grouped=new Map();
+    for(const spec of DEVELOPER_COMMAND_SPECS){
+      if(!grouped.has(spec.category)) grouped.set(spec.category,[]);
+      grouped.get(spec.category).push(spec);
+    }
+    return [...grouped.entries()].map(([title,commands])=>({
+      title,
+      paragraphs:[],
+      bullets:[],
+      commands:commands.map(spec=>({usage:spec.usage,summary:spec.summary}))
+    }));
+  }
+
+  function renderReferenceWindow(){
+    if(!referenceResults) return;
+    const query=String(referenceSearchInput?.value||'').trim().toLowerCase();
+    const sections=referenceSectionsFor(referenceKind).filter(section=>{
+      if(!query) return true;
+      const haystack=[section.title,...(section.paragraphs||[]),...(section.bullets||[]),...(section.commands||[]).flatMap(row=>[row.usage,row.summary])].join(' ').toLowerCase();
+      return query.split(/\s+/).every(term=>haystack.includes(term));
+    });
+    if(!sections.length){ referenceResults.innerHTML='<div class="journal-empty">No matching reference entries. Try a broader word such as “travel”, “spell”, “site”, or “gold”.</div>'; return; }
+    referenceResults.innerHTML=sections.map(section=>`<section class="reference-section"><h3>${esc(section.title)}</h3>${(section.paragraphs||[]).map(p=>`<p>${esc(p)}</p>`).join('')}${(section.bullets||[]).length?`<ul>${section.bullets.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`:''}${(section.commands||[]).map(row=>`<div class="reference-command"><code>${esc(row.usage)}</code><div>${esc(row.summary)}</div></div>`).join('')}</section>`).join('');
+  }
+
+  function openReferenceWindow(kind='player',query=''){
+    if(kind==='developer'&&!state.rules?.developerMode){
+      write('The developer command reference is available only while Developer Mode is enabled.','warning');
+      if(optionsDetails) optionsDetails.open=true;
+      return false;
+    }
+    if(mapWindow?.classList.contains('open')) closeMapWindow();
+    if(journalWindow?.classList.contains('open')) closeJournalWindow();
+    referenceKind=kind==='developer'?'developer':'player';
+    if(referenceWindowTitle) referenceWindowTitle.textContent=referenceKind==='developer'?'DEVELOPER COMMAND REFERENCE':'PLAYER HANDBOOK';
+    if(referenceWindowSubtitle) referenceWindowSubtitle.textContent=referenceKind==='developer'
+      ? 'Developer Mode only · deterministic state-changing test commands · generated from the live command registry'
+      : `Current build ${APP_VERSION} · player-visible rules, procedures, commands, and table aids`;
+    if(referenceSearchInput){
+      referenceSearchInput.value=query;
+      referenceSearchInput.placeholder=referenceKind==='developer'?'Search level, encounter, dungeon, teleport, construction…':'Search movement, mapping, combat, spells, fortifications…';
+    }
+    renderReferenceWindow();
+    if(referenceWindow){ referenceWindow.classList.add('open'); referenceWindow.setAttribute('aria-hidden','false'); document.body.classList.add('reference-open'); }
+    if(query) referenceSearchInput?.focus();
+    return true;
+  }
+
+  function closeReferenceWindow(){
+    if(referenceWindow){ referenceWindow.classList.remove('open'); referenceWindow.setAttribute('aria-hidden','true'); }
+    document.body.classList.remove('reference-open'); command?.focus();
+  }
+
   async function journalContextFor(question){
     const rows=await searchJournalEntries(question,'all',6,{forAi:true});
     if(!rows.length) return 'No relevant player-visible campaign-journal entries were found.';
@@ -1756,7 +1878,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       cashTreasuryGp:0,
       debtGp:0,
       confidence:{base:null,current:null,temporaryModifier:0,lastCheckedYear:0},
-      stronghold:{preset:null,name:null,ownerName:null,authorityStatus:'none',nameLevelBenefitsGrantedAt:null,components:{},locationHex:null,siteTerrain:null,settledSite:false,status:'none',costGp:0,paidGp:0,subsidyGp:0,loanGp:0,engineers:0,engineerMonthlyGp:750,constructionStartedAt:null,constructionCompletesAt:null,constructionDays:0,pausedAt:null,followers:null,community:null},
+      stronghold:{preset:null,name:null,ownerName:null,authorityStatus:'none',nameLevelBenefitsGrantedAt:null,components:{},locationHex:null,siteTerrain:null,settledSite:false,regionId:null,status:'none',costGp:0,paidGp:0,subsidyGp:0,loanGp:0,engineers:0,engineerMonthlyGp:750,supervisorKind:null,supervisorCount:0,supervisorMonthlyGp:0,supervisorCostGp:0,constructionStartedAt:null,constructionCompletesAt:null,constructionDays:0,pausedAt:null,followers:null,community:null},
       staff:{},
       monthlyLedger:[],
       events:[]
@@ -2914,6 +3036,12 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const storedStronghold=d.stronghold&&typeof d.stronghold==='object'&&!Array.isArray(d.stronghold)?d.stronghold:{},storedAuthorityStatus=Object.prototype.hasOwnProperty.call(storedStronghold,'authorityStatus');
     d.stronghold={...base.stronghold,...storedStronghold};
     d.stronghold.components=d.stronghold.components&&typeof d.stronghold.components==='object'&&!Array.isArray(d.stronghold.components)?d.stronghold.components:{};
+    if(d.stronghold.preset==='stockade'){
+      d.stronghold.layoutId=d.stronghold.layoutId||'three_story_timber_keep';
+      d.stronghold.preset=null;
+      if(/’s minor timber (?:stockade|fortress)$/i.test(String(d.stronghold.name||''))) d.stronghold.name=String(d.stronghold.name).replace(/minor timber (?:stockade|fortress)$/i,'timber keep and palisade');
+    }
+    d.stronghold.regionId=d.stronghold.regionId||state.region||'kai_besil';
     d.stronghold.ownerName=d.stronghold.ownerName||d.rulerName||null;
     if(!storedAuthorityStatus||!['none','private','recognized'].includes(d.stronghold.authorityStatus)) d.stronghold.authorityStatus=d.stronghold.status==='none'?'none':d.establishedAtAbsoluteMinute!=null||Boolean(d.authority)?'recognized':'private';
     if(d.stronghold.status==='none') d.stronghold.authorityStatus='none';
@@ -2924,7 +3052,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
   function nameLevelEligible(pc){ return Boolean(pc&&!pc.dead&&Number(pc.level)>=Number(NAME_LEVEL[pc.className]||9)); }
   function earlyStrongholdClass(pc){ return Boolean(pc&&!pc.dead&&['Fighter','Halfling'].includes(pc.className)); }
-  function strongholdBuildEligible(pc){ return Boolean(pc&&!pc.dead&&(earlyStrongholdClass(pc)||nameLevelEligible(pc))); }
+  function strongholdBuildEligible(pc){ return Boolean(pc&&!pc.dead); }
   function strongholdOwnerName(){ return state.domain?.stronghold?.ownerName||state.domain?.rulerName||null; }
   function strongholdOwners(text=''){
     const named=namedPcsInText(text);
@@ -2943,7 +3071,13 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   }
   function resolveStrongholdPreset(text=''){
     const q=String(text).toLowerCase();
-    return Object.entries(STRONGHOLD_PRESETS).find(([id,p])=>q.includes(id)||q.includes(p.label.toLowerCase())||(id==='sanctuary'&&/temple|church/.test(q))||(id==='clanhold'&&/clan hold/.test(q))||(id==='stockade'&&/(?:minor|timber|wooden|wood) stronghold/.test(q)))?.[0]||null;
+    return Object.entries(STRONGHOLD_PRESETS).find(([id,p])=>q.includes(id)||q.includes(p.label.toLowerCase())||(id==='sanctuary'&&/temple|church/.test(q))||(id==='clanhold'&&/clan hold/.test(q)))?.[0]||null;
+  }
+  function resolveFortificationStarterComponent(text=''){
+    const q=String(text).toLowerCase();
+    if(/\b(?:timber|wood(?:en)?)\s+(?:square\s+)?keep\b/.test(q)) return 'timber_square_keep';
+    if(/\b(?:timber|wood(?:en)?)\s+barbican\b/.test(q)) return 'timber_barbican';
+    return null;
   }
   function currentStrongholdAnchor(){
     if(state.mode==='wilderness') return {...state.hex};
@@ -2954,18 +3088,46 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const root=sites[state.location]?.localParent||state.location;
     return currentSettlementId()==='talamau'||root==='talamau'||(Number(anchor.q)===Number(SITE_LOCATIONS.talamau?.q)&&Number(anchor.r)===Number(SITE_LOCATIONS.talamau?.r));
   }
+  function fortificationSupervisor(stronghold,rows,costGp,constructionDays){
+    const count=Math.max(1,Math.ceil(costGp/100000)),months=Math.max(1,Math.ceil(constructionDays/30));
+    const primitiveTimber=String(stronghold.regionId||state.region||'')==='kai_besil'&&rows.length>0&&rows.every(row=>['wood','earth'].includes(row.material));
+    if(primitiveTimber) return {kind:'tribal_master_builder',label:'tribal master builder',count,monthlyGp:50,months,costGp:count*50*months,raw:false,notes:'Kai Besil adaptation for timber and earthworks only; payable in coin or equivalent barter.'};
+    return {kind:'engineer',label:'engineer',count,monthlyGp:750,months,costGp:count*750*months,raw:true,notes:'Qualified construction engineer required for masonry, mixed, or advanced works.'};
+  }
   function strongholdPlanStats(stronghold=ensureDomainState().stronghold){
     const settled=Boolean(stronghold.settledSite),rows=[]; let fullCostGp=0,costGp=0,hp=0,br=0,woodGp=0,stoneGp=0,fireVulnerableHp=0;
     for(const [id,rawQty] of Object.entries(stronghold.components||{})){
       const component=STRONGHOLD_COMPONENTS[id],qty=Math.max(0,Math.floor(Number(rawQty)||0)); if(!component||!qty) continue;
-      const multiplier=settled?(component.material==='stone'?0.4:component.material==='wood'?0.2:1):1;
-      const rowCost=Math.round(component.costGp*qty*multiplier),rowHp=Number(component.hp||0)*qty; fullCostGp+=component.costGp*qty; costGp+=rowCost; hp+=rowHp; br+=Number(component.br||0)*qty;
+      const rowCost=Math.round(component.costGp*qty),rowHp=Number(component.hp||0)*qty; fullCostGp+=component.costGp*qty; costGp+=rowCost; hp+=rowHp; br+=Number(component.br||0)*qty;
       if(component.material==='wood'){ woodGp+=rowCost; if(component.fireVulnerable) fireVulnerableHp+=rowHp; }
       if(component.material==='stone') stoneGp+=rowCost;
       rows.push({id,qty,label:component.label,material:component.material,costGp:rowCost,fullCostGp:component.costGp*qty,hp:rowHp,br:Number(component.br||0)*qty,fireVulnerable:Boolean(component.fireVulnerable)});
     }
-    const constructionDays=Math.max(1,Math.ceil(costGp/500)),engineers=Math.max(1,Math.ceil(costGp/100000)),engineeringMonths=Math.max(1,Math.ceil(constructionDays/30)),engineerGp=engineers*750*engineeringMonths;
-    return {settled,rows,fullCostGp,costGp,hp,br,woodGp,stoneGp,fireVulnerableHp,constructionDays,engineers,engineeringMonths,engineerGp};
+    const constructionDays=Math.max(1,Math.ceil(costGp/500)),supervisor=fortificationSupervisor(stronghold,rows,costGp,constructionDays);
+    const engineers=supervisor.kind==='engineer'?supervisor.count:0,masterBuilders=supervisor.kind==='tribal_master_builder'?supervisor.count:0,engineeringMonths=supervisor.months,engineerGp=supervisor.kind==='engineer'?supervisor.costGp:0;
+    return {settled,rows,fullCostGp,costGp,hp,br,woodGp,stoneGp,fireVulnerableHp,constructionDays,engineers,masterBuilders,engineeringMonths,engineerGp,supervisor,supervisorGp:supervisor.costGp};
+  }
+  function strongholdLayout(stronghold=ensureDomainState().stronghold){
+    const layout=STRONGHOLD_LAYOUTS[stronghold.layoutId||STRONGHOLD_PRESETS[stronghold.preset]?.layoutId];
+    if(!layout) return null;
+    if(layout===STRONGHOLD_LAYOUTS.three_story_timber_keep){
+      const c=stronghold.components||{};
+      if(Number(c.wood_building||0)<2||Number(c.wood_wall||0)<4||Number(c.wood_gate||0)<1) return null;
+    }
+    return layout;
+  }
+  function strongholdLayoutText(stronghold=ensureDomainState().stronghold){
+    const layout=strongholdLayout(stronghold); if(!layout) return '';
+    return `${layout.summary}\n${layout.floors.join('\n')}\nCosting note: ${layout.costing}`;
+  }
+  function strongholdCostRowsText(stronghold=ensureDomainState().stronghold,stats=strongholdPlanStats(stronghold)){
+    const layout=strongholdLayout(stronghold);
+    return stats.rows.map(row=>{
+      if(layout===STRONGHOLD_LAYOUTS.three_story_timber_keep&&row.id==='wood_building'&&row.qty===2) return `one three-story timber keep (2 combined wooden-building units): ${row.costGp.toLocaleString()} gp`;
+      if(layout===STRONGHOLD_LAYOUTS.three_story_timber_keep&&row.id==='wood_wall'&&row.qty===4) return `four 100-foot palisade sections enclosing the courtyard: ${row.costGp.toLocaleString()} gp`;
+      if(layout===STRONGHOLD_LAYOUTS.three_story_timber_keep&&row.id==='wood_gate'&&row.qty===1) return `one reinforced wooden gate: ${row.costGp.toLocaleString()} gp`;
+      return `${row.qty}× ${row.label}: ${row.costGp.toLocaleString()} gp`;
+    }).join('; ');
   }
   function strongholdClassAuthority(pc,presetId){
     if(['Cleric','Fire Priest'].includes(pc.className)) return 'clerical order sanction';
@@ -2984,42 +3146,43 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     return Boolean(stronghold.settledSite||['road','clear','plains','hills'].includes(terrain));
   }
   function strongholdCatalog(){
-    const components=Object.entries(STRONGHOLD_COMPONENTS).map(([id,c])=>`${id}: ${c.label}, ${c.costGp.toLocaleString()} gp rural${c.hp?`, ${c.hp} structural hp`:''}${c.br?`, BR +${c.br}`:''}${c.fireVulnerable?', vulnerable to fire':''}`).join('\n');
-    const presets=Object.entries(STRONGHOLD_PRESETS).map(([id,p])=>`${id}: ${p.label} (${p.classes.join('/')})`).join('; ');
-    write(`STRONGHOLD CONSTRUCTION — B/X, BECMI, AND RULES CYCLOPEDIA\nEarly construction exceptions: a Fighter of any level may build a home or even a castle if the cost can be paid, but before 9th level it is an unsanctioned private holding and grants no title, territorial rule, subjects, tax income, or ruler XP. A Halfling of any level may build a stronghold; if it stands in pleasant settled, clear, grassland, or hill country, the specific Halfling rule can attract a clan community even before 8th level, but formal Sheriff authority and dominion income still wait until 8th level. Other classes must reach their stronghold level before using this system. Construction takes one game day per 500 gp actually spent after the site is clear and materials are present; one engineer at 750 gp/month is required per 100,000 gp or fraction. The table gives rural component prices. Wood uses its own cheaper listed components; in a heavily settled area stone work costs about 40% and wooden work about 20% of those respective listed prices. Wood therefore shortens construction through its lower actual expenditure, but has lower structural/BR values and is vulnerable to fire. The 8,000 gp minor timber stockade is the practical low-level Kai Besil option.\nPresets: ${presets}.\n\nRAW COMPONENTS\n${components}\n\nCommands: “plan stronghold <preset> for <name>”, “plan minor timber stronghold for <name>”, “add 2 timber buildings to stronghold”, “remove 1 castle wall from stronghold”, “begin stronghold construction”, “establish stronghold domain”, and “stronghold status”.`,'system'); return true;
+    const components=Object.entries(STRONGHOLD_COMPONENTS).map(([id,c])=>`${id}: ${c.label}, ${c.costGp.toLocaleString()} gp${c.timberAnalogueOf?' (20% timber analogue price)':c.material==='stone'?' (published stone price)':''}${c.hp?`, ${c.hp} structural hp`:''}${c.br?`, BR +${c.br}`:''}${c.fireVulnerable?', vulnerable to fire':''}`).join('\n');
+    const presets=Object.entries(STRONGHOLD_PRESETS).map(([id,p])=>`${id}: ${p.label} (traditional ${p.classes.join('/')} design)`).join('; ');
+    write(`FORTIFICATIONS AND NAME-LEVEL STRONGHOLDS — B/X, BECMI, AND RULES CYCLOPEDIA\nA fortification is a physical built site: a manor, watchtower, keep, castle, stockade, or similar defended base. Any adventurer may commission one at any level if the site, money, materials, and labor are available. Once complete, it protects the party from the outside wilderness, stores real carried goods, supports recovery, and suppresses the ordinary wandering-monster checks that apply to an exposed camp at that hex. It does not by itself grant political control.\n\nA stronghold is a completed fortification formally established at Name level as the seat of a dominion. Only then do class authority, ordinary stronghold followers, territorial inhabitants, taxes, dominion income, ruler XP, confidence, and events begin. A private fortification can become that stronghold later without being rebuilt. The RAW Halfling exception remains: a suitable early clan holding can attract a Halfling community, but those residents are not taxed dominion subjects and grant no Sheriff title or ruler XP.\n\nConstruction takes one game day per 500 gp spent after the site is clear and materials are present. Masonry and mixed works use the clarified BECMI/Rules Cyclopedia engineer procedure: one 750 gp/month engineer per 100,000 gp or fraction. On primitive Kai Besil, an all-timber-and-earthwork project may instead use one tribal master builder per 100,000 gp or fraction at 50 gp per 30 days in coin or equivalent barter. This is a campaign adaptation, not a claim that Carpentry, Dwarf abilities, charm magic, or forced labor replaces a qualified engineer under RAW.\n\nThe timber square keep (15,000 gp) and timber barbican (7,400 gp) are ordinary components, each priced at 20% of its stone counterpart. That price is not reduced a second time. They serve the same basic shelter and defensive functions, but have lower structural hp and BR and are vulnerable to fire. There is no minor timber stronghold preset; timber works are selected directly or assembled component by component.\n\nTRADITIONAL DESIGN BUNDLES\n${presets}.\n\nCONSTRUCTION COMPONENTS\n${components}\n\nCommands: “plan timber keep for <name>”, “plan timber barbican for <name>”, “plan fortification <bundle> for <name>”, “add 4 wood stockades to fortification”, “remove 1 castle wall from fortification”, “begin fortification construction”, “establish stronghold”, and “fortification status”. Older stronghold command forms remain valid aliases.`,'system'); return true;
   }
   function planStronghold(text=''){
     const d=ensureDomainState(),s=d.stronghold;
-    if(['building','complete'].includes(s.status)){ write('A stronghold is already under construction or complete in this campaign. Use “stronghold status”.','warning'); return false; }
+    if(['building','complete'].includes(s.status)){ write('A fortification is already under construction or complete in this campaign. Use “fortification status”.','warning'); return false; }
     const named=namedPcsInText(text),candidates=strongholdOwners(text);
     if(!candidates.length){
-      if(named.length) write(`${named[0].name} cannot yet use the stronghold-construction procedure. Fighters and Halflings may build at any level; other classes must first reach their class's stronghold level.`,'warning');
-      else write('No eligible stronghold owner is available. Fighters and Halflings may build at any level; other classes must first reach their class’s stronghold level.','warning');
+      if(named.length) write(`${named[0].name} is not available to own this fortification.`,'warning');
+      else write('Name a living adventurer to own the fortification. Physical construction is available at any level; Name-level standing is a separate procedure.','warning');
       return false;
     }
     const pc=candidates[0],recognized=nameLevelEligible(pc);
-    let presetId=resolveStrongholdPreset(text)||defaultStrongholdPreset(pc.className),preset=STRONGHOLD_PRESETS[presetId];
-    if(!preset.classes.includes(pc.className)){
-      const allowed=Object.entries(STRONGHOLD_PRESETS).filter(([,p])=>p.classes.includes(pc.className)).map(([id])=>id);
-      write(`${pc.name} cannot receive the class-specific benefits of a ${preset.label}. Choose ${allowed.join(' or ')}.`,'warning'); return false;
-    }
+    const starterComponentId=resolveFortificationStarterComponent(text);
+    const presetId=starterComponentId?null:(resolveStrongholdPreset(text)||defaultStrongholdPreset(pc.className)),preset=presetId?STRONGHOLD_PRESETS[presetId]:null;
+    const designLabel=starterComponentId?STRONGHOLD_COMPONENTS[starterComponentId].label:preset.label;
+    const components=starterComponentId?{[starterComponentId]:1}:{...preset.components};
     const anchor=currentStrongholdAnchor(),hex=getHex(anchor.q,anchor.r);
-    if(!hex||isKaiWaterTerrain(hex.terrain)){ write('A stronghold construction site must be on land.','warning'); return false; }
+    if(!hex||isKaiWaterTerrain(hex.terrain)){ write('A fortification construction site must be on land.','warning'); return false; }
     d.rulerName=recognized?pc.name:null; d.authority=recognized?strongholdClassAuthority(pc,presetId):privateStrongholdStanding(pc); d.anchorHex={...anchor}; d.terrainClass=strongholdSettledSite(anchor)?'civilized':'wilderness';
-    d.stronghold={...defaultDomainState().stronghold,preset:presetId,name:`${pc.name}’s ${preset.label}`,ownerName:pc.name,authorityStatus:recognized?'recognized':'private',components:{...preset.components},locationHex:{...anchor},siteTerrain:hex.terrain,settledSite:strongholdSettledSite(anchor),status:'planned'};
+    d.stronghold={...defaultDomainState().stronghold,preset:presetId,layoutId:preset?.layoutId||null,name:`${pc.name}’s ${designLabel}`,ownerName:pc.name,authorityStatus:recognized?'recognized':'private',components,locationHex:{...anchor},siteTerrain:hex.terrain,settledSite:strongholdSettledSite(anchor),regionId:state.region||'kai_besil',status:'planned'};
     const stats=strongholdPlanStats(d.stronghold);
-    write(`STRONGHOLD PLANNED — ${d.stronghold.name}\nOwner: ${pc.name}, ${pc.className} ${pc.level}; standing: ${d.authority}.\nSite: ${currentHex()?.name||sites[state.location]?.name||'Kai Besil'} (${d.terrainClass}).\nPublished construction blocks: ${stats.rows.map(r=>`${r.qty}× ${r.label}`).join(', ')}.\nPrice: ${stats.costGp.toLocaleString()} gp${stats.settled?` (settled-area material rates; rural equivalent ${stats.fullCostGp.toLocaleString()} gp)`:''}; ${stats.constructionDays} day${stats.constructionDays===1?'':'s'}; ${stats.engineers} engineer${stats.engineers===1?'':'s'} for ${stats.engineeringMonths} month${stats.engineeringMonths===1?'':'s'} (${stats.engineerGp.toLocaleString()} gp).${stats.woodGp?` Timber work accounts for ${stats.woodGp.toLocaleString()} gp and ${stats.fireVulnerableHp} fire-vulnerable structural hp; its lower listed cost is already reflected in the shorter build time.`:''}${!recognized?` Completion will create a physical private stronghold, not a dominion. ${pc.className==='Halfling'?(halflingStrongholdSiteSuitable(d.stronghold)?'This site suits a Halfling community, which may settle without creating tax income or Sheriff authority.':'This site does not match the pleasant settled, grassland, clear, or hill country preferred by a Halfling community.'):'At Fighter level 9, the owner may seek recognition and establish a dominion.'}`:''}\nUse “begin stronghold construction” when the site is clear and funds are ready, or add/remove published components first.`,'system'); updatePanels(); return true;
+    const layoutText=strongholdLayoutText(d.stronghold);
+    const laterStanding=!recognized?(pc.className==='Halfling'?(halflingStrongholdSiteSuitable(d.stronghold)?'This site suits the exceptional early Halfling clan community, without tax income or Sheriff authority.':'This site does not suit the early Halfling clan community.'):`At level ${NAME_LEVEL[pc.className]||9}, ${pc.name} may establish this completed base as a formal stronghold.`):'This is the intended Name-level seat; dominion benefits begin when construction is complete.';
+    write(`FORTIFICATION PLANNED — ${d.stronghold.name}\nOwner: ${pc.name}, ${pc.className} ${pc.level}; standing: ${recognized?'intended Name-level stronghold':'private constructed base with no territorial authority'}.\nSite: ${currentHex()?.name||sites[state.location]?.name||'Kai Besil'} (${d.terrainClass}).${layoutText?`\nDesign: ${layoutText}`:''}\nCost breakdown: ${strongholdCostRowsText(d.stronghold,stats)}.\nConstruction: ${stats.costGp.toLocaleString()} gp; ${stats.constructionDays} day${stats.constructionDays===1?'':'s'}. Supervision: ${stats.supervisor.count} ${stats.supervisor.label}${stats.supervisor.count===1?'':'s'} for ${stats.supervisor.months} month${stats.supervisor.months===1?'':'s'} at ${stats.supervisor.monthlyGp.toLocaleString()} gp/month each (${stats.supervisorGp.toLocaleString()} gp). Total initial commitment: ${(stats.costGp+stats.supervisorGp).toLocaleString()} gp.${stats.supervisor.raw?'':' This reduced Kai Besil rate is the primitive timber/earthwork adaptation and may be paid in equivalent barter.'}${stats.woodGp?` Timber work accounts for ${stats.woodGp.toLocaleString()} gp and ${stats.fireVulnerableHp} fire-vulnerable structural hp.`:''}\n${laterStanding}\nUse “begin fortification construction” when the site is clear and funds are ready, or add/remove construction components first.`,'system'); updatePanels(); return true;
   }
   function resolveStrongholdComponent(text=''){
     const q=String(text).toLowerCase();
     return Object.entries(STRONGHOLD_COMPONENTS).sort((a,b)=>Math.max(...b[1].aliases.map(x=>x.length))-Math.max(...a[1].aliases.map(x=>x.length))).find(([,c])=>c.aliases.some(alias=>q.includes(alias)))?.[0]||null;
   }
   function adjustStrongholdComponent(text,sign=1){
-    const d=ensureDomainState(),s=d.stronghold; if(s.status!=='planned'){ write('Components can only be changed while a stronghold plan is still uncommitted.','warning'); return false; }
-    const id=resolveStrongholdComponent(text); if(!id){ write('Name a component from “stronghold catalog”.','warning'); return false; }
+    const d=ensureDomainState(),s=d.stronghold; if(s.status!=='planned'){ write('Components can only be changed while a fortification plan is still uncommitted.','warning'); return false; }
+    const id=resolveStrongholdComponent(text); if(!id){ write('Name a component from “fortification catalog”.','warning'); return false; }
     const qty=Math.max(1,Number(/\b(\d+)\b/.exec(String(text))?.[1])||1),next=Math.max(0,(Number(s.components[id])||0)+sign*qty);
     if(next) s.components[id]=next; else delete s.components[id];
-    const stats=strongholdPlanStats(s); write(`${sign>0?'Added':'Removed'} ${qty}× ${STRONGHOLD_COMPONENTS[id].label}. Revised price ${stats.costGp.toLocaleString()} gp; construction ${stats.constructionDays} days; ${stats.engineers} engineer${stats.engineers===1?'':'s'} required.`,'system'); return true;
+    const stats=strongholdPlanStats(s); write(`${sign>0?'Added':'Removed'} ${qty}× ${STRONGHOLD_COMPONENTS[id].label}. Revised construction price ${stats.costGp.toLocaleString()} gp; ${stats.constructionDays} days; ${stats.supervisor.count} ${stats.supervisor.label}${stats.supervisor.count===1?'':'s'} required at ${stats.supervisor.monthlyGp.toLocaleString()} gp/month each.`,'system'); return true;
   }
   function strongholdFollowers(pc){
     if(['Cleric','Fire Priest'].includes(pc.className)) return {kind:'clerical household',loyalTroops:rng(6)*50,assistantClerics:rng(6),notes:'Troops are unpaid, same-alignment, morale 12; assistants are levels 1–3.'};
@@ -3038,29 +3201,29 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     s.status='complete'; s.constructionCompletesAt=Number(s.constructionCompletesAt)||Number(completedAt);
     if(recognized){
       s.followers=strongholdFollowers(pc); s.nameLevelBenefitsGrantedAt=Number(completedAt);
-      write(`${s.name.toUpperCase()} IS COMPLETE — the fortification now provides a secure Name-level seat. ${s.followers.kind}: ${Object.entries(s.followers).filter(([k])=>!['kind','notes'].includes(k)).map(([k,v])=>`${String(k).replace(/([A-Z])/g,' $1').toLowerCase()} ${v}`).join(', ')}. ${s.followers.notes}`,'system');
-      addEvent(`${s.name} completed after ${s.constructionDays} construction days as a recognized Name-level seat.`); establishDominion(Number(completedAt)); return true;
+      write(`STRONGHOLD COMPLETE — ${s.name}. The finished fortification now provides a secure recognized Name-level seat. ${s.followers.kind}: ${Object.entries(s.followers).filter(([k])=>!['kind','notes'].includes(k)).map(([k,v])=>`${String(k).replace(/([A-Z])/g,' $1').toLowerCase()} ${v}`).join(', ')}. ${s.followers.notes}`,'system');
+      addEvent(`${s.name} completed after ${s.constructionDays} construction days as a recognized Name-level stronghold.`); establishDominion(Number(completedAt)); return true;
     }
     s.authorityStatus='private'; d.rulerName=null; d.authority=privateStrongholdStanding(pc);
     s.community=earlyHalflingCommunity(pc,s); s.followers=s.community;
-    write(`${s.name.toUpperCase()} IS COMPLETE — this is a secure private stronghold, not a recognized dominion. It grants no noble or Sheriff title, territorial control, tax income, ruler XP, or ordinary Name-level followers.${s.community?` ${s.community.kind}: ${s.community.clanMembers} residents. ${s.community.notes}`:''}${pc?(nameLevelEligible(pc)?` ${pc.name} is already eligible to use “establish stronghold domain” and seek formal authority.`:` When ${pc.name} reaches ${NAME_LEVEL[pc.className]}th level, use “establish stronghold domain” to seek the class’s formal authority and dominion benefits.`):''}`,'system');
-    addEvent(`${s.name} completed after ${s.constructionDays} construction days as a private stronghold${s.community?` with ${s.community.clanMembers} Halfling residents`:''}.`); return true;
+    write(`FORTIFICATION COMPLETE — ${s.name}. This is a secure private base, not yet a stronghold or dominion seat. It grants no noble or Sheriff title, territorial control, tax income, ruler XP, or ordinary Name-level followers.${s.community?` ${s.community.kind}: ${s.community.clanMembers} residents. ${s.community.notes}`:''}${pc?(nameLevelEligible(pc)?` ${pc.name} is eligible to use “establish stronghold” and seek formal authority.`:` At level ${NAME_LEVEL[pc.className]||9}, ${pc.name} may use “establish stronghold” to seek the class’s formal authority and dominion benefits.`):''}`,'system');
+    addEvent(`${s.name} completed after ${s.constructionDays} construction days as a private fortification${s.community?` with ${s.community.clanMembers} Halfling residents`:''}.`); return true;
   }
   function beginStrongholdConstruction(){
-    const d=ensureDomainState(),s=d.stronghold; if(s.status!=='planned'){ write('Create an uncommitted plan first with “plan stronghold <preset> for <name>”.','warning'); return false; }
-    const pc=findPc(strongholdOwnerName()); if(!strongholdBuildEligible(pc)){ write('The planned owner is no longer eligible to construct this stronghold. Fighters and Halflings may build at any level; other classes require their stronghold level.','warning'); return false; }
+    const d=ensureDomainState(),s=d.stronghold; if(s.status!=='planned'){ write('Create an uncommitted plan first with “plan fortification <design> for <name>”.','warning'); return false; }
+    const pc=findPc(strongholdOwnerName()); if(!strongholdBuildEligible(pc)){ write('The planned fortification owner is no longer an available living adventurer.','warning'); return false; }
     const anchor=currentStrongholdAnchor(); if(Number(anchor.q)!==Number(s.locationHex?.q)||Number(anchor.r)!==Number(s.locationHex?.r)){ write('Return to the planned construction hex before committing the project.','warning'); return false; }
     if(combatActive()||state.pendingEncounter){ write('The construction tract cannot be declared clear while an encounter remains unresolved.','warning'); return false; }
     const stats=strongholdPlanStats(s); if(!stats.rows.length){ write('The plan contains no construction components.','warning'); return false; }
     let subsidyGp=0,loanGp=0;
-    if(['Cleric','Fire Priest'].includes(pc.className)) subsidyGp=Math.floor(stats.costGp*0.5);
-    const afterSubsidy=stats.costGp-subsidyGp+stats.engineerGp,availableGp=Math.floor(state.treasuryCp/100);
+    if(s.authorityStatus==='recognized'&&['Cleric','Fire Priest'].includes(pc.className)) subsidyGp=Math.floor(stats.costGp*0.5);
+    const afterSubsidy=stats.costGp-subsidyGp+stats.supervisorGp,availableGp=Math.floor(state.treasuryCp/100);
     if(s.authorityStatus==='recognized'&&['Dwarf','Elf','Halfling'].includes(pc.className)&&availableGp<afterSubsidy) loanGp=Math.min(Math.floor(stats.costGp*0.5),afterSubsidy-availableGp);
     const dueGp=afterSubsidy-loanGp;
-    if(state.treasuryCp<dueGp*100){ write(`Construction, after applicable support, requires ${dueGp.toLocaleString()} gp now (${stats.costGp.toLocaleString()} gp structure plus ${stats.engineerGp.toLocaleString()} gp engineer contract${subsidyGp?` minus ${subsidyGp.toLocaleString()} gp clerical aid`:''}${loanGp?` minus ${loanGp.toLocaleString()} gp clan loan`:''}); the expedition holds ${Math.floor(state.treasuryCp/100).toLocaleString()} gp.`,'warning'); return false; }
-    state.treasuryCp-=dueGp*100; Object.assign(s,{status:'building',costGp:stats.costGp,paidGp:dueGp,subsidyGp,loanGp,engineers:stats.engineers,engineerMonthlyGp:750,constructionStartedAt:absoluteCampaignMinute(),constructionDays:stats.constructionDays,constructionCompletesAt:absoluteCampaignMinute()+stats.constructionDays*1440,structuralHp:stats.hp,warMachineBrBonus:stats.br}); d.debtGp+=loanGp;
-    write(`CONSTRUCTION BEGINS — ${s.name}. The cleared tract, delivered materials, and ${stats.engineers} engineer${stats.engineers===1?'':'s'} are committed. Completion is scheduled in ${stats.constructionDays} game day${stats.constructionDays===1?'':'s'} at the RAW rate of one day per 500 gp.${subsidyGp?` The clerical order paid ${subsidyGp.toLocaleString()} gp (50%).`:''}${loanGp?` The clan loaned ${loanGp.toLocaleString()} gp (within the 50% limit).`:''}`,'system');
-    addEvent(`${s.name} construction began; ${stats.costGp} gp structure, ${stats.engineers} engineers, ${stats.constructionDays} days.`); updatePanels(); return true;
+    if(state.treasuryCp<dueGp*100){ write(`Construction, after applicable support, requires ${dueGp.toLocaleString()} gp now (${stats.costGp.toLocaleString()} gp structure plus ${stats.supervisorGp.toLocaleString()} gp for ${stats.supervisor.label} supervision${subsidyGp?` minus ${subsidyGp.toLocaleString()} gp clerical aid`:''}${loanGp?` minus ${loanGp.toLocaleString()} gp clan loan`:''}); the expedition holds ${Math.floor(state.treasuryCp/100).toLocaleString()} gp.`,'warning'); return false; }
+    state.treasuryCp-=dueGp*100; Object.assign(s,{status:'building',costGp:stats.costGp,paidGp:dueGp,subsidyGp,loanGp,engineers:stats.engineers,engineerMonthlyGp:750,supervisorKind:stats.supervisor.kind,supervisorCount:stats.supervisor.count,supervisorMonthlyGp:stats.supervisor.monthlyGp,supervisorCostGp:stats.supervisorGp,constructionStartedAt:absoluteCampaignMinute(),constructionDays:stats.constructionDays,constructionCompletesAt:absoluteCampaignMinute()+stats.constructionDays*1440,structuralHp:stats.hp,warMachineBrBonus:stats.br}); d.debtGp+=loanGp;
+    write(`FORTIFICATION CONSTRUCTION BEGINS — ${s.name}. The cleared tract, delivered materials, and ${stats.supervisor.count} ${stats.supervisor.label}${stats.supervisor.count===1?'':'s'} are committed. Completion is scheduled in ${stats.constructionDays} game day${stats.constructionDays===1?'':'s'} at one day per 500 gp.${stats.supervisor.raw?'':` The 50 gp/month supervision rate is Kai Besil’s primitive timber-and-earthwork adaptation and may be satisfied with equivalent barter.`}${subsidyGp?` The clerical order paid ${subsidyGp.toLocaleString()} gp (50%).`:''}${loanGp?` The clan loaned ${loanGp.toLocaleString()} gp (within the 50% limit).`:''}`,'system');
+    addEvent(`${s.name} fortification construction began; ${stats.costGp} gp structure, ${stats.supervisor.count} ${stats.supervisor.label}${stats.supervisor.count===1?'':'s'}, ${stats.constructionDays} days.`); updatePanels(); return true;
   }
   function processStrongholdConstruction(beforeAbsolute,afterAbsolute){
     const s=ensureDomainState().stronghold;
@@ -3088,25 +3251,25 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     d.establishedAtAbsoluteMinute=Number(establishedAt); d.nextMonthAbsoluteMinute=Number(establishedAt)+DOMINION_MONTH_MINUTES; d.nextYearAbsoluteMinute=Number(establishedAt)+DOMINION_YEAR_MINUTES;
     const base=rng(100)+150+Object.values(pc.abilities||{}).reduce((sum,n)=>sum+(Number(n)||0),0); d.confidence={base,current:base,temporaryModifier:0,lastCheckedYear:0};
     d.events.push({type:'established',absoluteMinute:Number(establishedAt),text:`${d.name} established with ${d.populationFamilies} families and ${d.resources.length} resources.`});
-    write(`DOMINION ESTABLISHED — ${d.title} ${pc.name} rules ${d.name}, a ${d.areaMiles}-mile campaign tract centered on the stronghold. Initial population: ${d.populationFamilies} peasant families (about ${d.populationFamilies*5} people). Resources: ${d.resources.map(x=>DOMINION_RESOURCE_RULES[x].label).join(', ')}. Confidence: ${base}/500. The first 30-day income, population, expense, and ruler-XP accounting will occur after one game month.`,'system');
+    write(`DOMINION ESTABLISHED — ${d.title} ${pc.name} rules ${d.name}, a ${d.areaMiles}-mile campaign tract centered on the newly recognized stronghold. Initial population: ${d.populationFamilies} peasant families (about ${d.populationFamilies*5} people). Resources: ${d.resources.map(x=>DOMINION_RESOURCE_RULES[x].label).join(', ')}. Confidence: ${base}/500. The first 30-day income, population, expense, and ruler-XP accounting will occur after one game month.`,'system');
     addEvent(`${d.name} established as a Rules Cyclopedia dominion.`); return true;
   }
   function establishStrongholdDomain(){
     const d=ensureDomainState(),s=d.stronghold;
-    if(!['planned','building','complete'].includes(s.status)){ write('No stronghold exists to receive Name-level authority.','warning'); return false; }
+    if(!['planned','building','complete'].includes(s.status)){ write('No fortification exists to receive Name-level stronghold authority.','warning'); return false; }
     if(d.establishedAtAbsoluteMinute!=null){ write(`${d.name} is already an active dominion under ${d.title} ${d.rulerName}.`); return true; }
     const pc=findPc(strongholdOwnerName());
-    if(!nameLevelEligible(pc)){ write(`${pc?.name||'The stronghold owner'} has not reached the required Name level: ${pc?.className==='Halfling'?'8th level for a Halfling':'9th level for this class'}. The fortification remains private.`,'warning'); return false; }
+    if(!nameLevelEligible(pc)){ write(`${pc?.name||'The fortification owner'} has not reached the required Name level: ${pc?.className==='Halfling'?'8th level for a Halfling':'9th level for this class'}. The completed structure remains a private fortification, not a stronghold.`,'warning'); return false; }
     s.authorityStatus='recognized'; s.nameLevelBenefitsGrantedAt=absoluteCampaignMinute(); d.rulerName=pc.name; d.authority=strongholdClassAuthority(pc,s.preset);
     if(s.status!=='complete'){
-      write(`${pc.name} now has ${d.authority}. The ${s.status==='building'?'unfinished':'planned'} stronghold is recognized as the intended Name-level seat; followers and dominion accounting begin only after construction is complete.`,'system');
+      write(`${pc.name} now has ${d.authority}. The ${s.status==='building'?'unfinished':'planned'} fortification is recognized as the intended Name-level stronghold; followers and dominion accounting begin only after construction is complete.`,'system');
       addEvent(`${pc.name}'s ${s.name} received Name-level recognition before completion.`); return true;
     }
     s.followers=pc.className==='Halfling'&&s.community
       ? {kind:'recognized clan household',clanMembers:s.community.clanMembers,notes:'The existing Halfling community now supports the recognized Shire; its residents are not duplicated by a second follower roll.'}
       : strongholdFollowers(pc);
-    write(`NAME-LEVEL AUTHORITY ESTABLISHED — ${pc.name} receives ${d.authority}. The previously private ${s.name} now becomes the seat of a dominion; class followers, territorial population, and monthly accounting begin now.`,'system');
-    addEvent(`${pc.name}'s completed private stronghold received Name-level authority.`); return establishDominion(absoluteCampaignMinute());
+    write(`STRONGHOLD ESTABLISHED — ${pc.name} receives ${d.authority}. The previously private fortification ${s.name} now becomes the recognized seat of a dominion; class followers, territorial population, and monthly accounting begin now.`,'system');
+    addEvent(`${pc.name}'s completed private fortification became a recognized Name-level stronghold.`); return establishDominion(absoluteCampaignMinute());
   }
   function domainPopulationGrowthRate(families){
     if(families<=100) return 0.25; if(families<=200) return 0.20; if(families<=300) return 0.15; if(families<=400) return 0.10; if(families<=500) return 0.05; return rng(5)/100;
@@ -3168,16 +3331,18 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     const s=ensureDomainState().stronghold;if(s.status!=='complete'||!s.locationHex) return false; const here=currentStrongholdAnchor(); return Number(here.q)===Number(s.locationHex.q)&&Number(here.r)===Number(s.locationHex.r);
   }
   function strongholdStatus(){
-    const d=ensureDomainState(),s=d.stronghold; if(s.status==='none'){ write('No stronghold has been planned. Use “stronghold catalog” and then “plan stronghold <preset> for <character>”. Fighters and Halflings may do so at any level; other classes require their stronghold level.'); return true; }
+    const d=ensureDomainState(),s=d.stronghold; if(s.status==='none'){ write('No fortification has been planned. Use “fortification catalog”, then “plan timber keep for <character>”, “plan timber barbican for <character>”, or a traditional design bundle. Any living adventurer may commission the physical base; Name-level stronghold authority is separate.'); return true; }
     const stats=strongholdPlanStats(s),remaining=s.status==='building'?Math.max(0,Math.ceil((Number(s.constructionCompletesAt)-absoluteCampaignMinute())/1440)):0;
-    const owner=findPc(strongholdOwnerName()),standing=s.authorityStatus==='recognized'?'recognized Name-level seat':'private holding';
-    write(`STRONGHOLD — ${s.name}\nStatus: ${s.status}${remaining?`; ${remaining} construction day${remaining===1?'':'s'} remaining`:''}. Owner: ${strongholdOwnerName()||'unknown'}${owner?`, ${owner.className} ${owner.level}`:''}; standing: ${standing}; authority: ${d.authority||'none'}.\nComponents: ${stats.rows.map(r=>`${r.qty}× ${r.label}`).join(', ')||'none'}.\nCost: ${(s.costGp||stats.costGp).toLocaleString()} gp; structural hp ${s.structuralHp||stats.hp}; War Machine BR bonus +${s.warMachineBrBonus||stats.br}; engineers ${s.engineers||stats.engineers}.\nResidents/followers: ${s.community?`${s.community.kind}, ${s.community.clanMembers} residents — ${s.community.notes}${s.followers&&s.followers.kind!==s.community.kind?` Formal standing: ${s.followers.kind} — ${s.followers.notes}`:''}`:s.followers?`${s.followers.kind} — ${s.followers.notes}`:'none'}.${d.establishedAtAbsoluteMinute!=null?` Dominion: ${d.name}.`:s.status==='complete'&&owner&&!nameLevelEligible(owner)?` Name-level benefits remain locked until level ${NAME_LEVEL[owner.className]||9}.`:s.status==='complete'&&owner?` Use “establish stronghold domain” to activate eligible Name-level authority.`:''}`,'system'); return true;
+    const owner=findPc(strongholdOwnerName()),recognized=s.authorityStatus==='recognized',standing=recognized?'recognized Name-level stronghold':'private fortification';
+    const layoutText=strongholdLayoutText(s);
+    const supervisorKind=s.supervisorKind||stats.supervisor.kind,supervisorLabel=supervisorKind==='tribal_master_builder'?'tribal master builder':'engineer',supervisorCount=s.supervisorCount||stats.supervisor.count,supervisorCost=s.supervisorCostGp||stats.supervisorGp;
+    write(`${recognized?'STRONGHOLD':'FORTIFICATION'} — ${s.name}\nStatus: ${s.status}${remaining?`; ${remaining} construction day${remaining===1?'':'s'} remaining`:''}. Owner: ${strongholdOwnerName()||'unknown'}${owner?`, ${owner.className} ${owner.level}`:''}; standing: ${standing}; authority: ${recognized?(d.authority||'Name-level recognition'):'none'}.${layoutText?`\nDesign: ${layoutText}`:''}\nCost breakdown: ${strongholdCostRowsText(s,stats)||'none'}.\nConstruction cost: ${(s.costGp||stats.costGp).toLocaleString()} gp; structural hp ${s.structuralHp||stats.hp}; War Machine BR bonus +${s.warMachineBrBonus||stats.br}. Supervision: ${supervisorCount} ${supervisorLabel}${supervisorCount===1?'':'s'}, ${supervisorCost.toLocaleString()} gp total for the scheduled build.\nResidents/followers: ${s.community?`${s.community.kind}, ${s.community.clanMembers} residents — ${s.community.notes}${s.followers&&s.followers.kind!==s.community.kind?` Formal standing: ${s.followers.kind} — ${s.followers.notes}`:''}`:s.followers?`${s.followers.kind} — ${s.followers.notes}`:'none'}.${d.establishedAtAbsoluteMinute!=null?` Dominion: ${d.name}.`:s.status==='complete'&&owner&&!nameLevelEligible(owner)?` This secure base is not a stronghold; Name-level authority becomes available at level ${NAME_LEVEL[owner.className]||9}.`:s.status==='complete'&&owner?` Use “establish stronghold” to activate eligible Name-level authority.`:''}`,'system'); return true;
   }
   function domainConfidenceLabel(){ return domainConfidenceIncomeProfile(Number(ensureDomainState().confidence.current)||0).label; }
   function domainStatus(){
     const d=ensureDomainState(); if(d.establishedAtAbsoluteMinute==null){
       const s=d.stronghold,owner=findPc(strongholdOwnerName());
-      write(`No dominion is active.${s.status==='none'?' Fighters and Halflings may construct private strongholds at any level; recognized dominion authority waits until Name level.':s.authorityStatus==='private'?` ${s.name} is ${s.status} as a private holding and produces no domain income.${owner&&!nameLevelEligible(owner)?` ${owner.name} becomes eligible at ${NAME_LEVEL[owner.className]||9}th level.`:' Use “establish stronghold domain” to claim available Name-level authority.'}`:s.status==='complete'?` ${s.name} is complete and recognized; use “establish stronghold domain” to initialize its territorial population and accounting.`:` ${s.name} is ${s.status} as a recognized Name-level seat; the dominion begins when construction is complete.`}`); return true;
+      write(`No dominion is active.${s.status==='none'?' Any adventurer may construct a private fortification at any level; stronghold and dominion authority wait until Name level.':s.authorityStatus==='private'?` ${s.name} is ${s.status} as a private fortification and produces no domain income.${owner&&!nameLevelEligible(owner)?` ${owner.name} becomes eligible at ${NAME_LEVEL[owner.className]||9}th level.`:' Use “establish stronghold” to claim available Name-level authority.'}`:s.status==='complete'?` ${s.name} is complete and recognized as a stronghold; use “establish stronghold” to initialize its territorial population and accounting.`:` ${s.name} is ${s.status} as an intended Name-level stronghold; the dominion begins when construction is complete.`}`); return true;
     }
     const last=d.monthlyLedger.at(-1),staff=Object.entries(d.staff).filter(([,n])=>Number(n)>0).map(([id,n])=>`${n} ${id.replace(/_/g,' ')}`).join(', ')||'none';
     write(`DOMINION — ${d.name}\nRuler: ${d.title} ${d.rulerName}; tract: ${d.areaMiles} miles, ${d.terrainClass}; population ${d.populationFamilies} families (about ${d.populationFamilies*5} people).\nResources: ${d.resources.map(x=>DOMINION_RESOURCE_RULES[x].label).join(', ')||'none'}; tax ${d.taxGpPerFamily} gp/family/month; liege share ${d.liegeSharePercent}%; tithe ${d.titheEnabled?`${d.tithePercent}%`:'withheld'}.\nTreasury value: ${Math.floor(d.totalTreasuryGp).toLocaleString()} gp; liquid cash: ${Math.floor(d.cashTreasuryGp).toLocaleString()} gp; clan debt: ${Math.floor(d.debtGp).toLocaleString()} gp.\nConfidence: ${Math.floor(d.confidence.current)}/500 (${domainConfidenceLabel()}); staff: ${staff}.\nNext monthly accounting in ${Math.max(0,Math.ceil((d.nextMonthAbsoluteMinute-absoluteCampaignMinute())/1440))} day(s).${last?` Last month produced ${last.domainXp.toLocaleString()} ruler XP.`:''}`,'system'); return true;
@@ -4468,6 +4633,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
     if(developerModeButton){ developerModeButton.textContent=rules.developerMode?'DEVELOPER MODE: ON':'DEVELOPER MODE: OFF'; developerModeButton.classList.toggle('developer-on',Boolean(rules.developerMode)); }
     if(openRefereeLogButton) openRefereeLogButton.disabled=!rules.developerMode;
     if(exportDebugButton) exportDebugButton.hidden=!rules.developerMode;
+    if(showDeveloperCommandsButton) showDeveloperCommandsButton.hidden=!rules.developerMode;
     if(debugExportHelp) debugExportHelp.hidden=!rules.developerMode;
     if(combatPanel){
       if(state.combat?.active){
@@ -4516,6 +4682,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function setDeveloperMode(enabled){
     if(!state.rules) state.rules={};
     state.rules.developerMode=Boolean(enabled);
+    if(!state.rules.developerMode&&referenceKind==='developer'&&referenceWindow?.classList.contains('open')) closeReferenceWindow();
     localStorage.setItem(STORAGE.save,JSON.stringify(state));
     updatePanels(); void refreshJournalStatus();
     write(`Developer Mode ${state.rules.developerMode?'enabled':'disabled'}. ${state.rules.developerMode?'Full referee transparency is enabled: you may ask any question, inspect behind-the-screen current state through the referee, and inspect the REFEREE ENGINE log.':'Referee-side engine records and hidden current-state data are concealed again; ordinary player-information rules apply.'}`,'system');
@@ -6268,6 +6435,8 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function continueWildernessRest(kind='overnight',{secure=false}={}){
     if(!requireTravelParty()) return false;
     const lodging=settlementLodgingAvailable();
+    const builtFortification=state.mode==='wilderness'&&strongholdAtCurrentLocation();
+    const protectedFortification=builtFortification&&kind!=='forage_day';
     if(state.mode!=='wilderness' && !lodging){ write('Make camp in the wilderness, or return to Talamau or Batari’s Guesthouse for safe lodging.','warning'); return false; }
     if(kind==='forage_day' && lodging){ write('A full forage day must be spent in a wilderness camp, not in Talamau.','warning'); return false; }
     if(combatActive()||state.pendingEncounter){ write('The party must resolve the current encounter before continuing its rest period.','warning'); return false; }
@@ -6279,8 +6448,8 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       const lodgingCost=lodging?livingParty().length*moneyCp(0,2):0;
       if(lodgingCost>state.treasuryCp){ write(`Batari’s room and board costs ${formatMoney(lodgingCost)} for the living party, but the expedition treasury holds only ${formatMoney(state.treasuryCp)}.`,'warning'); return false; }
       if(lodgingCost){ state.treasuryCp-=lodgingCost; addEvent(`Paid Batari ${formatMoney(lodgingCost)} for party room and board.`); }
-      progress={kind,label:kind==='overnight'?(lodging?'overnight lodging':'overnight camp'):kind==='full_rest'?(lodging?'full rest day at Batari’s':'full rest day'):'full forage day',totalMinutes,remainingMinutes:totalMinutes,secure:Boolean(secure||lodging),isSettlementLodging:lodging,startedAbsoluteMinute:absoluteCampaignMinute(),interrupted:false,campHelpers};
-      if(!lodging&&kind==='overnight'){
+      progress={kind,label:kind==='overnight'?(lodging?'overnight lodging':protectedFortification?`overnight rest inside ${ensureDomainState().stronghold.name}`:'overnight camp'):kind==='full_rest'?(lodging?'full rest day at Batari’s':protectedFortification?`full rest day inside ${ensureDomainState().stronghold.name}`:'full rest day'):'full forage day',totalMinutes,remainingMinutes:totalMinutes,secure:Boolean(secure||lodging||protectedFortification),isSettlementLodging:lodging,isFortification:protectedFortification,startedAbsoluteMinute:absoluteCampaignMinute(),interrupted:false,campHelpers};
+      if(!lodging&&!protectedFortification&&kind==='overnight'){
         const setupMinutes=campHelpers?20:60; advanceClock(setupMinutes,`Party ${campHelpers?'and hired camp hands ':''}prepared ${secure?'a concealed, defensible':'an ordinary'} wilderness camp.`); progress.setupMinutes=setupMinutes;
       }
       if(kind==='forage_day'){
@@ -6294,7 +6463,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       const step=progress.secure?Math.min(progress.remainingMinutes,480):Math.min(progress.remainingMinutes,60);
       advanceClock(step,`Party continued ${progress.label} for ${step} minutes.`);
       progress.remainingMinutes-=step;
-      if(!progress.isSettlementLodging) accrueWildernessEncounterTime(step,progress.secure?{secureCamp:true}:{});
+      if(!progress.isSettlementLodging&&!progress.isFortification) accrueWildernessEncounterTime(step,progress.secure?{secureCamp:true}:{});
     }
     if(combatActive()||state.pendingEncounter){
       progress.interrupted=true;
@@ -6500,10 +6669,10 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   function currentSafeHavenId(){
     const settlementId=currentSettlementId();
     if(settlementId&&SETTLEMENTS[settlementId]) return settlementId;
-    return strongholdAtCurrentLocation()?'domain_stronghold':null;
+    return strongholdAtCurrentLocation()?'party_fortification':null;
   }
   function safeHavenName(id=currentSafeHavenId()){
-    if(id==='domain_stronghold') return ensureDomainState().stronghold.name||'the party stronghold';
+    if(id==='party_fortification') return ensureDomainState().stronghold.name||'the party fortification';
     return SETTLEMENTS[id]?.name||'safe haven';
   }
   function ensureXpLedger(){
@@ -10494,8 +10663,8 @@ PHASED mode: with two sides, the initiative winner chooses movement order as bef
     if(['combat map','position','combat position'].includes(normalized)){showAsciiMap('combat');return true;}
     if(['combat party','combat gear','combat equipment','combat loadout','party gear','party equipment','loadout','spells'].includes(normalized)) {combatPartyReference();return true;}
     if(normalized==='combat help'){combatHelp();return true;}
-    let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(Number(m[1]),m[2]);return true;}
-    m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){startTestEncounter(1,m[1]);return true;}
+    let m=/^encounter\s+(\d+)\s+(.+)$/i.exec(input.trim()); if(m){ if(!state.rules?.developerMode){write('Test-encounter commands require Developer Mode. No encounter was created.','warning');return true;} startTestEncounter(Number(m[1]),m[2]);return true;}
+    m=/^encounter\s+(.+)$/i.exec(input.trim()); if(m){ if(!state.rules?.developerMode){write('Test-encounter commands require Developer Mode. No encounter was created.','warning');return true;} startTestEncounter(1,m[1]);return true;}
     if(['resolve','resolve round','resolve the round','resolve this round','resolve combat','resolve combat round','resolve the combat round','resolve it','roll initiative'].includes(normalized)){resolveCombatRound();return true;}
     if(normalized==='auto orders' || normalized==='automatic orders'){autoPcOrders();return true;}
     if(['move us first','us first','we move first','we go first','pcs move first','party moves first','party first'].includes(normalized)){chooseMovementOrder(state.combat?.initiative?.winner==='pc'?'winner':'loser');return true;}
@@ -10550,7 +10719,7 @@ AI backend: ${WORKER_URL}`);
   function rulesAuditStatus(){
     write(`BECMI / B/X CORE AUDIT — v${APP_VERSION}
 DETERMINISTIC CORE: character creation; class/alignment/languages; complete level/XP/THAC0/save/slot tables; individual inventory and encumbrance; expedition supplies; dungeon turns/light/doors/search/traps; complete thief percentages; demihuman senses and class bonuses; surprise/reaction/distance/evasion/pursuit; side initiative and combat phases; morale; Turning Undead; ordinary attacks, backstab, Set Spear vs. Charge, holy water, and burning oil; wilderness time/rest/forced march/rations/deprivation/foraging/getting lost/weather; vessels/wind/crew/hull/reef danger; swimming escape; hirelings/retainers; safe-haven XP; persistent NPCs/sites; module ritual and victory/defeat.
-STRONGHOLDS AND DOMINIONS: Fighters may construct a private home or castle at any level; Halflings may construct at any level and a suitable site can attract a non-taxed clan community. Formal class authority, titles, dominion subjects/income, and ruler XP begin at 9th level for most classes and 8th for Halflings. Published fortification components, structural hp, BR bonuses, settled-area costs, one-day-per-500-gp construction and engineer requirements, class followers, 24-mile dominion tracts, monthly population, three incomes, liege/tithe/staff expenses, liquid treasury, confidence, and annual events are implemented.
+FORTIFICATIONS, STRONGHOLDS, AND DOMINIONS: Any adventurer may commission a physical manor, tower, keep, castle, stockade, or other fortification at any level. When complete it is a secure base, not political authority. "Stronghold" is reserved for a completed fortification established at Name level as a dominion seat; class authority, titles, ordinary followers, territorial subjects/income, and ruler XP then begin at 9th level for most classes and 8th for Halflings. A suitable early Halfling clan holding retains its exceptional non-taxed community. Published components, structural hp, BR bonuses, one-day-per-500-gp construction, qualified engineers, Kai Besil tribal master builders for simple timber/earthworks, class followers, 24-mile dominion tracts, monthly population, three incomes, liege/tithe/staff expenses, liquid treasury, confidence, and annual events are implemented.
 CAMPAIGN ADAPTATIONS: half-mile hex timing; one contextual lost check per day; optional map-safe lost-time consequence (RAW displacement remains default); food and water unified as ration person-days; ration deprivation is 1d2 hp/day with healing blocked; safe-haven XP settlement; retainers receive half shares; generated discoveries are sparse and persistent.
 REFEREE-MEDIATED: open-ended or world-altering spell outcomes, unusual drowning circumstances, improvised rulings without a bounded procedure, and the uncommon special effects of advanced Cyclopedia weapons.
 OPTIONAL / OUTSIDE THIS MODULE: general skills, Weapon Mastery, high-level fighter combat options, War Machine mass battles and detailed Siege Machine assaults, planar/Immortal play. These are not required to begin at Shipwreck Beach, complete the Smoking Pillar expedition, restore or fail the wards, and return to Talamau.`,'system'); return true;
@@ -11053,12 +11222,246 @@ OPTIONAL / OUTSIDE THIS MODULE: general skills, Weapon Mastery, high-level fight
     openPartyCreator(true);
   }
 
+  const PLAYER_RULE_REFERENCE_SECTIONS=[
+    {
+      title:'1. What You Need at the Table',
+      paragraphs:['The browser is the authoritative referee, rules engine, dice roller, roster, inventory manifest, clock, and saved campaign record. Physical aids are optional, but they preserve the exploration-and-mapping play expected by B/X and BECMI.'],
+      bullets:[
+        'Graph paper and pencil for drawing dungeon rooms from the referee’s descriptions; an eraser and ruler are useful.',
+        'Hex paper for a player-owned wilderness map. Mark only locations and routes the party has actually learned.',
+        'Lined paper, index cards, or spare graph paper for optional combat sketches, marching order, watch schedules, and plans.',
+        'Tokens, coins, beads, or small miniatures to mark the party’s current dungeon room, wilderness hex, vessel, or abstract combat position.',
+        'A notebook for clues, NPC promises, treasure shares, and player hypotheses. The searchable Campaign Journal remains the canonical transcript.',
+        'Physical polyhedral dice are welcome for table feel, but commands resolved by the game use its recorded deterministic dice.'
+      ]
+    },
+    {
+      title:'2. Command Style and Saved Play',
+      paragraphs:['Plain-language orders are interpreted into bounded actions, but the deterministic rules engine alone changes time, position, hit points, spells, inventory, or campaign state. Exact commands remain the safest choice when a ruling must be reproducible.'],
+      bullets:['Use help for a compact command list; use this handbook for procedures and context.','Use save or export the campaign from the Journal before moving the HTML file or browser profile.','The player journal omits hidden referee records unless Developer Mode is enabled.'],
+      commands:[{usage:'look · status · help',summary:'Repeat the scene, inspect expedition state, or show the compact command list.'},{usage:'journal · log <search>',summary:'Open the permanent transcript or search it.'},{usage:'save · load',summary:'Write or reload the local campaign slot.'}]
+    },
+    {
+      title:'3. Characters, Party, and Advancement',
+      paragraphs:['Characters use 3d6 abilities, class eligibility, alignment, class equipment limits, starting hit points, starting money, saving throws, attack progression, and class level caps. Expedition XP is held in the field and received at a safe haven; leveling occurs there, including new hit dice or post-9th-level fixed hit points and spell progression.'],
+      bullets:['Player characters receive full shares; Mentzer-style adventuring retainers receive one-half share.','Death, unconsciousness, deprivation, disease, curses, and persistent class features remain attached to the individual character.','Name level unlocks class authority and stronghold benefits; it is not required to own an ordinary building or fortification.'],
+      commands:[{usage:'create party · party · advancement',summary:'Build or inspect the roster and XP progression.'},{usage:'settle xp',summary:'Receive held expedition XP at Talamau or another functioning safe haven.'}]
+    },
+    {
+      title:'4. Dungeon Exploration and Player Mapping',
+      paragraphs:['Indoor exploration advances in ten-minute turns. Light, searches, listening, doors, traps, locks, obstacles, wandering encounters, spell durations, and time-sensitive hazards use that clock. The on-screen local map is an orientation aid, not a complete automap.'],
+      bullets:['The mapper should draw only described geometry and confirmed connections. Secret areas and undetected traps remain absent.','A torch or lantern is necessary where no character ability, local light, or magic provides sight.','Searching, listening, probing, forcing doors, and disarming traps are distinct actions with their own time and consequences.'],
+      commands:[{usage:'north · south · east · west · up · down',summary:'Move through a known site exit.'},{usage:'search · search for traps · listen',summary:'Use the corresponding dungeon procedure.'},{usage:'room view · local map',summary:'Show currently visible local geometry.'}]
+    },
+    {
+      title:'5. Wilderness Travel, Mapping, and Getting Lost',
+      paragraphs:['Kai Besil uses the module’s half-mile hexes. Terrain, encumbrance, daylight, weather, vessels, forced march, foraging, trails, guides, fatigue, rest, provisions, encounters, and hazards determine travel. Published island and ocean geography is fixed; procedural terrain does not overwrite it.'],
+      bullets:['RAW getting lost is the default: the erroneous direction remains secret until the party reorients.','Map-Safe Lost Time is optional: the game tells the player the party became lost, consumes the remaining travel period and resources, and confirms that the party remains in the same mapped hex.','A camp remains exposed to wilderness encounter checks. A completed, occupied fortification at its own hex is a safe built site and does not use the camp wandering-check procedure.'],
+      commands:[{usage:'n · ne · se · s · sw · nw',summary:'Cross an adjacent wilderness or ocean hex when movement allows.'},{usage:'getting lost mode raw · getting lost mode lost time',summary:'Choose secret displacement or the map-safe alternative.'},{usage:'camp · secure camp · forage full day · rest full day',summary:'Resolve overnight shelter, food gathering, or recovery.'},{usage:'weather · temporary works · survey this hex',summary:'Inspect weather/trails or establish a persistent site in an eligible unkeyed land hex.'}]
+    },
+    {
+      title:'6. Encounters and Combat',
+      paragraphs:['Combat uses encounter distance, surprise where applicable, side initiative, morale, movement, missile, magic, melee, saves, damage, and pursuit or withdrawal. The selected initiative option and weapon-damage option are always shown in Options.'],
+      bullets:['Give each active adventurer an order, then resolve the round. Auto orders fill omissions when managing a large party.','Phase-Based Initiative is the campaign option that separates movement from missile, magic, and melee; Rules Cyclopedia side turns remain selectable.','Turning Undead, thief backstab, set spear against charge, holy water, burning oil, morale, and individual ammunition/spell expenditure are resolved by their procedures.'],
+      commands:[{usage:'combat · combat party · combat help',summary:'Inspect combat state, ready equipment, or the full combat grammar.'},{usage:'<name> attacks/shoots/casts/turns <target>',summary:'Assign an individual action.'},{usage:'auto orders · resolve round',summary:'Complete missing orders and resolve the rules sequence.'}]
+    },
+    {
+      title:'7. Magic',
+      paragraphs:['The build registers the complete BECMI Cleric level 1–7 and Magic-User level 1–9 catalogs and the complete level progression. Prepared slots are individual and may contain duplicate preparations; one casting or disruption expends only one matching slot. Open-ended high-level magic is castable but may require bounded referee interpretation rather than a bespoke simulation.'],
+      bullets:['Magic-Users begin with Read Magic and one chosen first-level spell, then gain teacher spells at safe-haven advancement and may copy eligible identified scrolls.','Clerics know their eligible prayer list and begin spells at the class’s normal level.','A full night’s rest applies the next preparation plan.'],
+      commands:[{usage:'spellbook · spellbook <name>',summary:'Show known spells, daily slots, and ready/spent preparations.'},{usage:'prepare <name>: <spell>, <spell> x2',summary:'Set the plan that takes effect after full rest.'},{usage:'read magic on scroll · copy <spell> into <name> spellbook',summary:'Identify and consume eligible magic-user scrolls.'}]
+    },
+    {
+      title:'8. Inventory, Treasure, and Encumbrance',
+      paragraphs:['There is no weightless group inventory. Every carried item, ration, coin load, and treasure parcel is assigned to a player character, employee, mount, or vessel. The treasury may be displayed collectively, but its coin weight still has physical carriers and affects movement.'],
+      bullets:['Automatic optimization spreads loads intelligently without changing ownership-sensitive equipment.','Overload slows or prevents movement; vessel cargo and swimming use their own capacity limits.','Items can be transferred manually through the complete manifest when a specific tactical arrangement matters.'],
+      commands:[{usage:'inventory · inventory <name>',summary:'Show the expedition manifest or one carrier.'},{usage:'optimize inventory',summary:'Rebalance transferable loads across available carriers.'},{usage:'transfer <quantity> <item> from <carrier> to <carrier>',summary:'Move a specific physical load.'}]
+    },
+    {
+      title:'9. Settlements, Retainers, Hirelings, and Vessels',
+      paragraphs:['Settlement population and development constrain stock and recruitment. Talamau is a prosperous village of about 400 people: basic supplies are dependable, unrelated adventuring goods are scarce and expensive, and the specialist market is shallow.'],
+      bullets:['Retainers are adventuring NPCs governed by Charisma capacity, reaction, morale, wages, equipment, and treasure promises.','Porters, camp hands, mercenaries, rowers, sailors, and coastal captains are employees with applicable duties, contracts, location limits, and encumbrance capacity.','Water vessels track crew stations, cargo, hull, repairs, shipping water, wind/oar multipliers, gale risk, navigation, embarkation, and landfall.'],
+      commands:[{usage:'town view · settlement info · wares',summary:'Inspect development, population, services, supply, and stock.'},{usage:'retainers · seek retainers · personnel',summary:'Inspect the available adventuring and ordinary labor markets.'},{usage:'hire 2 porters · vessels · board <vessel>',summary:'Contract applicable help or operate a local vessel.'}]
+    },
+    {
+      title:'10. Fortifications, Strongholds, and Dominions',
+      paragraphs:['A fortification is a physical manor, watchtower, barbican, keep, castle, stockade, or similar defended base. Any living adventurer may build one at any level if land, funds, labor, and materials permit. A stronghold is specifically a completed fortification established at Name level as the political seat of a dominion.'],
+      bullets:['A private fortification supplies shelter, secure storage, recovery, and a safe local base, but grants no title, taxes, territorial inhabitants, ruler XP, or ordinary Name-level followers. It may later become a stronghold without rebuilding.','The Halfling exception remains: a suitably placed early clan holding may attract a Halfling community, but Sheriff authority, taxation, and dominion accounting still wait until level 8.','Construction costs one day per 500 gp. The timber square keep is 15,000 gp and timber barbican 7,400 gp—20% of their stone analogues, with lower structural value and fire vulnerability. The 20% is the price, not an additional discount.','RAW masonry and advanced works require one 750 gp/month engineer per 100,000 gp or fraction. On primitive Kai Besil only, all-timber/earthwork projects may use a tribal master builder at 50 gp per 30 days in coin or equivalent barter. This is an explicit campaign adaptation; Dwarf abilities, Charm Person, ordinary Carpentry, and coerced labor do not automatically satisfy the RAW engineer requirement.','Once recognized, dominions use population, standard/resource/tax income, liege and tithe obligations, staff, confidence, ruler XP, monthly accounting, and annual events.'],
+      commands:[{usage:'fortification catalog · fortification status',summary:'Inspect components, prices, current project, supervision, and political standing.'},{usage:'plan timber keep for <name> · plan timber barbican for <name>',summary:'Plan either direct timber analogue without a minor-stronghold preset.'},{usage:'begin fortification construction · establish stronghold',summary:'Fund the physical project, then later activate eligible Name-level authority.'},{usage:'domain status',summary:'Inspect formal dominion finances and confidence.'}]
+    },
+    {
+      title:'11. Procedural Sites and Campaign Canon',
+      paragraphs:['Published module locations stay fixed. Thoroughly surveyed unkeyed land hexes can gain persistent generated sites. Dungeon-type sites begin with a scenario, history, and physical form, receive a planned signature encounter, then use the Moldvay/Mentzer two-roll room-stocking procedure with theme-constrained inhabitants, traps, specials, obstructions, and treasure.'],
+      bullets:['Wizard towers, ruined manors, caves, religious cells, caches, and watchtowers use distinct topology and coherent content.','Empty rooms are deliberately preserved for pacing. Outdoor camps use site-specific logic instead of the dungeon table.','AD&D 1e appendix procedures inform physical variety only; B/X/BECMI mechanics and Mystaran geography remain authoritative.']
+    },
+    {
+      title:'12. Rules Options, Developer Mode, and Reporting Bugs',
+      paragraphs:['Rules options are saved with the campaign. Developer Mode reveals hidden engine state and enables a separate set of state-changing test commands; those commands are rejected during ordinary play and their actions are clearly labeled.'],
+      bullets:['Use the Options panel to choose weapon damage, initiative, getting-lost procedure, and Developer Mode.','Run Self-Tests checks deterministic regressions without intentionally changing the active campaign.','Export Debug Session records state, transcripts, parser traces, errors, combat data, and test reports, but never includes the private GAME_TOKEN.'],
+      commands:[{usage:'developer mode on · developer mode off',summary:'Enter or leave full testing transparency.'},{usage:'developer commands · dev help',summary:'Open the searchable developer-only command registry.'},{usage:'rules audit',summary:'Show what is deterministic, optional, campaign-adapted, referee-mediated, or outside current scope.'}]
+    }
+  ];
+
+  function developerLevelXp(member,level){
+    const table=XP_THRESHOLDS[member.className]||XP_THRESHOLDS.Fighter;
+    if(level<=table.length) return Number(table[level-1])||0;
+    if(member.className==='Fire Priest') return Number(table.at(-1)||0)+160001*(level-table.length);
+    return Number(table.at(-1)||0);
+  }
+
+  function developerSetLevel(match){
+    const pc=findPc(match[1]); if(!pc){ write(`No adventurer named “${match[1]}” is in the party.`,'warning'); return; }
+    const cap=CLASS_LEVEL_CAP[pc.className]||36,requested=Math.floor(Number(match[2])||1),level=Math.max(1,Math.min(cap,requested)),old=pc.level||1;
+    pc.level=level; pc.xp=developerLevelXp(pc,level); refreshMemberAdvancement(pc);
+    if(['Magic-User','Elf'].includes(pc.className)) ensureTeacherSpells(pc);
+    if(pc.className==='Cleric') ensureClericSpellList(pc);
+    preparedSpellEntries(pc); syncLegacySpellFields(pc);
+    write(`DEVELOPER — ${pc.name} changed from ${pc.className} ${old} to level ${level}${requested!==level?` (class cap ${cap})`:''}. XP was aligned to ${pc.xp.toLocaleString()}; saving throws, THAC0, spell slots, and class progression were refreshed. Rolled maximum HP was deliberately left at ${pc.maxHp}; use “dev set hp” when testing a particular hit-point total.`,'system'); updatePanels();
+  }
+
+  function developerSetHp(match){
+    const pc=findPc(match[1]); if(!pc){ write(`No adventurer named “${match[1]}” is in the party.`,'warning'); return; }
+    const requested=Math.max(0,Math.floor(Number(match[2])||0)),newMax=match[3]==null?Math.max(1,Number(pc.maxHp)||1):Math.max(1,Math.floor(Number(match[3])||1));
+    pc.maxHp=newMax; pc.hp=Math.min(requested,newMax); pc.dead=pc.hp<=0;
+    write(`DEVELOPER — ${pc.name} now has ${pc.hp}/${pc.maxHp} HP${pc.dead?' and is marked dead':''}.`,'system'); updatePanels();
+  }
+
+  function developerTeachSpell(match){
+    const pc=findPc(match[1]); if(!pc){ write(`No adventurer named “${match[1]}” is in the party.`,'warning'); return; }
+    const lists=spellListsForClass(pc.className),available=Object.entries(lists).flatMap(([level,spells])=>spells.map(spell=>({spell,level:Number(level)})));
+    const query=String(match[2]||'').trim().toLowerCase(),found=available.find(row=>row.spell.toLowerCase()===query);
+    if(!found){ write(`${pc.name} has no ${pc.className} spell named “${match[2]}” in the current BECMI catalog.`,'warning'); return; }
+    const added=addSpellbookSpell(pc,found.spell),eligible=found.level<=highestCastableSpellLevel(pc);
+    write(`DEVELOPER — ${found.spell} (level ${found.level}) ${added?'was added to':`was already in`} ${pc.name}'s spellbook/daily list. ${eligible?'It is currently castable if prepared.':`It is retained for testing but ${pc.name}'s current slots cannot cast it.`}`,'system');
+  }
+
+  function developerGiveItem(match){
+    const pc=findPc(match[1]); if(!pc){ write(`No adventurer named “${match[1]}” is in the party.`,'warning'); return; }
+    const qty=Math.max(1,Math.min(999,Math.floor(Number(match[2])||1))),matches=findShopItemMatches(match[3]);
+    if(!matches.length){ write(`No equipment catalog item matches “${match[3]}”.`,'warning'); return; }
+    if(matches.length>1){ write(`That item name is ambiguous: ${matches.slice(0,8).map(id=>SHOP_ITEMS[id].name).join(', ')}.`,'warning'); return; }
+    const id=matches[0],item=SHOP_ITEMS[id];
+    if(item.kind==='torch') state.torches+=(item.torchCount||1)*qty;
+    else if(item.kind==='rations') addRations(item.rationType||'iron',(item.rationDays||7)*qty);
+    else if(id==='oil') addOilFlasks(qty);
+    else { addInventoryRecord(pc.inventory||(pc.inventory=[]),memberItemRecord(id),qty); if(id==='waterskin') addWaterQuarts(qty); }
+    ensureLogisticsState({optimize:true});
+    write(`DEVELOPER — added ${qty}× ${item.name} to ${pc.name}${['torch','rations'].includes(item.kind)||id==='oil'?' through the expedition consumable ledger':' as a physical inventory record'}. Normal class restrictions still apply when equipping or using it.`,'system'); updatePanels();
+  }
+
+  function developerSetGold(match,add=false){
+    const gp=Math.max(0,Math.floor(Number(match[1])||0)); state.treasuryCp=add?Math.max(0,Number(state.treasuryCp)||0)+gp*100:gp*100; ensureLogisticsState({optimize:true});
+    write(`DEVELOPER — expedition treasury ${add?'increased by':`set to`} ${gp.toLocaleString()} gp; current total ${Math.floor(state.treasuryCp/100).toLocaleString()} gp. Coin encumbrance has been reassigned to physical carriers.`,'system'); updatePanels();
+  }
+
+  function developerClearEncounter(){
+    const had=Boolean(state.combat?.active||state.pendingEncounter); state.combat=null; state.pendingEncounter=null;
+    write(`DEVELOPER — ${had?'the active/pending encounter was cleared':'no encounter was active'}.`,'system'); updatePanels();
+  }
+
+  function developerTeleportHex(match){
+    const q=Number(match[1]),r=Number(match[2]),hex=getHex(q,r); if(!hex){ write(`No Kai Besil map hex exists at ${q},${r}.`,'warning'); return; }
+    state.combat=null; state.pendingEncounter=null; state.mode='wilderness'; state.location=null; state.previousHex=null; state.hex={q,r}; state.activeVesselId=null;
+    markProceduralHexExplored(state.hex); addEvent(`Developer teleport to Kai Besil hex ${q},${r}.`); write(`DEVELOPER TELEPORT — party moved to hex ${q},${r} (${hex.name||hex.terrain}). Any active encounter was cleared; no travel time, provisions, or encounter checks were consumed.`,'system'); updatePanels();
+  }
+
+  function developerSiteMatch(query){
+    hydrateGeneratedWorld(); const q=normalizedItemText(query).replace(/ /g,'_'),plain=normalizedItemText(query),rows=Object.entries(sites).filter(([id,site])=>id.toLowerCase()===q||normalizedItemText(site.name)===plain||(site.aliases||[]).some(alias=>normalizedItemText(alias)===plain));
+    return rows;
+  }
+
+  function developerTeleportSite(match){
+    const matches=developerSiteMatch(match[1]); if(!matches.length){ write(`No loaded site matches “${match[1]}”. Use the exact site name or identifier.`,'warning'); return; }
+    if(matches.length>1){ write(`That site name is ambiguous: ${matches.slice(0,10).map(([id,site])=>`${site.name} [${id}]`).join(', ')}.`,'warning'); return; }
+    const [id,site]=matches[0]; let root=id,guard=0; while(sites[root]?.localParent&&guard++<30) root=sites[root].localParent;
+    const generated=generatedRecordForRoom(id)?.record||ensureGeneratedWorld().sites[root],loc=SITE_LOCATIONS[root]||SITE_LOCATIONS[id]||generated?.hex;
+    if(!loc){ write(`The site is loaded but has no map anchor: ${site.name}.`,'warning'); return; }
+    state.combat=null; state.pendingEncounter=null; state.mode='site'; state.location=id; state.previousHex=null; state.hex={q:Number(loc.q),r:Number(loc.r)}; state.activeVesselId=null; learnPlace(root);
+    addEvent(`Developer teleport to ${site.name}.`); write(`DEVELOPER TELEPORT — party moved directly to ${site.name} [${id}] at hex ${loc.q},${loc.r}. Any active encounter was cleared; no travel time or resources were consumed.`,'system'); updatePanels();
+  }
+
+  function generatedThemeKey(query){
+    const normalized=String(query||'').trim().toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'');
+    return GENERATED_SITE_THEMES.find(theme=>theme.key===normalized)?.key||null;
+  }
+
+  function developerGenerateSite(match){
+    const kind=String(match[1]).toLowerCase(),themeKey=generatedThemeKey(match[2]);
+    if(!themeKey){ write(`Unknown generated-site theme “${match[2]}”. Available themes: ${GENERATED_SITE_THEMES.map(theme=>theme.key).join(', ')}.`,'warning'); return; }
+    const q=match[3]==null?Number(state.hex.q):Number(match[3]),r=match[4]==null?Number(state.hex.r):Number(match[4]),hex=getHex(q,r);
+    if(!hex||isKaiWaterTerrain(hex.terrain)){ write('Generated sites require an existing unkeyed Kai Besil land hex.','warning'); return; }
+    const key=hexKey(q,r),world=ensureGeneratedWorld();
+    if(hex.site||world.hexSites[key]){ write(`Hex ${key} already contains ${hex.siteLabel||sites[hex.site]?.name||world.sites[world.hexSites[key]]?.name||'a keyed site'}. The developer generator will not overwrite campaign canon; choose an unkeyed hex.`,'warning'); return; }
+    const theme=GENERATED_SITE_THEMES.find(row=>row.key===themeKey),formKey=kind==='dungeon'?((theme.forms||[]).find(form=>form!=='camp')||theme.layout||'ruin'):null;
+    const record=buildPersistentSite({hex:{q,r},themeKey,formKey,origin:'developer'});
+    write(`DEVELOPER GENERATION — ${record.name} [${record.id}] was permanently keyed at hex ${key} as a ${record.form} using theme ${record.theme}. Scenario: ${record.scenario} History: ${record.history} Stocking: ${record.stockingMethod}; ${Object.entries(record.stockSummary||{}).map(([label,n])=>`${label} ${n}`).join(', ')}.`,'system'); updatePanels();
+  }
+
+  function developerSetWind(match){
+    const roll=Math.max(2,Math.min(12,Math.floor(Number(match[1])||7))),direction=normalizeDirection(match[2]||'north');
+    if(!HEX_ORDER.includes(direction)){ write('Wind direction must be north, northeast, southeast, south, southwest, or northwest.','warning'); return; }
+    const w=ensureDailyWeather(); w.day=state.day; w.windRoll=roll; w.wind={...WATER_WIND_TABLE[roll]}; w.windDirection=direction; w.windOffset=HEX_ORDER.indexOf(direction);
+    write(`DEVELOPER — Day ${state.day} water wind forced to 2d6=${roll}, ${w.wind.label}, direction ${direction}. Vessel movement and gale procedures now use this result.`,'system'); updatePanels();
+  }
+
+  function developerCompleteConstruction(){
+    const s=ensureDomainState().stronghold; if(s.status!=='building'){ write('No fortification is currently under construction. Plan and begin one first.','warning'); return; }
+    s.constructionCompletesAt=absoluteCampaignMinute(); completeStronghold(absoluteCampaignMinute()); write('DEVELOPER — the construction clock was forced to completion without advancing campaign time.','system'); updatePanels();
+  }
+
+  function developerStateSummary(){
+    const d=ensureDomainState(),generated=ensureGeneratedWorld();
+    write(`DEVELOPER STATE — ${APP_VERSION}\nCampaign ${state.campaignId}; Day ${state.day}, ${clockText()}; ${placeName()} [${state.mode}${state.mode==='wilderness'?` ${state.hex.q},${state.hex.r}`:` ${state.location}`}].\nParty: ${state.party.length} total, ${livingParty().length} living; treasury ${Math.floor(state.treasuryCp/100).toLocaleString()} gp; combat ${combatActive()?`${state.combat.monsters.filter(monsterStillPresent).length} hostiles`:'none'}; pending encounter ${state.pendingEncounter?'yes':'no'}.\nGenerated persistent sites: ${Object.keys(generated.sites||{}).length}; fortification: ${d.stronghold.status}${d.stronghold.status!=='none'?` (${d.stronghold.name}, ${d.stronghold.authorityStatus})`:''}; dominion: ${d.establishedAtAbsoluteMinute==null?'inactive':d.name}.`,'system');
+  }
+
+  const DEVELOPER_COMMAND_SPECS=[
+    {category:'Reference and Diagnostics',usage:'dev help',summary:'Open this searchable command registry.',pattern:/^dev help$/i,execute:()=>openReferenceWindow('developer')},
+    {category:'Reference and Diagnostics',usage:'dev state',summary:'Summarize current location, roster, treasury, combat, generated sites, fortification, and dominion.',pattern:/^dev state$/i,execute:developerStateSummary},
+    {category:'Reference and Diagnostics',usage:'dev run tests',summary:'Run the complete deterministic regression suite in isolation.',pattern:/^dev (?:run )?(?:self )?tests?$/i,execute:()=>runCoreSelfTests({display:true})},
+    {category:'Encounters and Combat',usage:'dev encounter <count> <monster>',summary:'Start an isolated labeled test encounter using a loaded monster profile; count is capped at 24.',pattern:/^dev encounter\s+(\d+)\s+(.+)$/i,execute:m=>startTestEncounter(Number(m[1]),m[2])},
+    {category:'Encounters and Combat',usage:'dev encounter <monster>',summary:'Start one test creature.',pattern:/^dev encounter\s+(.+)$/i,execute:m=>startTestEncounter(1,m[1])},
+    {category:'Encounters and Combat',usage:'dev clear encounter',summary:'Clear active combat and pending encounter state without time cost.',pattern:/^dev clear encounter$/i,execute:developerClearEncounter},
+    {category:'Characters and Progression',usage:'dev set level <name> <1–cap>',summary:'Set level and matching XP threshold, then refresh THAC0, saves, slots, and class progressions; rolled maximum HP is unchanged.',pattern:/^dev set level\s+(.+?)\s+(\d+)$/i,execute:developerSetLevel},
+    {category:'Characters and Progression',usage:'dev set hp <name> <current>/<maximum>',summary:'Set current and maximum HP; zero marks the character dead.',pattern:/^dev set hp\s+(.+?)\s+(\d+)(?:\s*\/\s*(\d+))?$/i,execute:developerSetHp},
+    {category:'Characters and Progression',usage:'dev heal party',summary:'Restore every living party member to maximum HP and clear ordinary dead flags from positive-HP records.',pattern:/^dev heal party$/i,execute:()=>{for(const pc of state.party){pc.hp=Math.max(1,Number(pc.maxHp)||1);pc.dead=false;}write('DEVELOPER — every party member was restored to maximum HP.','system');updatePanels();}},
+    {category:'Spells and Equipment',usage:'dev teach <name> <exact spell>',summary:'Add a spell from that class’s live BECMI catalog; slot eligibility is still enforced.',pattern:/^dev teach\s+(.+?)\s*:\s*(.+)$/i,execute:developerTeachSpell},
+    {category:'Spells and Equipment',usage:'dev prepare <name>: <spell>, <spell> x2',summary:'Use the normal preparation validator; daily slot limits remain enforced.',pattern:/^dev (prepare\s+.+)$/i,execute:m=>prepareSpellCommand(m[1])},
+    {category:'Spells and Equipment',usage:'dev give <name>: <quantity> <item>',summary:'Add catalog equipment or consumables; physical encumbrance and equip/use restrictions remain active.',pattern:/^dev give\s+(.+?)\s*:\s*(\d+)\s+(.+)$/i,execute:developerGiveItem},
+    {category:'Spells and Equipment',usage:'dev equip <name> with <item>',summary:'Use the normal equipment command and class restrictions.',pattern:/^dev (equip\s+.+)$/i,execute:m=>equipCommand(m[1])},
+    {category:'Treasury and Time',usage:'dev set gold <gp>',summary:'Replace the expedition treasury and redistribute physical coin encumbrance.',pattern:/^dev set gold\s+(\d+)$/i,execute:m=>developerSetGold(m,false)},
+    {category:'Treasury and Time',usage:'dev add gold <gp>',summary:'Add to the expedition treasury and redistribute physical coin encumbrance.',pattern:/^dev add gold\s+(\d+)$/i,execute:m=>developerSetGold(m,true)},
+    {category:'Treasury and Time',usage:'dev advance days <1–365>',summary:'Advance the real campaign clock, including provisions, weather, construction, payroll, and dominion accounting.',pattern:/^dev advance days\s+(\d+)$/i,execute:m=>{const days=Math.max(1,Math.min(365,Number(m[1])||1));advanceClock(days*1440,`Developer advanced ${days} day(s).`);write(`DEVELOPER — advanced ${days} campaign day(s); ordinary clock-triggered systems were processed.`,'system');updatePanels();}},
+    {category:'Weather and Travel',usage:'dev set wind <2–12> <direction>',summary:'Force the BECMI water-wind row and direction for the current day.',pattern:/^dev set wind\s+(\d+)(?:\s+(.+))?$/i,execute:developerSetWind},
+    {category:'Map and Locations',usage:'dev goto hex <q> <r>',summary:'Teleport to an existing Kai Besil hex without time or resources; clears encounters.',pattern:/^dev goto hex\s+(-?\d+)[,\s]+(-?\d+)$/i,execute:developerTeleportHex},
+    {category:'Map and Locations',usage:'dev goto site <name-or-id>',summary:'Teleport to a loaded published or generated site; clears encounters.',pattern:/^dev goto site\s+(.+)$/i,execute:developerTeleportSite},
+    {category:'Map and Locations',usage:'dev reveal map',summary:'Mark every published and currently generated mapped site as known to the test campaign.',pattern:/^dev reveal map$/i,execute:()=>{hydrateGeneratedWorld();state.knownPlaces=[...new Set([...state.knownPlaces,...Object.keys(SITE_LOCATIONS).filter(id=>sites[id])])];state.visiblePlaces=[...new Set([...state.visiblePlaces,...state.knownPlaces])];addEvent('Developer reveal: all currently mapped sites marked known.');write(`DEVELOPER — ${state.knownPlaces.length} mapped site identifiers are now player-known in this save.`,'system');updatePanels();}},
+    {category:'Procedural Content',usage:'dev generate site <theme> [at <q> <r>]',summary:'Permanently key a theme-driven persistent site in an unkeyed land hex.',pattern:/^dev generate (site)\s+(.+?)(?:\s+at\s+(-?\d+)[,\s]+(-?\d+))?$/i,execute:developerGenerateSite},
+    {category:'Procedural Content',usage:'dev generate dungeon <theme> [at <q> <r>]',summary:'Force the theme’s indoor form, history, signature encounter, and B/X room stocking in an unkeyed land hex.',pattern:/^dev generate (dungeon)\s+(.+?)(?:\s+at\s+(-?\d+)[,\s]+(-?\d+))?$/i,execute:developerGenerateSite},
+    {category:'Procedural Content',usage:'dev themes',summary:'List all live generated-site theme identifiers.',pattern:/^dev themes$/i,execute:()=>write(`DEVELOPER THEMES — ${GENERATED_SITE_THEMES.map(theme=>theme.key).join(', ')}.`,'system')},
+    {category:'Fortifications and Domains',usage:'dev plan timber keep for <name>',summary:'Use the live 15,000 gp timber keep plan and current regional supervision rules.',pattern:/^dev (plan\s+.+)$/i,execute:m=>planStronghold(m[1])},
+    {category:'Fortifications and Domains',usage:'dev begin construction',summary:'Use normal site, funding, component, and supervision validation.',pattern:/^dev begin construction$/i,execute:beginStrongholdConstruction},
+    {category:'Fortifications and Domains',usage:'dev complete construction',summary:'Force an active construction clock to complete without advancing time.',pattern:/^dev complete construction$/i,execute:developerCompleteConstruction},
+    {category:'Fortifications and Domains',usage:'dev establish stronghold',summary:'Apply the normal Name-level eligibility and dominion-establishment rules.',pattern:/^dev establish stronghold$/i,execute:establishStrongholdDomain},
+    {category:'Fortifications and Domains',usage:'dev fortification status',summary:'Show live components, structural value, supervision, completion, and authority state.',pattern:/^dev fortification status$/i,execute:strongholdStatus}
+  ];
+
+  async function handleDeveloperCommand(input){
+    if(!/^dev\s+/i.test(String(input||''))||/^dev\s+mode\b/i.test(String(input||''))) return false;
+    if(!state.rules?.developerMode){ write('Developer commands are disabled. Enable Developer Mode in OPTIONS & DEVELOPER TOOLS or use “developer mode on”. No state was changed.','warning'); return true; }
+    for(const spec of DEVELOPER_COMMAND_SPECS){
+      const match=spec.pattern.exec(String(input).trim()); if(!match) continue;
+      await spec.execute(match,String(input).trim()); return true;
+    }
+    write('Unknown developer command. Use “dev help” or open DEVELOPER COMMANDS for the live searchable registry.','warning'); return true;
+  }
+
   function help() {
     write(`COMMANDS
 look — repeat the current description
 map / local map — redraw the current local mapping aid
 journal / log — open the permanent searchable campaign journal
 log Kitra — open the journal and search for Kitra
+handbook / rules reference — open the searchable player handbook for this exact build
 hex view — current wilderness hex plus one surrounding ring of actual hex-shaped cells
 Kai Besil water travel — every published D/C/R ocean cell is navigable; procure and board a local boat/ship, then use ordinary hex directions
 town view — settlement population, development, economy, supplies, recruitment, defenses, and known locations
@@ -11070,7 +11473,6 @@ create party — open the roster; add adventurers at any time, roll 3d6, enter y
 COMBAT
 combat help — full combat command list
 combat party — weapons, ammunition, spellbooks, and prepared spells
-encounter 4 goblins — explicit isolated engine test encounter
 combat — current round, party ready-reference, hostiles, orders, encounter position, and melee ranges
 Aldric attacks goblin 1 / Corwin shoots goblin 2 / Elwyn casts sleep
 Alyssa turns undead / Alyssa turns the skeletons — use the complete BECMI Turning Undead table as the cleric's action
@@ -11147,13 +11549,14 @@ inventory — complete physical manifests for every adventurer, hired carrier, p
 inventory optimize — intelligently distribute supplies, coin weight, and treasure loads without moving personal weapons, armor, spellbooks, or class tools
 inventory Nemiriel / give rope to Porter 1 — inspect one carrier or transfer an ordinary physical item
 
-NAME-LEVEL STRONGHOLDS & DOMINIONS
-stronghold catalog — published rural construction components, early Fighter/Halfling exceptions, timber fire/BR tradeoffs, settled-area rates, presets, time, and engineer rules
-plan stronghold keep for Aldric — choose the class-appropriate stronghold and current land hex; Fighters and Halflings may build at any level
-plan minor timber stronghold for Aldric — plan the 8,000 gp rural wooden stockade; its lower actual cost means 16 construction days before engineer wages
-add 2 stone buildings to stronghold / remove 1 castle wall from stronghold — customize with RAW construction blocks
-begin stronghold construction / stronghold status — commit funds and track autonomous game-time completion, private standing, residents, and followers
-establish stronghold domain — at Name level, convert a completed private stronghold into a titled dominion seat
+FORTIFICATIONS, NAME-LEVEL STRONGHOLDS & DOMINIONS
+fortification catalog — construction components, timber fire/BR tradeoffs, design bundles, time, qualified engineers, and Kai Besil master builders
+plan timber keep for Aldric — plan a 15,000 gp fire-vulnerable timber analogue of the stone square keep
+plan timber barbican for Aldric — plan a 7,400 gp fire-vulnerable timber analogue of the stone barbican
+plan fortification keep for Aldric — choose a traditional design bundle at the current land hex; any adventurer may commission physical construction at any level
+add 2 wood buildings to fortification / remove 1 castle wall from fortification — customize with construction blocks
+begin fortification construction / fortification status — commit funds and track autonomous game-time completion and secure-base status
+establish stronghold — at Name level, convert a completed private fortification into a titled stronghold and dominion seat
 domain status — population, resources, monthly income/expenses, treasury, confidence, and next accounting date
 appoint castellan / appoint engineer — hire permanent stronghold staff at published monthly salaries
 withdraw 100 gp from domain / deposit 100 gp to domain — transfer only liquid cash while at the completed stronghold
@@ -11192,6 +11595,7 @@ roll 2d6
 save / load
 referee [question] — ask a rules or game-state question at any time, including during combat
 developer mode on — full referee/testing transparency, including hidden current-state data
+developer commands / dev help — searchable Developer-Mode-only test command registry
 self test / regression tests — run deterministic regression/specification suite without changing the campaign
 ai parser tests — optional live-AI semantic smoke tests, reported separately
 copy test report — copy the most recent core/AI test report and parser trace
@@ -12054,14 +12458,14 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
       `Current initiative mode: ${state.rules?.initiativeMode||'RAW'}. RAW is side initiative; PHASED is the explicit house/alternative phase-based mode.`,
       'Retainer XP rule for this game: adventuring retainers count as 1/2 share; ordinary hirelings/mercenaries/specialists normally do not receive adventuring XP unless they have effectively become retainers.',
       'Settlement-capacity policy: published population takes priority over inference. Talamau has exactly the module’s stated population of about 400 and is classified as a small, prosperous coastal farming village. Population, development, economy, market depth, recruitment limits, and defenders are exposed in the settlement profile. Talamau has reliable basic ship and expedition necessities but no standing mercenary market; other adventuring gear follows the module’s 20% availability rule, while retainers still require a local candidate, an offer, and the normal BECMI reaction procedure.',
-      'Expedition XP settlement is a campaign procedure layered onto the BECMI XP tables: monster, treasure, goal, and dominion-ruler XP are entered in a field ledger with prime-requisite adjustments, but no character receives that XP or advances a level in wilderness or dungeon play. Returning to a safe settlement hub or the party’s completed stronghold distributes held shares and permits at most one level of advancement for that completed expedition.',
+      'Expedition XP settlement is a campaign procedure layered onto the BECMI XP tables: monster, treasure, goal, and dominion-ruler XP are entered in a field ledger with prime-requisite adjustments, but no character receives that XP or advances a level in wilderness or dungeon play. Returning to a safe settlement hub or the party’s completed fortification distributes held shares and permits at most one level of advancement for that completed expedition; political stronghold status is not required.',
       'BECMI Magic-User spell acquisition implemented here: a first-level Magic-User or Elf begins with Read Magic and one additional first-level spell. Each safe-haven level advancement adds one teacher-supplied spell, choosing the level whose daily capacity just increased; older saves deterministically receive any missing teacher lessons. Persistent generated sites can contain untranslated magic-user scrolls. A prepared Read Magic identifies a scroll, and an eligible Magic-User or Elf who can cast that spell level may copy it into a spellbook, consuming the scroll.',
       'Spellbook and daily preparation are separate. Each listed daily slot stores its own spell and READY/SPENT state, duplicate preparations are legal, casting or disruption expends only one matching ready slot, and the player may set a complete next-rest plan. A full uninterrupted night restores that plan; newly gained empty capacity is filled from known spells if no replacement plan was chosen.',
       'Monster morale policy in this build: morale events can apply to a group, but each affected monster makes its own morale check so some may flee while others hold.',
       'BECMI wilderness travel implemented here: the slowest character’s 120/90/60/30/15/0 movement rate is derived from carried coin-weight encumbrance; B/X mule, pony, draft-horse, riding-horse, and war-horse movement/load limits apply whenever mounts are present; the module’s half-mile terrain crossing rates are then scaled by the resulting party rate. A normal travel period is eight hours; travel foraging allows two-thirds of that and makes one hidden 1–3 on 1d6 food check when overland movement actually begins; forced march allows 50% more but requires a subsequent full rest day if the extension is used.',
       'BECMI extended-travel rest plus module fatigue procedure implemented here: each completed travel period increments days since a full rest. Each six days without a complete rest day gives cumulative −1 attack/damage and reduces overland movement by one quarter, to a minimum of one-quarter movement. Missing ordinary overnight rest prevents the travel allowance and memorized spells from resetting at all. A complete 24-hour rest clears fatigue and forced-march debt and heals 1–3 hp under the B/X full-day rest procedure. Batari’s Talamau lodging runs the same clock safely at the module’s 2 sp per traveler room-and-board price, with rations included instead of consuming packed supplies.',
       `BECMI getting-lost procedure implemented here: one secret d6 check per calendar day, deferred until the first truly unanchored wilderness move. No check is made while following a road/trail, river, coastline, an orientation-known temporary route, a visible fixed landmark, or reliable guide. Jungle/swamp lose on 1–3, most other terrain on 1–2, clear/plains on 1. Active consequence: ${gettingLostMode()==='RAW'?'RAW secret persistent direction displacement until backtracking, a known feature, or Heinrich corrects the course':'optional map-safe lost time; the player is explicitly told that the party became lost and remained in the same mapped hex, while the remaining movement period, exposure, encounter risk, rest cycle, and ordinary ration timing are consumed'}. RAW displacement is the default for new and migrated campaigns.`,
-      'B/X, BECMI, and Rules Cyclopedia stronghold distinction implemented here: a Fighter may build a home or even a castle at any level, but before 9th level it is an unsanctioned private holding with no title, territorial subjects, income, or ruler XP. A Halfling may build a stronghold at any level; a suitably placed one can attract a 1d6×30 clan community without creating a taxed dominion, while formal Sheriff authority and domain accounting wait until 8th level. Other class strongholds retain their class-level gates. The construction table gives rural prices: wood uses its own cheaper components, while heavily settled construction costs about 40% of the listed stone price or 20% of the listed wood price. Time is one day per 500 gp actually spent, so timber plans finish faster; their lower hp/BR and fire vulnerability remain recorded. Recognized strongholds use class-specific sanctions and followers, one 750 gp/month engineer per 100,000 gp or fraction, 24-mile dominion tracts, 30-day population, standard/resource/tax income, liege/tithe/staff expenses, 20–50% liquid treasury, ruler XP, confidence, and 1d4 annual events. Detailed War Machine battles and Siege Machine assaults remain separate optional systems.',
+      'B/X, BECMI, and Rules Cyclopedia construction distinction implemented here: any adventurer may commission a physical fortification at any level, and a completed one is a secure base with no automatic political authority. Stronghold means a completed fortification established at Name level as the recognized seat of a dominion. The suitable-site Halfling exception can still attract a 1d6×30 clan community before level 8 without creating taxed subjects, Sheriff authority, or ruler XP. The timber square keep (15,000 gp) and timber barbican (7,400 gp) are 20%-price analogues of the corresponding stone components; this price does not receive a second timber discount. Time is one day per 500 gp. Timber has lower hp/BR and fire vulnerability. Masonry and mixed works use one 750 gp/month qualified engineer per 100,000 gp or fraction. Kai Besil all-timber/earthwork projects may instead use a campaign-adapted tribal master builder at 50 gp per 30 days in coin or barter. Recognized strongholds use class-specific sanctions and followers, 24-mile dominion tracts, 30-day population, standard/resource/tax income, liege/tithe/staff expenses, 20–50% liquid treasury, ruler XP, confidence, and 1d4 annual events. Detailed War Machine battles and Siege Machine assaults remain separate optional systems.',
       'Unified module ration procedure: food and ordinary drinking water are subsumed into one ration unit per living character every 24 hours. A character without rations loses 1d2 hp per missed day and cannot recover hp through ordinary rest until consuming a ration again. At 25/50/75% maximum HP lost to ration deprivation, movement becomes ¾/½/¼ and attack penalties become −2/−4/−6, with 8/10/12 hours overnight rest required. Filled waterskins remain physical utility items for adventure interactions but are not a separate daily survival currency.',
       'Temporary jungle works are module procedures, not published BECMI rules: blazing costs twice the crossing time and lasts 1d6+3 unused days; a cut half-mile path costs about four hours, later gives the BECMI trail speed factor, and lasts 2d6+7 unused days; signs and cairns cost 30/60 minutes and last 1d6+3 or 2d6+7 unused days. Use refreshes the originally rolled inactivity lifetime.',
       'Persistent procedural-content policy: regional context, narrative theme, and physical form are separate data layers so later Mystara regions can supply their own terrain, culture, density, and form weights. Kai Besil secretly seeds four or five well-spaced generated-site hexes plus two or three one-time event hexes among otherwise unkeyed land. Dungeon forms follow the Moldvay/Mentzer sequence: choose a coherent scenario and setting, place a signature encounter, create form-appropriate geometry, then stock remaining areas with the B/X two-roll monster/trap/special/empty and conditional-treasure table while preserving empty pacing. Theme-specific histories constrain inhabitants, wandering encounters, traps, specials, obstructions, treasure containers, and rewards. AD&D DMG Appendix A contributes secondary physical variety only; it never replaces B/X/BECMI mechanics or campaign facts. Sites are revealed only on first entry; they may be open two-to-four-area camps, three-to-five-floor towers, five-to-eight-area caves/grottos, or branching ruins/manors. Every generated layout, area, stock roll, NPC, encounter, treasure, discovery, and resolved event is stored in the campaign save. Published keyed scenarios are excluded from this generator. Pirate Camp is permanently the module’s described shore scenario: fifteen pirates and Captain Harshaw, six lean-tos, the repair shore, the beached Sorrowful Gull, and 750 gp of portable valuables aboard her—never a generated cave or cache.',
@@ -12335,6 +12739,12 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     // Explicit engine/UI commands remain deterministic and bypass AI.
     if (normalized === 'new game' || normalized === 'restart') return newGame();
     if (normalized === 'load') return load();
+    if(['handbook','player handbook','rules handbook','player guide','rules reference'].includes(normalized)){ openReferenceWindow('player'); return; }
+    if(normalized.startsWith('handbook ')||normalized.startsWith('player handbook ')||normalized.startsWith('rules reference ')){
+      const q=input.replace(/^(?:player\s+)?handbook\s+|^rules\s+reference\s+/i,'').trim(); openReferenceWindow('player',q); return;
+    }
+    if(['developer commands','developer command reference','dev commands'].includes(normalized)){ openReferenceWindow('developer'); return; }
+    if(await handleDeveloperCommand(input)) return;
     if (['groups','party groups','show groups','list groups'].includes(normalized)) { write(partyGroupSummary(),'system'); return; }
     const disband=/^(?:disband|delete|remove)\s+((?:group|team|squad)\s+[a-z0-9][a-z0-9_-]*)$/i.exec(input);
     if(disband){ if(!disbandPartyGroup(disband[1])) write(`No named party group called ${disband[1]} exists.`,'warning'); return; }
@@ -12420,13 +12830,13 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     if(['advancement','experience','xp','level status'].includes(normalized)) return advancementStatus();
     if(['campaign status','campaign outcome','victory status','end game status'].includes(normalized)) return campaignOutcomeStatus();
     if(['rules audit','becmi audit','rules coverage','implementation status'].includes(normalized)) return rulesAuditStatus();
-    if(['stronghold','stronghold status','castle status','construction status'].includes(normalized)) return strongholdStatus();
-    if(['stronghold catalog','construction catalog','fortification catalog','castle catalog'].includes(normalized)) return strongholdCatalog();
-    if(/^plan (?:a |the )?stronghold\b/i.test(input)||/^plan (?:a |the )?(?:(?:minor )?timber stronghold|wood(?:en)? stronghold|keep|tower|sanctuary|hideout|clanhold|stockade)\b/i.test(input)) return planStronghold(input);
-    if(/^add\s+.+\s+to (?:the )?stronghold(?: plan)?$/i.test(input)) return adjustStrongholdComponent(input,1);
-    if(/^remove\s+.+\s+from (?:the )?stronghold(?: plan)?$/i.test(input)) return adjustStrongholdComponent(input,-1);
-    if(['begin stronghold construction','start stronghold construction','begin construction','start construction'].includes(normalized)) return beginStrongholdConstruction();
-    if(['establish stronghold domain','establish domain from stronghold','claim stronghold authority','recognize stronghold','activate stronghold domain'].includes(normalized)) return establishStrongholdDomain();
+    if(['fortification','fortification status','base status','stronghold','stronghold status','castle status','construction status'].includes(normalized)) return strongholdStatus();
+    if(['fortification catalog','construction catalog','stronghold catalog','castle catalog'].includes(normalized)) return strongholdCatalog();
+    if(/^plan (?:a |the )?(?:fortification|base|stronghold)\b/i.test(input)||/^plan (?:a |the )?(?:timber|wood(?:en)?)\s+(?:square\s+)?(?:keep|barbican)\b/i.test(input)||/^plan (?:a |the )?(?:keep|tower|sanctuary|hideout|clanhold)\b/i.test(input)) return planStronghold(input);
+    if(/^add\s+.+\s+to (?:the )?(?:fortification|base|stronghold)(?: plan)?$/i.test(input)) return adjustStrongholdComponent(input,1);
+    if(/^remove\s+.+\s+from (?:the )?(?:fortification|base|stronghold)(?: plan)?$/i.test(input)) return adjustStrongholdComponent(input,-1);
+    if(['begin fortification construction','start fortification construction','begin stronghold construction','start stronghold construction','begin construction','start construction'].includes(normalized)) return beginStrongholdConstruction();
+    if(['establish stronghold','establish stronghold domain','establish domain from stronghold','claim stronghold authority','recognize stronghold','activate stronghold domain'].includes(normalized)) return establishStrongholdDomain();
     if(['domain','domain status','dominion','dominion status','realm status'].includes(normalized)) return domainStatus();
     if(/^appoint\s+.+/i.test(input)) return appointDomainStaff(input);
     if(/^withdraw\s+\d+\s+gp\s+from (?:the )?domain/i.test(input)) return transferDomainCash(input,'withdraw');
@@ -12735,6 +13145,12 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const migrated=migrateSave(legacy);
         harnessAssert(migrated.domain.stronghold.ownerName==='Aldric'&&migrated.domain.stronghold.authorityStatus==='recognized'&&migrated.domain.establishedAtAbsoluteMinute===100,'Legacy recognized stronghold lost its owner or authority status');
       }},
+      {name:'v0.3.64 minor-timber presets migrate to custom fortifications without repricing',run:()=>{
+        const legacy=initialState(),fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); legacy.version='0.3.64'; legacy.party=[fighter]; legacy.campaignCreated=true; legacy.domain.stronghold={...legacy.domain.stronghold,preset:'stockade',name:'Aldric’s minor timber stockade',ownerName:'Aldric',authorityStatus:'private',status:'planned',components:{wood_building:2,wood_wall:4,wood_gate:1},locationHex:{q:6,r:11},siteTerrain:'light_jungle'}; delete legacy.domain.stronghold.layoutId;
+        const migrated=migrateSave(legacy),s=migrated.domain.stronghold,stats=strongholdPlanStats(s);
+        harnessAssert(s.preset==null&&s.name==='Aldric’s timber keep and palisade'&&s.layoutId==='three_story_timber_keep'&&strongholdLayout(s)?.floors.length===3,'Legacy minor-timber preset did not become a custom fortification with its layout intact');
+        harnessEqual([stats.costGp,stats.constructionDays,stats.engineers,stats.masterBuilders,stats.supervisorGp],[8000,16,0,1,50],'Migrating the timber layout changed its structure price, time, or Kai Besil master-builder contract');
+      }},
       {name:'BECMI overland encumbrance breakpoints control half-mile crossing time',run:()=>{
         installKaiBesilHarnessFixture();
         state.weather={climateId:'tropical_island',day:state.day,landRoll:7,windRoll:7,windDirection:'north',windOffset:0,land:{...CLIMATE_PROFILES.tropical_island.landWeather[2]},wind:{...WATER_WIND_TABLE[7]},history:[]};
@@ -12900,24 +13316,29 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessEqual(state.hex,edge.origin,'Backtracking did not return along the actual prior edge');
         harnessAssert(!state.navigation.lost,'Returning to the last certain position did not correct navigation');
       }},
-      {name:'Fighters build private castles at any level while other classes retain their stronghold gates',run:()=>{
+      {name:'Any class can commission a private fortification while Name-level stronghold authority remains separate',run:()=>{
         installKaiBesilHarnessFixture(); const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}),cleric=normalizeMember({name:'Alyssa',className:'Cleric',level:1,hp:6,maxHp:6,ac:7,abilities:{str:10,int:10,wis:16,dex:10,con:12,cha:13},inventory:[]}); state.party=[fighter,cleric];
         harnessAssert(planStronghold('plan stronghold keep for Aldric')===true,'A level-1 Fighter with funds could not plan the explicitly permitted private castle');
         harnessAssert(ensureDomainState().stronghold.authorityStatus==='private'&&ensureDomainState().rulerName==null,'An early Fighter castle incorrectly granted title or ruler standing');
         const stats=strongholdPlanStats();
         harnessEqual([stats.costGp,stats.constructionDays,stats.engineers,stats.engineeringMonths,stats.engineerGp],[107500,215,2,8,12000],'RAW keep component cost, one-day-per-500-gp time, or engineer requirement changed');
-        state.domain=initialState().domain; harnessAssert(planStronghold('plan stronghold sanctuary for Alyssa')===false,'A level-1 Cleric received the Fighter/Halfling early-construction exception');
+        state.domain=initialState().domain; harnessAssert(planStronghold('plan stronghold sanctuary for Alyssa')===true,'A level-1 Cleric could not commission a physical sanctuary fortification');
+        harnessAssert(ensureDomainState().stronghold.authorityStatus==='private'&&ensureDomainState().rulerName==null,'A low-level Cleric fortification incorrectly became a stronghold or dominion seat');
       }},
       {name:'A completed early Fighter castle is a safe private holding without followers or dominion income',run:()=>{
         installKaiBesilHarnessFixture(); const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[fighter]; state.treasuryCp=20000000;
         harnessAssert(planStronghold('plan stronghold keep for Aldric')&&beginStrongholdConstruction(),'Early Fighter castle construction did not begin');
         const completion=ensureDomainState().stronghold.constructionCompletesAt; processStrongholdConstruction(completion-1,completion); const d=ensureDomainState(),s=d.stronghold;
         harnessAssert(s.status==='complete'&&s.authorityStatus==='private'&&!s.followers&&d.establishedAtAbsoluteMinute==null&&d.populationFamilies===0,'Early Fighter castle incorrectly created followers, subjects, or a dominion');
-        harnessAssert(currentSafeHavenId()==='domain_stronghold','A completed private castle did not function as a physical safe haven');
+        harnessAssert(currentSafeHavenId()==='party_fortification','A completed private castle did not function as a physical safe haven');
+        state.rationStock={standard:0,iron:100}; syncRationStock(); const checksBefore=state.eventLog.filter(event=>/wilderness encounter check|secure-camp eight-hour encounter check/i.test(event)).length;
+        harnessAssert(camp()===true&&!state.combat&&!state.pendingEncounter,'Overnight rest inside the completed fortification did not complete safely');
+        const checksAfter=state.eventLog.filter(event=>/wilderness encounter check|secure-camp eight-hour encounter check/i.test(event)).length;
+        harnessAssert(checksAfter===checksBefore,'Completed fortification rest still used the wilderness-camp encounter procedure');
       }},
       {name:'A suitable early Halfling stronghold attracts a non-taxed clan community but no Sheriff domain',run:()=>{
-        installKaiBesilHarnessFixture(); const halfling=normalizeMember({name:'Bree',className:'Halfling',level:1,hp:6,maxHp:6,ac:7,abilities:{str:10,int:10,wis:10,dex:13,con:12,cha:13},inventory:[]}); state.party=[halfling]; state.mode='site'; state.location='talamau'; state.hex={...SITE_LOCATIONS.talamau}; state.treasuryCp=1000000; state.seed=19;
-        harnessAssert(planStronghold('plan stronghold stockade for Bree')&&beginStrongholdConstruction(),'Early Halfling stronghold construction did not begin');
+        installKaiBesilHarnessFixture(); const halfling=normalizeMember({name:'Bree',className:'Halfling',level:1,hp:6,maxHp:6,ac:7,abilities:{str:10,int:10,wis:10,dex:13,con:12,cha:13},inventory:[]}); state.party=[halfling]; state.mode='site'; state.location='talamau'; state.hex={...SITE_LOCATIONS.talamau}; state.treasuryCp=2000000; state.seed=19;
+        harnessAssert(planStronghold('plan timber keep for Bree')&&beginStrongholdConstruction(),'Early Halfling fortification construction did not begin');
         const completion=ensureDomainState().stronghold.constructionCompletesAt; processStrongholdConstruction(completion-1,completion); const d=ensureDomainState(),s=d.stronghold;
         harnessAssert(s.status==='complete'&&s.authorityStatus==='private'&&s.community?.clanMembers>=30&&s.community.clanMembers<=180&&s.community.clanMembers%30===0,'Suitable early Halfling stronghold did not attract the RAW clan community');
         harnessAssert(d.establishedAtAbsoluteMinute==null&&d.title==null&&d.populationFamilies===0&&d.monthlyLedger.length===0,'Early Halfling community incorrectly became a titled or taxed dominion');
@@ -12928,22 +13349,69 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         fighter.level=9; harnessAssert(establishStrongholdDomain()===true,'Name-level Fighter could not establish a domain from an existing private castle'); const d=ensureDomainState();
         harnessAssert(d.stronghold.authorityStatus==='recognized'&&d.stronghold.followers?.kind==='fighter applicants'&&d.establishedAtAbsoluteMinute!=null&&d.title==='Baron','Name-level recognition did not grant the separate title, followers, and dominion state');
       }},
-      {name:'Settled-area stronghold plans apply published stone and wood material rates',run:()=>{
+      {name:'Timber analogue prices do not receive a second settled-area discount',run:()=>{
         installKaiBesilHarnessFixture(); const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:9,hp:30,maxHp:30,ac:3,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[fighter]; state.mode='site'; state.location='talamau'; state.hex={...SITE_LOCATIONS.talamau};
-        harnessAssert(planStronghold('plan stronghold stockade for Aldric'),'Settled stockade plan failed'); const stats=strongholdPlanStats();
-        harnessEqual([stats.fullCostGp,stats.costGp],[8000,1600],'Settled wooden construction did not cost 20% of the rural table');
-        state.domain.stronghold.components={stone_building:1}; const stone=strongholdPlanStats(); harnessEqual([stone.fullCostGp,stone.costGp],[3000,1200],'Settled stone construction did not cost 40% of the rural table');
+        harnessAssert(planStronghold('plan timber keep for Aldric'),'Timber keep plan failed'); const stats=strongholdPlanStats();
+        harnessEqual([stats.fullCostGp,stats.costGp,stats.constructionDays],[15000,15000,30],'Timber keep received an unintended second discount or incorrect build time');
+        state.domain.stronghold.components={stone_building:1}; const stone=strongholdPlanStats(); harnessEqual([stone.fullCostGp,stone.costGp],[3000,3000],'Published stone-building price changed merely because the site was settled');
       }},
-      {name:'A level-1 Fighter or Halfling can choose the cheaper fire-vulnerable rural timber stockade',run:()=>{
+      {name:'Timber keep and barbican are direct fire-vulnerable components rather than a minor-stronghold preset',run:()=>{
         installKaiBesilHarnessFixture(); const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[fighter];
-        harnessAssert(planStronghold('plan minor timber stronghold for Aldric'),'Minor timber stronghold alias did not create an early Fighter plan'); const timber=strongholdPlanStats();
-        harnessEqual([timber.fullCostGp,timber.costGp,timber.constructionDays,timber.woodGp],[8000,8000,16,8000],'Rural timber stockade cost or one-day-per-500-gp construction time changed');
-        harnessAssert(timber.fireVulnerableHp===1380&&timber.rows.every(row=>row.material==='wood'&&row.fireVulnerable),'Timber components did not retain their lower structural/fire-vulnerability profile');
+        harnessAssert(!Object.prototype.hasOwnProperty.call(STRONGHOLD_PRESETS,'stockade'),'Obsolete minor timber stronghold preset remains selectable');
+        harnessAssert(planStronghold('plan timber keep for Aldric'),'Timber keep component could not start a fortification plan'); const timber=strongholdPlanStats(),s=ensureDomainState().stronghold;
+        harnessEqual([timber.costGp,timber.constructionDays,timber.hp,timber.br,timber.engineers,timber.masterBuilders,timber.supervisorGp],[15000,30,1500,25,0,1,50],'Timber keep price, durability, time, or local supervision changed');
+        harnessAssert(s.preset==null&&s.name==='Aldric’s timber square keep'&&timber.fireVulnerableHp===1500&&timber.rows.every(row=>row.material==='wood'&&row.fireVulnerable),'Timber keep was not stored as a direct fire-vulnerable component plan');
+        state.domain=initialState().domain; harnessAssert(planStronghold('plan timber barbican for Aldric'),'Timber barbican component could not start a fortification plan'); const barbican=strongholdPlanStats();
+        harnessEqual([barbican.costGp,barbican.constructionDays,barbican.hp,barbican.br,barbican.supervisorGp],[7400,15,420,7,50],'Timber barbican did not remain the 20%-price, lower-strength, locally supervised analogue');
+      }},
+      {name:'Searchable player handbook documents the live table aids and fortification terminology',run:()=>{
+        const text=PLAYER_RULE_REFERENCE_SECTIONS.map(section=>[section.title,...(section.paragraphs||[]),...(section.bullets||[]),...(section.commands||[]).flatMap(row=>[row.usage,row.summary])].join(' ')).join('\n');
+        harnessAssert(/graph paper/i.test(text)&&/hex paper/i.test(text)&&/tokens/i.test(text),'Player handbook omitted requested physical mapping or position aids');
+        harnessAssert(/A stronghold is specifically a completed fortification established at Name level/i.test(text),'Player handbook did not preserve the fortification/stronghold distinction');
+        harnessAssert(/timber square keep is 15,000 gp/i.test(text)&&/timber barbican 7,400 gp/i.test(text)&&/tribal master builder at 50 gp/i.test(text),'Player handbook drifted from live timber construction or Kai Besil supervision rules');
+        harnessAssert(PLAYER_RULE_REFERENCE_SECTIONS.length>=10,'Player handbook no longer covers the complete campaign loop');
+      }},
+      {name:'Developer command registry is hidden when off and executable when enabled',run:async()=>{
+        installKaiBesilHarnessFixture(); state.rules.developerMode=false; state.treasuryCp=12300;
+        harnessAssert(await handleDeveloperCommand('dev set gold 999')===true,'Disabled developer command was not recognized and safely rejected');
+        harnessAssert(state.treasuryCp===12300,'Developer command changed state while Developer Mode was off');
+        state.rules.developerMode=true; await handleDeveloperCommand('dev set gold 999');
+        harnessAssert(state.treasuryCp===99900,'Enabled developer treasury command did not execute');
+        harnessAssert(DEVELOPER_COMMAND_SPECS.some(spec=>spec.usage==='dev generate dungeon <theme> [at <q> <r>]')&&DEVELOPER_COMMAND_SPECS.some(spec=>spec.usage==='dev complete construction'),'Developer command registry omitted generation or construction coverage');
+      }},
+      {name:'Developer character, spell, HP, and equipment commands retain normal rules data',run:async()=>{
+        installKaiBesilHarnessFixture(); state.rules.developerMode=true; const mage=findPc('Nemiriel');
+        await handleDeveloperCommand('dev set level Nemiriel 5');
+        harnessAssert(mage.level===5&&mage.xp===XP_THRESHOLDS[mage.className][4]&&mage.spellSlots[2]>0,'Developer level command did not align level, XP, or spell slots');
+        await handleDeveloperCommand('dev teach Nemiriel: Fire Ball');
+        harnessAssert(mage.spellbook.includes('Fire Ball'),'Developer spell command did not use the live Magic-User catalog');
+        await handleDeveloperCommand('dev set hp Nemiriel 3/17');
+        harnessEqual([mage.hp,mage.maxHp,mage.dead],[3,17,false],'Developer HP command produced an incoherent character state');
+        await handleDeveloperCommand('dev give Nemiriel: 2 dagger');
+        harnessAssert(mage.inventory.some(item=>item.itemId==='dagger'&&item.qty>=2),'Developer equipment command did not create physical per-character inventory');
+      }},
+      {name:'Developer dungeon generation forces a coherent theme and supports site teleportation',run:async()=>{
+        installKaiBesilHarnessFixture(); state.rules.developerMode=true; const target=Object.entries(kaiBesilHexes).find(([key,hex])=>isKaiLandTerrain(hex.terrain)&&!hex.site&&!ensureGeneratedWorld().hexSites[key]);
+        harnessAssert(Boolean(target),'Harness could not locate an unkeyed land hex for developer generation'); const [key]=target,[q,r]=key.split(',').map(Number);
+        await handleDeveloperCommand(`dev generate dungeon wizard_tower at ${q} ${r}`); const id=ensureGeneratedWorld().hexSites[key],record=ensureGeneratedWorld().sites[id];
+        harnessAssert(record?.theme==='wizard_tower'&&record.form!=='camp'&&record.generatorVersion==='moldvay-mentzer-1','Developer dungeon command did not use the live themed B/X generator');
+        harnessAssert(record.scenario&&record.history&&record.rooms.some(room=>room.signatureEncounter),'Forced dungeon omitted theme history or planned signature encounter');
+        await handleDeveloperCommand(`dev goto site ${id}`);
+        harnessAssert(state.mode==='site'&&state.location===id&&state.hex.q===q&&state.hex.r===r,'Developer site teleport did not reach the forced persistent dungeon');
+      }},
+      {name:'Developer construction commands exercise normal pricing and Name-level conversion separately',run:async()=>{
+        installKaiBesilHarnessFixture(); state.rules.developerMode=true; const fighter=normalizeMember({name:'Aldric',className:'Fighter',level:1,hp:8,maxHp:8,ac:7,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[fighter]; state.treasuryCp=2000000;
+        await handleDeveloperCommand('dev plan timber barbican for Aldric'); await handleDeveloperCommand('dev begin construction');
+        harnessAssert(ensureDomainState().stronghold.status==='building'&&ensureDomainState().stronghold.costGp===7400&&ensureDomainState().stronghold.supervisorCostGp===50,'Developer construction plan bypassed live price or supervisor rules');
+        await handleDeveloperCommand('dev complete construction');
+        harnessAssert(ensureDomainState().stronghold.status==='complete'&&ensureDomainState().stronghold.authorityStatus==='private'&&ensureDomainState().establishedAtAbsoluteMinute==null,'Forced completion incorrectly granted low-level stronghold authority');
+        await handleDeveloperCommand('dev set level Aldric 9'); await handleDeveloperCommand('dev establish stronghold');
+        harnessAssert(ensureDomainState().stronghold.authorityStatus==='recognized'&&ensureDomainState().establishedAtAbsoluteMinute!=null,'Developer flow could not convert an existing fortification into a Name-level stronghold');
       }},
       {name:'Clerical order pays the published up-to-half stronghold aid in the supported default case',run:()=>{
         installKaiBesilHarnessFixture(); const cleric=normalizeMember({name:'Alyssa',className:'Cleric',level:9,hp:24,maxHp:24,ac:3,abilities:{str:10,int:10,wis:16,dex:10,con:12,cha:13},inventory:[]}); state.party=[cleric]; state.treasuryCp=10000000;
         harnessAssert(planStronghold('plan stronghold sanctuary for Alyssa')&&beginStrongholdConstruction(),'Clerical sanctuary construction did not begin');
-        const s=ensureDomainState().stronghold; harnessAssert(s.subsidyGp===Math.floor(s.costGp*0.5)&&s.paidGp===s.costGp-s.subsidyGp+s.engineers*s.engineerMonthlyGp*Math.ceil(s.constructionDays/30),'Clerical aid was not half the structure while engineer contracts remained payable');
+        const s=ensureDomainState().stronghold; harnessAssert(s.subsidyGp===Math.floor(s.costGp*0.5)&&s.paidGp===s.costGp-s.subsidyGp+s.supervisorCostGp,'Clerical aid was not half the structure while construction-supervision contracts remained payable');
       }},
       {name:'Completed stronghold attracts class followers, becomes a safe haven, and establishes a dominion',run:()=>{
         installKaiBesilHarnessFixture(); const fighter=normalizeMember({name:'Aldric',sex:'Male',className:'Fighter',level:9,hp:30,maxHp:30,ac:3,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[fighter]; state.treasuryCp=20000000;
@@ -12951,7 +13419,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const completion=ensureDomainState().stronghold.constructionCompletesAt; processStrongholdConstruction(completion-1,completion); const s=ensureDomainState().stronghold;
         harnessAssert(s.status==='complete'&&s.followers?.kind==='fighter applicants','Stronghold completion did not attract the fighter’s published applicant type');
         harnessAssert(ensureDomainState().establishedAtAbsoluteMinute===completion&&ensureDomainState().areaMiles===24,'Completed stronghold did not establish the RAW-scale dominion tract');
-        harnessAssert(currentSafeHavenId()==='domain_stronghold','Completed stronghold did not become a safe haven for expedition XP');
+        harnessAssert(currentSafeHavenId()==='party_fortification','Completed stronghold did not become a safe haven for expedition XP');
       }},
       {name:'Dominion month uses RAW population, three incomes, obligations, liquidity, and ruler XP',run:()=>{
         installKaiBesilHarnessFixture(); const ruler=normalizeMember({name:'Aldric',className:'Fighter',level:9,hp:30,maxHp:30,ac:3,abilities:{str:16,int:10,wis:10,dex:10,con:16,cha:13},inventory:[]}); state.party=[ruler];
@@ -14645,6 +15113,8 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   }
 
   if(showJournalButton) showJournalButton.addEventListener('click',()=>{ void openJournalWindow('','all'); });
+  if(showPlayerHandbookButton) showPlayerHandbookButton.addEventListener('click',()=>openReferenceWindow('player'));
+  if(showDeveloperCommandsButton) showDeveloperCommandsButton.addEventListener('click',()=>openReferenceWindow('developer'));
   if(openRefereeLogButton) openRefereeLogButton.addEventListener('click',()=>{ void openRefereeLog(''); });
   if(runSelfTestsButton) runSelfTestsButton.addEventListener('click',()=>{ void runCoreSelfTests({display:true}); });
   if(runAiParserTestsButton) runAiParserTestsButton.addEventListener('click',()=>{ void runAiParserSmokeTests({display:true}); });
@@ -14658,6 +15128,10 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   if(importCampaignButton) importCampaignButton.addEventListener('click',()=>importCampaignFile?.click());
   if(importCampaignFile) importCampaignFile.addEventListener('change',()=>{ const file=importCampaignFile.files?.[0]; if(file && confirm('Import this campaign? The current save slot will be replaced.')) void importCampaignFromFile(file); });
   if(journalWindow) journalWindow.addEventListener('click',event=>{ if(event.target===journalWindow) closeJournalWindow(); });
+  if(closeReferenceButton) closeReferenceButton.addEventListener('click',closeReferenceWindow);
+  if(referenceClearButton) referenceClearButton.addEventListener('click',()=>{ if(referenceSearchInput) referenceSearchInput.value=''; renderReferenceWindow(); referenceSearchInput?.focus(); });
+  if(referenceSearchInput) referenceSearchInput.addEventListener('input',renderReferenceWindow);
+  if(referenceWindow) referenceWindow.addEventListener('click',event=>{ if(event.target===referenceWindow) closeReferenceWindow(); });
 
   for(const button of situationViewButtons){
     button.addEventListener('click',()=>{
@@ -14727,7 +15201,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   if(townMapButton) townMapButton.addEventListener('click',()=>{ mapWindowPreference='town'; refreshMapWindow(); });
   if(hexMapButton) hexMapButton.addEventListener('click',()=>{ mapWindowPreference='hex'; refreshMapWindow(); });
   if(mapWindow) mapWindow.addEventListener('click',event=>{ if(event.target===mapWindow) closeMapWindow(); });
-  document.addEventListener('keydown',event=>{ if(event.key==='Escape'){ if(journalWindow?.classList.contains('open')) closeJournalWindow(); else if(mapWindow?.classList.contains('open')) closeMapWindow(); } });
+  document.addEventListener('keydown',event=>{ if(event.key==='Escape'){ if(referenceWindow?.classList.contains('open')) closeReferenceWindow(); else if(journalWindow?.classList.contains('open')) closeJournalWindow(); else if(mapWindow?.classList.contains('open')) closeMapWindow(); } });
 
   document.getElementById('commandForm').addEventListener('submit', event => {
     event.preventDefault();
