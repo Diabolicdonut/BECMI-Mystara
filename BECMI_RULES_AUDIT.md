@@ -1,8 +1,8 @@
 # Smoking Pillar of Lan Yu — BECMI/B/X Rules Audit
 
-Build audited: **v0.3.66**  
-Audit date: **2026-09-03**  
-Deterministic regression result: **206/206 passing**
+Build audited: **v0.3.67**  
+Audit date: **2026-09-04**  
+Deterministic regression result: **211/211 passing**
 
 ## Verdict
 
@@ -21,6 +21,9 @@ The audit compared the engine against:
 3. *D&D Rules Cyclopedia* — consolidated tables, classes, equipment, spells, movement, encounters, and combat.
 4. *The Smoking Pillar of Lan Yu* — module-specific facts and exceptions.
 5. *AD&D 1e Dungeon Masters Guide*, Appendices A–C — secondary inspiration for dungeon geometry, physical obstacles, treasure containers, wilderness transitions, and encounter-table structure only.
+6. *AC9 D&D Creature Catalogue* and *DMR2 Creature Catalog* — the indexed Basic D&D creature roster, revised descriptions, and published monster statistics.
+7. *Arms Across Eras Canonical v3.2.0* — Matrix attack scales, three-scale target sizing, Soft/Hard protection, and melee/ranged distance bands.
+8. *FlexAI* — role, stance, outcome, and target-selection ideas used only to inform opponent decisions.
 
 When B/X and Mentzer/Rules Cyclopedia procedures differ, this project follows Mentzer BECMI/Rules Cyclopedia unless the in-game help explicitly identifies a B/X import or campaign ruling. Module text overrides generic procedure for keyed content. AD&D material never overrides B/X/BECMI mechanics or established Mystaran/module facts.
 
@@ -117,17 +120,32 @@ When B/X and Mentzer/Rules Cyclopedia procedures differ, this project follows Me
 | Procedure | Status | Audit result |
 |---|---|---|
 | Encounter checks and distance | Deterministic | Terrain/time checks, surprise, encounter distance, and actual monster instantiation are active. |
+| Player-visible Matrix inputs | Deterministic | Every encountered creature is described and labeled with Small/Medium/Large at Monster, Vessel, and Structure scales plus Soft/Hard protection. These are never hidden referee statistics. |
+| Equipped-weapon distance | Deterministic | Each ready weapon reports exact separation from every target. Melee-capable weapons show Close/Normal/Far only after engagement; missile/throwable weapons show Short/Medium/Long whenever ready. Hybrid weapons can show both simultaneously. |
 | Reactions | Deterministic | 2d6 reactions and Charisma adjustments support NPC, encounter, hireling, and retainer decisions. |
 | Evasion and pursuit | Deterministic | Encounter evasion/pursuit procedures use relative force, speed, terrain, and persistent outcomes. |
-| Initiative | Deterministic | RAW side initiative is available. The default phased presentation preserves the movement/missile/magic/melee structure and multi-side ordering. |
+| Initiative | Deterministic/Adapted | RAW side initiative is available. The default phased presentation preserves the movement/missile/magic/melee structure and multi-side ordering. Ordinary named groups remain one side; only an adjudicated surround can create two attacking fronts against one surrounded side, for three initiatives maximum. |
+| Surround maneuver | Adapted | Either force may declare a two-front attempt before initiative while at melee contact. Space, relative encounter speed, and numbers affect a recorded d6 check. Corridors and tight approaches can forbid the attempt; failure preserves the original sides; success grants separate initiatives/phases to the two fronts and the surrounded force. |
 | Encounter movement | Deterministic | Encumbrance-based movement, approach, regroup, fighting withdrawal, retreat, and legal melee contact are enforced. |
 | Missile combat | Deterministic | Range bands, Dexterity, ammunition, engagement restrictions, and thrown weapons are active. |
 | Melee combat | Deterministic | THAC0, AC, Strength, magic, damage, death at 0 hp, targeting, and persistent combat state are active. |
 | Set Spear vs. Charge | Deterministic | Fighters and demihumans can ready spear/pike/lance/sword shield; a 20-yard-or-longer charge is received before the attack and doubles weapon dice before modifiers. |
 | Lance Attack | Outside module | Mounts exist for travel, but individual mounted-combat position and the 20-yard lance maneuver are not a required Kai Besil procedure. |
 | Morale | Deterministic | First hit, first death, half disabled, individual checks, automatic ML 2/12 behavior, flight, and persistence are active. |
+| FlexAI-informed behavior | Deterministic/Referee-mediated | Each opponent order records a tactical role, current stance, d20 outcome category, target method, and selected target. JavaScript then resolves the action through BECMI. Inappropriate results are rejected or reinterpreted; FlexAI's own resolution, surge, and lull mechanics are not substituted for D&D. |
 | High-level Fighter Combat Options | Outside module | Smash, Parry, Disarm, and high-level multiple attacks are not required by this low-level module and are not presented as implemented. |
 | Optional Weapon Mastery | Optional off | The data is retained for future use, but the optional subsystem is disabled. |
+
+### Creature catalogue coverage
+
+| Procedure | Status | Audit result |
+|---|---|---|
+| Indexed roster | Deterministic | The game loads 641 indexed names and variants from the Rules Cyclopedia, DMR2 revised catalogue, and AC9-only index records, with Kai Besil/module profiles overriding matching generic entries. Every loaded key can be instantiated through the encounter engine. |
+| Standard combat fields | Deterministic | Every profile supplies a name, AC, Hit Dice/HP expression, movement, THAC0, morale, intelligence, alignment, XP, save target, one or more attack expressions, kind, and tactical role. |
+| Matrix classification | Adapted | Every profile has best-judgment Monster/Vessel/Structure size values and Soft/Hard protection derived from printed size, scale, body material, worn protection, shell, hide, and structural character. The source books do not provide these Arms Across Eras classifications directly. |
+| Description diversity | Deterministic | A same-type group receives one shared creature/classification statement plus distinguishing visible details for individuals; the encounter does not print one identical paragraph six times. |
+| Source transcription quality | Referee-mediated | 97 rows are direct parsed blocks and 386 are source-page matched OCR blocks. The remaining 158 unreadable/index-only entries are clearly marked `provisional-source-index-fallback` and receive conservative usable combat fields rather than being omitted. `dev monster catalog <query>` exposes the source page and quality flag. This is the principal remaining data-quality limitation. |
+| Unusual powers and ecology | Referee-mediated | Catalog creatures can always fight with their standard routine. Unusual immunities, spell-like abilities, special movement, lairs, treasure, and ecological behavior use the published entry and AI referee unless a dedicated deterministic handler exists. Module-critical creatures retain curated handlers. |
 
 ### Magic
 
@@ -187,8 +205,8 @@ When B/X and Mentzer/Rules Cyclopedia procedures differ, this project follows Me
 
 | Procedure | Status | Audit result |
 |---|---|---|
-| Embedded player handbook | Deterministic | A searchable, closeable in-game reference describes the mechanics and commands actually present in this build, including physical mapping aids, the full expedition loop, options, campaign adaptations, fortification terminology, and the distinction between registered spells and bespoke effects. |
-| Developer command registry | Deterministic | The searchable Developer Commands window is generated from the same live command registry that dispatches the commands. It covers isolated encounters, levels, HP, spells, preparations, equipment, treasury, time, wind, location teleportation, map revelation, forced themed site/dungeon generation, fortification construction, and Name-level conversion. |
+| Embedded player handbook | Deterministic | A searchable, closeable in-game reference describes the mechanics and commands actually present in this build, including physical mapping aids, the full expedition loop, explicit Matrix classification/range information, surround adjudication, options, campaign adaptations, fortification terminology, and the distinction between registered spells and bespoke effects. |
+| Developer command registry | Deterministic | The searchable Developer Commands window is generated from the same live command registry that dispatches the commands. It covers isolated encounters, full monster-catalog search, forced party/enemy surround results, levels, HP, spells, preparations, equipment, treasury, time, wind, location teleportation, map revelation, forced themed site/dungeon generation, fortification construction, and Name-level conversion. |
 | Developer Mode gate | Deterministic | Every `dev …` state-changing command is rejected without mutation when Developer Mode is off. Legacy `encounter <count> <monster>` test syntax is likewise gated. Developer actions are explicitly labeled in the transcript. |
 | Procedural-generation testing | Deterministic | `dev generate dungeon <theme> [at <q> <r>]` invokes the production Moldvay/Mentzer generator, not a mock generator, and refuses to overwrite a published or already keyed site. |
 
@@ -207,6 +225,9 @@ These are deliberate and should not be mistaken for transcription errors:
 - The contextual weapon matrix is the default, but `weapon mode raw` restores listed Rules Cyclopedia damage.
 - The default phased combat display is an interface presentation; `initiative mode raw` remains available.
 - FRONT/REAR are exposure roles, not literal rows on a tactical grid.
+- Target size at Monster/Vessel/Structure scales and Soft/Hard protection are explicit player decision inputs under Arms Across Eras, even though ordinary monster statistics remain hidden.
+- Ordinary party or monster groups do not gain additional initiative merely by splitting. A successful contextual surround is the sole two-front exception; it abstracts all directions into two attackers and one surrounded center, never more than three sides in a physical melee.
+- FlexAI provides behavior prompts and targeting discipline only. BECMI morale, movement, initiative, attacks, damage, and saves remain the rules engine.
 
 ## Beginning-to-end acceptance path
 
@@ -237,6 +258,7 @@ These are not blockers for *The Smoking Pillar of Lan Yu*, but they are the corr
 6. Optional General Skills and Weapon Mastery as explicit campaign toggles.
 7. Full round-by-round underwater combat, breath, rescue, and drowning.
 8. Wider-world markets, law, travel networks, climate regions, languages, and settlement scaling.
+9. Manual verification and bespoke special-power handlers for the 158 catalogue entries whose scan/index statistics are presently flagged provisional.
 
 ## Validation conclusion
 
