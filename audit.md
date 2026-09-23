@@ -1,9 +1,1190 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.119**  
+Build: **0.4.135c**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
-Audit date: 2026-09-21
+Audit date: 2026-09-23
+
+## v0.4.135c — Strangle Vine entanglement / strangulation closure (small-piece split)
+
+This checkpoint completes the three-part v0.4.135 split by implementing **Strangle Vine only**. The governing entry is DMR2 *Creature Catalog*, printed page 103 (PDF page 104 in the project copy). Strangleweed remains deliberately separate because its opposed 4d6+4 procedure is mechanically different and should not be flattened into this restraint handler.
+
+### Moving into or through the vine now triggers the printed Paralysis save
+
+The Strangle Vine is represented as a passive environmental hazard rather than as a conventional creature making a melee attack every round. A living character whose combat movement path enters or crosses the represented vine contact area makes the printed **save vs. Paralysis**. Success avoids entanglement; failure establishes a persistent Strangle Vine hold and stops the movement at contact.
+
+The implementation reuses the engine's existing positional Influence-Sphere contact math only to determine whether the movement path contacts the represented plant. It does not invent a separate attack roll, initiative attack, reach bonus, or unsupported geometric footprint. The plant's printed creepers may reach up to 20 feet, but DMR2 does not define a complete square-by-square combat footprint for an individual specimen; the engine therefore does not silently manufacture one.
+
+### Entanglement now applies automatic 1d4 strangulation without a repeat save
+
+An entangled character cannot move away while the hold remains. Beginning on the following combat round, the vine inflicts the printed **1d4 strangulation damage automatically each round**. Unlike Whipweed, the Strangle Vine entry gives no new saving throw each round to end the hold, so the engine does not borrow Whipweed's repeat-save procedure.
+
+DMR2 notes that the anchored vine can pull an entangled victim off his or her feet, but supplies no universal prone condition, attack modifier, Armor Class modifier, forced-movement distance, or timing rule for that statement. The runtime records the capability without inventing a numerical prone subsystem for this entry.
+
+### Tugging free follows the unusual printed Strength relationship exactly
+
+The source's escape chance is intentionally counterintuitive and is preserved as written: a character with **Strength 6 or more has a 5% chance** to break free by tugging, while each point of Strength below 6 increases that chance by 5%. Thus Strength 5 is 10%, Strength 4 is 15%, and Strength 3 is 20%.
+
+A failed tug leaves the victim held. Although the prose says struggling makes the vine cling tighter, DMR2 supplies no accumulating modifier, extra damage die, reduced future escape chance, or other numerical escalation. The engine therefore records the failed struggle but does not manufacture a penalty.
+
+### Cutting free now uses AC 9, the caught-victim -4 penalty, and 8 hp per one-foot square
+
+The alternative escape route is now distinct from ordinary monster hit-point damage. The Strangle Vine has **8 hit points per one-foot square**, not an eight-hit-point creature-wide body pool. An edged weapon must damage the current one-foot square until 8 points have been accumulated; that clears exactly one square. Excess damage from the hit does not spill automatically into the next square because the source defines durability by area rather than giving a cleave-through rule.
+
+A character already caught in the vine attacks it at the printed **-4 to hit**, against **AC 9**. Other represented characters can cut at the vine normally when they can physically reach it. The area that must be cleared around a victim is equal to that character's represented height. Because DMR2 gives no default height for an arbitrary player character, the engine does not invent one: the requirement remains explicitly unresolved until the character's actual represented height is known.
+
+The bounded referee transaction is:
+
+```text
+dev strangle vine height <character>: <feet>
+```
+
+Character height is persistent member state. If enough one-foot squares had already been cleared before the height was supplied, entering that factual height immediately resolves whether the existing cut area is sufficient to free the victim.
+
+### Whole-plant destruction remains source-bounded until its footprint is known
+
+The source gives **10 XP per one-foot square** and 8 hp per one-foot square, but it does not provide a universal total number of square feet occupied by every Strangle Vine. The generic damage route therefore refuses to turn the parsed `8 hp` figure into a whole-monster hit-point pool. Unsupported whole-body damage packets are retained as referee-visible unresolved records instead of silently killing the plant.
+
+When the actual encounter establishes the plant's area, the referee may represent it explicitly:
+
+```text
+dev strangle vine footprint <name>: <square feet>
+dev strangle vine status [name]
+```
+
+The represented footprint determines the whole-plant clearing requirement and its **10-XP-per-square-foot** value. Edged attacks clear the footprint one 8-hp square at a time. Clearing the entire represented area releases every remaining victim and completes normal monster-death bookkeeping. This preserves the printed "clear the entire area" alternative without inventing a standard plant size.
+
+### Persistence and regression validation
+
+The combat normalizer restores the Strangle Vine rule packet and persistent victim / cut-area state. Character height survives member normalization. Movement locks, victim release, and monster cleanup use the existing shared restraint lifecycle without converting this plant into the Whipweed, generic continuous-attachment, or Strangleweed systems.
+
+Three focused regression groups raise the integrated deterministic suite from **802 to 805 tests**. They verify movement-triggered Paralysis saves and the absence of a generic attack; next-round automatic 1d4 strangulation and movement restraint; exact Strength-3/Strength-6 tug percentages; AC 9 and the caught-victim -4 cutting penalty; per-square 8-hp clearing and height-based release; character-height persistence; the block on generic creature-wide damage; explicit footprint/XP calculation; and whole-area clearing with victim release and death completion.
+
+```text
+Build: 0.4.135c
+Tests: 805 / 805 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.136 — Strangleweed opposed-roll subsystem only**. Keep that pass limited to its special 4d6+4 opposed procedure, Strength adjustment, hold/damage outcomes, cumulative damage penalty, ally-attack risk, and release lifecycle. Do not combine it with Vampire Rose hypnosis or timed environmental/coating damage.
+
+## v0.4.135b — Whipweed entanglement / continuous-damage closure (small-piece split)
+
+This checkpoint follows the v0.4.135a split and implements **Whipweed only**. The governing entry is DMR2 *Creature Catalog*, printed page 110 (PDF pages 111–112 in the project copy). Strangle Vine remains isolated as the next checkpoint so the plant procedures are not blurred into one generic restraint system.
+
+### The 2-HD base and two 3+1-HD stalks are separate combat targets
+
+DMR2 prints **AC 3, 2 HD** for the Whipweed base and **AC 5, 3+1 HD** for each of its two stalks. The runtime profile now uses the base as the creature's body hit-point pool while `appendageState` creates two independent stalks, each rolling its own 3d8+1 hit points. Damage declared against a stalk is applied only to that stalk and never leaks into the base.
+
+The stalks do not use the base's 2-HD attack value. Each one makes its own attack as the printed **3-Hit-Die monster**, and their explicit 15-foot physical length is the represented reach boundary. When at least two eligible creatures are within reach, the two free stalks are assigned to different targets as the entry requires.
+
+### Acid hit, Death Ray save, entanglement, and automatic upkeep are live
+
+A successful stalk hit inflicts **1d8 acid damage** and then forces the victim to **save vs. Death Ray**. Failure establishes the printed entangled condition: the victim cannot attack, cast spells, or move while the holding stalk remains intact. The combat phases now enforce that action lock rather than leaving it as descriptive text.
+
+Beginning on the following round, the holding stalk inflicts **automatic 1d8 acid damage without another attack roll**. The victim then receives the printed new Death Ray save for that round; success breaks the entanglement and frees the stalk, while failure keeps the victim restrained. Destroying the holding stalk also releases the victim immediately.
+
+DMR2 defines one entangled condition but gives no rule for stacking multiple simultaneous Whipweed restraints on the same victim. The engine therefore does not invent cumulative entanglement states: another stalk can still score its normal 1d8 acid hit against an already entangled victim, but it does not create a second stacked restraint or extra unsupported escape procedure.
+
+### Destroyed stalks regrow on the printed 1d4+1-day clock
+
+A stalk reduced to 0 appendage hit points is marked destroyed while the base remains unharmed. At destruction, the engine rolls and stores the printed **1d4+1 days** before that stalk regrows. Once the stored campaign-time deadline is reached and the base still survives, the stalk returns as a free stalk with a newly rolled 3d8+1 hit-point pool.
+
+The appendage target command now recognizes **stalk** alongside branch, strand, tentacle, and generic limb, so a player can directly attack a Whipweed stalk or an ally can attack the specific stalk holding an entangled character.
+
+### Base destruction now produces exactly one final frenzy round
+
+Reducing the 2-HD base to 0 no longer deletes the creature before its printed death reaction can occur. The base is marked destroyed and cannot move, all active entanglements are released, and every surviving stalk remains combat-active for exactly one final melee-round attack opportunity.
+
+During that frenzy, **each surviving stalk makes three whiplash attacks**. A successful frenzy hit inflicts **1d6** only: the normal acid damage and entanglement save are explicitly suppressed, matching the entry. After those attacks resolve, the stalks wilt, the Whipweed becomes fully dead, and normal combat-death / XP / Morale bookkeeping resumes. If no stalk survives when the base is destroyed, death completes immediately with no invented frenzy attacks.
+
+### Regression validation
+
+Three focused regression groups raise the integrated deterministic suite from **799 to 802 tests**. They verify the AC/HD split and independent 3d8+1 stalk pools; 3-HD stalk attacks and distinct targeting; 1d8 acid plus Death Ray entanglement; enforced attack/magic/movement lock; automatic next-round 1d8 damage and repeat-save escape; stalk-only damage, victim release, and 1d4+1-day regrowth; and the exact three-attacks-per-surviving-stalk 1d6 death frenzy followed by wilting.
+
+```text
+Build: 0.4.135b
+Tests: 802 / 802 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.135c — Strangle Vine entanglement / strangulation closure only**. Keep the next pass to Strangle Vine alone; do not combine it with Strangleweed's opposed 4d6+4 procedure, Vampire Rose hypnosis, or timed environmental/coating damage.
+
+## v0.4.135a — Giant Squid multi-tentacle closure (small-piece split)
+
+At the user's request, the previously planned v0.4.135 three-creature batch has been split into smaller independently testable pieces. This checkpoint implements **Giant Squid only**. Whipweed and Strangle Vine remain separate follow-up checkpoints so each change can be tested and saved without a long-running combined pass.
+
+### Ten tentacles are now represented individually
+
+DMR2 gives the Giant Squid **ten tentacles and one bite**. Eight tentacles are lesser appendages and two are greater appendages. The combat state now creates exactly those ten persistent appendages and identifies each as lesser or greater. Appendage damage remains separate from body hit points.
+
+The printed severance rules are treated as **single-blow thresholds**, not limb hit-point pools:
+
+- a lesser tentacle is severed by one blow causing **6 or more damage**;
+- a greater tentacle is severed by one blow causing **10 or more damage**;
+- smaller hits do not accumulate toward a later severance because the source gives a per-blow threshold rather than appendage hit points.
+
+A player can therefore target an individual Giant Squid tentacle through the already-existing appendage-target command path. Severing a tentacle immediately ends any constriction being maintained by that specific limb without subtracting the blow from the squid's body hp.
+
+### Individual-sailor attacks now maintain constriction correctly
+
+Against individuals, every surviving free tentacle may make its listed **1d4** attack. A tentacle that hits remains wrapped around that victim and on later rounds inflicts **automatic 1d4 constriction damage without another attack roll** until that tentacle is severed, the victim dies, the squid dies, or the squid flees.
+
+The squid's separate **1d10 bite** remains an ordinary attack each round. The source gives no extended individual-combat tentacle reach, generic Strength escape roll, attack penalty for a constricted victim, or automatic pull-to-mouth procedure, so none of those were invented. Ordinary hand-to-hand contact remains the deterministic range boundary for this entry.
+
+Several tentacles may constrict the same victim at once. This is intentionally not forced into the project's single-`grabbedBy` record, because that older record models one restraining appendage while the Giant Squid entry explicitly attacks with all ten tentacles.
+
+### The separate ship branch is source-bounded
+
+When a controlled vessel is present, the squid's first represented target choice uses the entry's printed **25% chance to attack the ship**, otherwise preferring individual sailors. The chosen branch is then kept for that encounter rather than rerolled every round.
+
+On the ship branch, the two surviving greater tentacles together inflict the printed **1d10 hull damage**, followed by the beak's **2 hull points per round**. If one of the two greater tentacles has already been severed, the engine does not invent a half-strength replacement die: DMR2 supplies only the combined two-tentacle 1d10 value, so the unsupported partial-tentacle hull packet is omitted while the printed 2-point beak attack remains available.
+
+### Failed Morale now produces the printed flight and ink state
+
+When a Giant Squid fails Morale, all of its active constrictions are released and it is marked as fleeing at **triple speed**. If one of its daily ink uses remains, the combat state records a **30-foot-radius ink cloud** and spends one of the printed **two uses per day**.
+
+DMR2 says the ink confuses pursuers but supplies no universal attack-roll, Armor Class, saving-throw, movement, or blindness modifier. The engine therefore records the cloud and its source purpose without borrowing the Kraken blindness modifiers or inventing a numerical penalty.
+
+### Regression validation
+
+Two focused regression groups raise the integrated deterministic suite from **797 to 799 tests**. They verify the 8+2 tentacle split, automatic 1d4 constriction, noncumulative 6/10 single-blow sever thresholds, combined ship hull packet, the conservative one-greater-tentacle boundary, release on failed Morale, triple-speed flight, and one spent 30-foot ink use.
+
+```text
+Build: 0.4.135a
+Tests: 799 / 799 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.135b — Whipweed entanglement / continuous-damage closure only**. Keep the next pass to Whipweed alone. After that, handle Strangle Vine as **v0.4.135c** rather than recombining them into one long batch.
+
+## v0.4.134 — exceptional-monster attached / continuous-damage handler batch
+
+This checkpoint is deliberately limited to the **simple source-defined “hit, attach, then inflict automatic damage on later rounds” family**. It adds a shared persistent attachment lifecycle where the governing monster entry supplies a straightforward hold and a fixed later-round damage packet. It does not fold multi-tentacle severance, environmental vines, lava coatings, hypnotic plant control, petrification, breath weapons, or spell-like powers into the same abstraction.
+
+### The general BECMI continuous-damage rule is now an engine primitive
+
+Rules Cyclopedia Chapter 14 states that some monsters **hold on when they hit**; once that happens, they make no further attack rolls and the victim takes the listed damage each round, usually until the monster or victim is killed. The live engine now has a persistent `continuousAttachment` state on the monster and a corresponding `continuousMonsterAttachments` list on the victim so several independent attached creatures can coexist without replacing one another.
+
+A successful source-defined attaching attack still resolves its ordinary initial hit and damage. Beginning on the creature's next attack opportunity, the monster remains occupied with that victim and applies the source-defined continuing damage automatically instead of rolling another attack or selecting a new target. Killing the captor or killing the victim clears both sides of the relationship, and the state survives ordinary member/combat normalization for save/load continuity.
+
+The engine deliberately does **not** invent a universal Strength contest, generic pull-free action, or arbitrary detach chance. If a creature's entry says the hold lasts until death, the automated route preserves that boundary.
+
+### Stirge and Giant Leech blood feeding are now live
+
+**Stirge** now uses its printed 1d3 initial hit followed by **1d3 automatic blood drain per round** while attached. The attachment ends when either participant dies. The separate source sentence granting a flying Stirge +2 on its first diving attack is not silently assumed here because the current combat state does not yet distinguish “currently flying/diving” from merely having a flight movement mode; this checkpoint implements only the attachment/continuous-damage portion.
+
+**Giant Leech** now inflicts its ordinary 1d6 bite, holds fast, and then drains **1d6 per round automatically**. The printed “must be killed to be removed” boundary is enforced against voluntary Morale disengagement while the victim is still alive. If the victim dies first, the Leech drops away and is marked as hiding/digesting rather than immediately selecting another victim, preserving the Mentzer description instead of treating death as a free retarget.
+
+### Giant Weasel, Tylosaurus, Vamora Shark, and Mud Golem use their own printed packets
+
+The shared lifecycle carries different creature rules without homogenizing their numbers:
+
+- **Giant Weasel:** a successful bite establishes the hold; **2d8 blood drain** repeats automatically each round until the Weasel or victim dies.
+- **Tylosaurus:** a successful **7d12 bite** holds doggedly and repeats that bite damage automatically each later round. While being bitten, the victim's printed **-4 attack penalty applies when attacking the Tylosaurus itself**; the engine does not broaden that penalty to unrelated targets.
+- **Vamora Shark:** the initial bite remains **1d10**, later shaking damage is **1d8 per round**, and the victim's attacks suffer the printed **-4 to hit** while the shark is latched on. Unlike the other creatures in this batch, the Vamora entry explicitly allows the shark to let go and flee after a failed Morale check, so that failure now releases the victim before the shark leaves combat.
+- **Mud Golem:** a successful **2d6 hug** establishes the smother; **2d6 smothering damage** then repeats automatically each round without another hit roll until the hold ends through the ordinary death boundary.
+
+For the creatures whose text says the hold persists until death (or otherwise gives no voluntary-release procedure), a failed general Morale check no longer manufactures a detach-and-flee result. The Vamora remains the explicit exception because its own entry supplies that behavior.
+
+### Deliberate source boundaries retained
+
+Several superficially similar creatures are intentionally **not** pushed through this simple handler. The Giant Squid has individually severable lesser/greater tentacles and ship-specific constriction; Whipweed and Strangle Vine have explicit entanglement/escape procedures; Strangleweed uses its own opposed 4d6+4 contest; Vampire Rose combines draining with a hypnotic anaesthetic; and Lava Ooze leaves a timed damaging coating rather than remaining physically attached. Those require their own bounded procedures rather than a generic “continuous damage” shortcut.
+
+### Regression validation
+
+Four focused regression groups raise the integrated core suite from **793 to 797 tests**. They verify the Stirge no-reroll blood-drain lifecycle; the Giant Leech's must-be-killed live-victim hold plus dead-victim hide/digest behavior; the Vamora Shark's -4 penalty and Morale-release exception; and the distinct Tylosaurus/Giant Weasel/Mud Golem continuous packets plus attachment-state persistence.
+
+```text
+Build: 0.4.134
+Tests: 797 / 797 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.135 — multi-appendage constriction / entangling-plant continuous-damage closure only**. Keep that pass limited to the **Giant Squid**, **Whipweed**, and **Strangle Vine**: separately targetable/severable appendages where printed, automatic constriction/acid/strangulation upkeep, and their explicit release/escape procedures. Leave Strangleweed's opposed-roll subsystem, Vampire Rose hypnosis, and timed environmental/coating damage for later dedicated passes.
+
+## v0.4.133 — Sporacle damage-immunity / damaging-spell tentacle destruction / death-burst closure
+
+This checkpoint is deliberately limited to the **Sporacle's remaining printed damage/immunity and 0-hit-point breakup procedures**. It builds directly on the v0.4.129 delayed-paralysis/tentacle work and v0.4.132 water-regeneration/reproduction work, and it does not begin another unrelated exceptional-monster family.
+
+### Body damage now follows the printed weapon boundary
+
+The Sporacle's body can now be harmed by a represented **edged hand weapon** and by **missile weapons other than a sling**. Blunt hand-to-hand attacks and sling missiles do not reduce its body hit points. The common monster-damage route now carries delivery metadata so this defense is resolved before generic HP loss rather than being approximated after damage has already occurred.
+
+Unarmed, natural, blunt, sling, and otherwise unclassified ordinary attacks are not silently promoted into an allowed category. This keeps the implementation source-bounded: the entry positively identifies edged weapons and non-sling missiles as the mundane attacks that can damage the creature.
+
+A separately declared attack against a tentacle still uses the printed **AC 4** limb target. That route now requires the actual weapon record to be edged instead of reusing the broader “edged-like” helper that exists for attacks made from inside a swallowed creature.
+
+### Damaging magic destroys tentacles instead of body hit points
+
+Spells and magical-device effects that actually cause damage now use the Sporacle's exceptional magical-defense procedure. They never reduce the creature's body HP. Instead:
+
+- a dice-based damaging magical effect destroys **one active tentacle per damage die**;
+- **Magic Missile** destroys one active tentacle per individual missile;
+- a magically destroyed tentacle is marked destroyed rather than physically severed, so it does **not** create the one-hour venomous loose-tentacle/reproduction record;
+- once all twelve tentacles are destroyed, later damaging spells or damaging magical-device effects have **no further effect**.
+
+The common damage context is now carried through the live Fire Ball/Lightning Bolt family, Cause Light Wounds, Cause Serious Wounds, generic dice-damage spell profiles, ordinary and artifact Magic Missile, and ordinary/artifact Meteor Swarm strike or blast paths.
+
+Some represented magical-device attacks supply only a fixed damage total and no source-linked number of damage dice. The printed Sporacle rule gives no points-to-tentacles conversion for such a packet. The engine therefore blocks body damage and stores an explicit `sporacleUnresolvedFixedMagicDamage` referee boundary instead of inventing a conversion rate.
+
+### The printed immunity package is now live
+
+The Sporacle now carries persistent immunity to **poison, paralysis, charms, and sound-based effects**. Its broader rule—immunity to spells and magical devices except effects that cause damage—is also recognized by the shared non-damaging-spell immunity gate.
+
+That state is wired through the relevant common procedures rather than existing only as descriptive catalog text. The integrations include Weapon Mastery paralysis, Hold Monster and artifact Hold, Sleep, charm paths that consult charm immunity, Feeblemind, Explosive Cloud paralysis, poison damage routing, and the artifact Blasting sound/deafness path. Sound immunity prevents both the damaging and deafening portions of that sonic effect.
+
+This pass does not reinterpret unrelated world-state magic as a direct attack on the creature merely because the Sporacle is nearby. The immunity gate is used where the represented effect actually targets or resolves against the creature.
+
+### Zero HP now resolves the printed breakup and final attacks
+
+When an allowed body-damaging attack reduces a Sporacle to **0 hit points or less**, the body now breaks apart before ordinary monster-death cleanup finishes. Every tentacle still physically present is accounted for in the burst and then becomes a normal loose tentacle with the existing one-hour venomous lifecycle. Tentacles previously destroyed by magic do not reappear.
+
+The printed entry says to make final attack rolls “as applicable” but supplies no separate burst range or targeting geometry. The implementation therefore preserves the conservative reach boundary already used by the live Sporacle tentacle system: automated final attacks are made only against represented living opponents already in hand-to-hand contact, with no invented long-range reach. Remaining tentacles are distributed across up to the two opponents the creature could normally attack, and each applicable tentacle makes its own final attack roll. A successful final hit inflicts its normal 1 point and queues the ordinary one-round-delayed, one-turn paralysis effect.
+
+The burst is idempotent: once the breakup has been recorded, later cleanup cannot generate a second volley or duplicate loose tentacles.
+
+### Regression validation
+
+Four focused regressions raise the integrated core suite from **789 to 793 tests**. They verify the edged/non-sling body-damage boundary, per-die and per-Magic-Missile magical tentacle destruction without body HP loss or reproductive loose tentacles, the live poison/paralysis/charm/sound/non-damaging-magic immunity package, and the 0-HP final-attack/burst lifecycle.
+
+```text
+Build: 0.4.133
+Tests: 793 / 793 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.134 — exceptional-monster attached / continuous-damage handler batch only**. Keep that pass limited to source-defined creatures that remain attached after a successful hit, their automatic subsequent-round damage, release/death conditions, and any explicitly printed detach procedure. Do not combine it with petrification, breath weapons, or a broad spell-like-power batch.
+
+## v0.4.132 — Sporacle fresh-water regeneration / severed-tentacle reproduction closure
+
+This checkpoint is deliberately limited to the **Sporacle's printed water-regeneration and loose-tentacle reproduction procedure** left open by v0.4.131. It preserves the v0.4.129 delayed-paralysis/tentacle combat work and does not yet implement the Sporacle's separate weapon/spell immunities or 0-hp death-burst procedure.
+
+### Fresh water now restores 3 hp per combat round; brine does not
+
+The Sporacle profile now carries a dedicated water-regeneration record rather than being forced through the Troll subsystem. A represented Sporacle can be marked **submerged in fresh water**, **submerged in brine**, or **out of the water**. While alive and submerged in fresh water it restores exactly **3 hit points per combat round**, up to its normal maximum. Brine never activates this healing.
+
+This is intentionally separate from ordinary Troll regeneration. The Sporacle has **no three-round delay, no fire/acid exception, and no eventual-recovery-at-0 rule** in its printed entry; the engine therefore adds none of those Troll mechanics.
+
+The bounded referee command is:
+
+```text
+dev sporacle water <name> fresh
+dev sporacle water <name> brine
+dev sporacle water <name> none
+```
+
+### Lost tentacles can regrow only during active fresh-water regeneration
+
+The source says the same 3-hp-per-round fresh-water regeneration allows lost body parts to be **rapidly re-grown**, but it does not state a separate number of rounds, hit points, or other conversion for an individual tentacle. The engine therefore does not invent a “one tentacle per round” or “one tentacle per 3 hp” rule.
+
+Once at least one fresh-water regeneration round has actually occurred, a referee may confirm the return of a specific severed tentacle:
+
+```text
+dev sporacle regrow <name> tentacle <number>
+```
+
+That restores the original creature's corresponding appendage to active combat state. Importantly, it does **not** erase or consume the already-severed loose tentacle. A subsequently regrown tentacle can be severed again, producing another independent loose tentacle; this preserves the source's reproductive logic instead of treating the detached part as if it magically reattached.
+
+### Every loose severed tentacle is now persistent campaign state
+
+The v0.4.129 severance procedure already kept severed Sporacle tentacles venomous for one hour. Those tentacles are now promoted into persistent campaign records with their own IDs, parent identity, severance time, venom-expiration time, location, water state, and reproduction state. Legacy active-combat `detachedTentacles` rows are migrated into the persistent list during combat normalization rather than being discarded.
+
+The existing one-hour venom window remains unchanged. Touching a still-venomous loose tentacle continues to use the Sporacle's delayed-paralysis procedure; after one hour the loose tentacle is no longer venomous unless it has already changed into a whole creature.
+
+### A loose tentacle placed in water becomes a whole Sporacle in exactly one hour
+
+Mentzer/Rules Cyclopedia says that if a loose tentacle falls or is placed **in water**, it grows into a whole creature in **1 hour**. The preceding regeneration sentence specifically excludes brine, but the reproduction sentence itself says *water* rather than *fresh water*. The engine preserves that distinction instead of silently rewriting the second sentence: either represented fresh water or brine can start the one-hour reproduction clock.
+
+```text
+dev sporacle tentacle <name> <number> water fresh
+dev sporacle tentacle <name> <number> water brine
+```
+
+At the exact one-hour boundary the loose-tentacle record becomes a persistent **whole Sporacle** record. Its ordinary 7-Hit-Die hit points are rolled once and stored, it has the normal twelve-tentacle body plan, and the loose tentacle's venom state ends because the object is no longer a loose tentacle. The engine does not automatically insert that creature into an unrelated encounter merely because campaign time advanced; its existence and location are persistent for later encounter placement.
+
+The combined inspection command is:
+
+```text
+dev sporacle status [name]
+```
+
+It reports live water/regeneration state, severed tentacles, loose-tentacle reproduction clocks, and any completed offspring records.
+
+### Persistence and regression validation
+
+The live Sporacle water state is restored by combat normalization, while loose tentacles and matured offspring live at campaign scope and therefore survive combat closure and ordinary save/load serialization. Re-growing the parent appendage never removes the detached reproductive record.
+
+Four focused regression groups raise the integrated core suite from **785 to 789 tests**. They verify fresh-water-only 3-hp regeneration; brine exclusion; source-bounded lost-tentacle regrowth including repeated sever/regrow cycles; exact one-hour whole-creature growth in water; ordinary 7-HD offspring hit points; and save-style persistence of water and loose-tentacle state.
+
+```text
+Build: 0.4.132
+Tests: 789 / 789 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.133 — Sporacle damage-immunity / damaging-spell tentacle destruction / death-burst closure only**. Keep that pass limited to the printed edged/missile damage restrictions, blunt/sling immunity, damaging-spell rule that removes tentacles instead of body hp, sound/poison/paralysis/charm immunities, and the 0-hp body breakup with final remaining-tentacle attacks. Do not combine it with another unrelated exceptional-monster family.
+
+## v0.4.131 — Ordinary Troll regeneration / eventual-recovery closure
+
+This checkpoint is deliberately limited to the **ordinary live Troll's printed regeneration lifecycle** left open by v0.4.130. It does not alter the already separate Shapechange Troll bridge, and it does not begin Sporacle water-regeneration/reproduction, Undead Beholder powers, or another broad exceptional-monster batch.
+
+### Live Troll wounds now use the printed three-round / 3-hp regeneration procedure
+
+The authoritative Troll profile already carried the source facts for descriptive and Shapechange use. Those facts are now live on ordinary combat Trolls as well. A Troll that takes actual hit-point damage from an ordinary source records that damage in a regenerable wound pool. Regeneration does not begin until **three combat rounds after the first outstanding regenerable wound**, and once active restores **3 hit points per round** until that represented pool has been healed.
+
+The delay is not restarted every time another ordinary wound lands while a pool is already active. This matches the existing Shapechange Troll bridge and the source's phrasing that the creature *begins to regenerate three rounds after it is damaged* and thereafter heals at the printed per-round rate. Once the outstanding pool is exhausted, a later new wound starts a new three-round delay.
+
+### Fire and acid remain outside combat regeneration and use Morale 8
+
+Damage explicitly tagged as **fire** or **acid** is kept outside the Troll's combat regeneration pool. The engine does not try to infer elemental damage from an ordinary untagged attack. The represented fire/acid damage remains persistent bookkeeping so mixed wounds can be distinguished from wounds that the Troll is currently able to regenerate.
+
+The Troll's printed alternate Morale is also now live. When represented fire or acid damage is inflicted, any general Morale check generated for the following Morale phase uses **Morale 8** rather than the Troll's normal Morale 10. This does not invent a new extra Morale trigger; it changes the score used when the ordinary BECMI Morale procedure actually calls for a check.
+
+### Zero hit points no longer silently kills an ordinary Troll
+
+A Troll reduced to 0 hit points is no longer immediately treated like an ordinary dead monster unless its regeneration has been permanently defeated. It falls, releases captives/engagements, and cannot act at 0 hp, but it remains a represented regenerative body rather than producing XP as a normal kill.
+
+If the down Troll still has an outstanding ordinary wound pool, combat remains open. With no other active foe, `resolve round` advances quiet recovery rounds; once the printed delay has elapsed, the Troll can regain 3 hp, rise above 0, and resume fighting. This preserves the source statement that even the head and claws continue fighting while the creature has at least 1 hit point without manufacturing a separate dismembered-head combatant.
+
+If a Troll reaches 0 through fire/acid damage and has **no combat-time regenerable wound pool**, the encounter can close because the creature cannot presently act, but the engine does **not** award its XP or call that result permanent destruction. Instead it stores a persistent pending recovery record. The source says the Troll will eventually regenerate completely unless totally destroyed by fire or acid, but supplies no universal clock for this fire/acid-only eventual recovery. The engine therefore records that boundary instead of inventing minutes, hours, or days.
+
+### Total destruction is explicit because the source gives no hit-point threshold for it
+
+The printed rule requires the Troll to be **totally destroyed by fire or acid** to prevent eventual recovery. The source does not say that one particular hit-point total, one fire spell, or reaching 0 from elemental damage automatically equals total destruction. The bounded referee transaction therefore makes that campaign fact explicit:
+
+```text
+dev troll destroy <name> with fire
+dev troll destroy <name> with acid
+dev troll recovery <name> recover
+dev troll status <name>
+```
+
+The destruction command is accepted only for a represented down/pending Troll and only for fire or acid. A pending recovery that is later confirmed totally destroyed is closed permanently; if its XP has not already been awarded, that XP is awarded at that point. The `recover` command exists only for the opposite referee decision when campaign time/fiction has established the source-defined eventual recovery; it does not invent when that event occurs.
+
+### Severed parts crawl back, but their unprinted speed remains referee-owned
+
+The source says that even severed Troll limbs **crawl back to the body and rejoin**, but gives no generic limb-severance roll, called-shot threshold, crawl speed, distance per round, or exact rejoining time. The engine therefore does not create a new critical-hit/dismemberment subsystem.
+
+When some other represented rule or referee adjudication establishes that a part was severed, the Troll can now keep that part as a persistent returning-part record. Exact contact/rejoining is then confirmed explicitly, or the detached part can itself be permanently destroyed by fire/acid:
+
+```text
+dev troll part <name> sever <part>
+dev troll part <name> rejoin <part>
+dev troll part <name> destroy <part> with fire
+dev troll part <name> destroy <part> with acid
+```
+
+This implements the source's guaranteed tendency of the part to return without inventing a speed or a severance mechanic the rules never provide.
+
+### Persistence and regression validation
+
+The ordinary Troll profile now carries its structured regeneration packet into each combat instance and reconstructs it during combat-state normalization. Active wound pools, down state, fire/acid bookkeeping, and severed-part records survive save/load-style state reconstruction; fire/acid-only eventual-recovery cases are moved to the persistent campaign-level pending-recovery list when combat closes.
+
+Five focused regression groups raise the integrated core suite from **780 to 785 tests**. They verify the three-round delay and 3-hp recovery rate; fire/acid exclusion and Morale-8 window; 0-hp ordinary-wound recovery back into live combat; source-unspecified eventual recovery after fire/acid-only defeat with explicit total destruction; and severed-part persistence/rejoining/destruction.
+
+```text
+Build: 0.4.131
+Tests: 785 / 785 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.132 — Sporacle fresh-water regeneration / severed-tentacle reproduction closure only**. Keep that pass limited to the Sporacle's printed 3 hp/round regeneration while submerged in fresh water, lost-body-part regrowth, and the one-hour whole-creature growth from a loose tentacle placed in water. Preserve the existing delayed-paralysis/tentacle attack work from v0.4.129 and do not combine this pass with unrelated monster spell-like powers or another broad regeneration family.
+
+## v0.4.130 — Helpless-victim feeding / stored-prey closure
+
+This checkpoint is deliberately limited to the **Carrion Crawler feeding clock and Giant Shroud Spider stored-prey lifecycle** left open by v0.4.129. It does not begin regeneration, additional monster spell-like powers, or a broad rewrite of monster behavior.
+
+### Carrion Crawlers now actually eat helpless prey on the printed three-turn clock
+
+The ordinary Carrion Crawler already had its eight paralyzing tentacles and 2d4-turn paralysis. The remaining source-defined behavior is now live: after a victim is paralyzed, a Carrion Crawler begins feeding unless it is being attacked, and the represented victim is consumed after **three uninterrupted turns**. The Rules Cyclopedia supplies the explicit three-turn duration while preserving the earlier Mentzer condition that the crawler stops feeding when attacked.
+
+The engine treats **“being attacked” as an attack declaration against that crawler**, not merely as taking hit-point damage. A player attack order therefore interrupts feeding even if the attack later misses; actual damage also interrupts immediately. This avoids changing the printed condition into the narrower and unsupported “being damaged.”
+
+Because the combat engine resolves six rounds per minute, the three-turn feeding interval is represented as **180 combat rounds / 30 minutes**. The victim's own paralysis duration continues independently. A short 2-turn paralysis can therefore expire before feeding completes. If the paralysis and feeding clocks reach the same three-turn boundary, the engine resolves the completed feeding at that boundary because the victim remained paralyzed through the entire required interval; this is an explicit deterministic same-timestamp convention rather than a new monster ability.
+
+A victim actually eaten by the crawler is recorded as dead with the body consumed and unrecoverable by ordinary body-recovery procedures. `bodyConsumed` and `eatenByMonster` are bookkeeping translations of the source's statement that the creature eats the victim; they do not add a new rule about souls, resurrection magic, or other effects not supplied by the source.
+
+### Giant Shroud Spider food stores now carry the printed three-days-to-one-month window
+
+A character wrapped and placed in a Giant Shroud Spider food store already remained in suspended animation until the webbing was removed. The missing consumption timing is now persistent campaign state. The DMR2 entry says a Shroud Spider **normally eats stored prey in three days to a month**, but gives no die roll or exact scheduling procedure. The engine therefore records the full **3–30 day** window without inventing a random day.
+
+The referee may select an exact day inside that source-defined window with the bounded developer command. If no exact day has been supplied when the maximum window is reached, the engine flags the prey as requiring a referee consumption decision and emits a warning rather than manufacturing a result. This preserves the source's timing while keeping the missing scheduling detail visibly referee-owned.
+
+Killing or removing the storing Shroud Spider disables that spider's future consumption event, but it does **not** release the victim: the source says the stored character remains in suspended animation until the webbing is removed. Explicit web removal ends the food-store state and releases the represented web paralysis.
+
+### Magical paralysis cures respect the two different source procedures
+
+The common paralysis-cure bridge now interrupts Carrion Crawler feeding when the victim's ordinary paralysis is magically removed. `cure light wounds`, `heal`, and `cureall` therefore no longer leave a cured character inside a stale crawler-feeding transaction.
+
+The Shroud Spider food-store case is intentionally different. Because the Creature Catalog explicitly says suspended animation persists **until the webbing is removed**, an ordinary paralysis cure cannot silently bypass the enclosing shroud. Removing the webbing is the represented release procedure. This is a source-specific restriction on that stored-prey state, not a general weakening of those healing spells.
+
+### Persistence and bounded referee controls
+
+The new feeding and consumption records survive normal character/combat normalization and save-load reconstruction. Persistent fields include the active `carrionCrawlerFeeding` transaction, Shroud food-store timing/window data, and consumed-body markers. The bounded referee commands added for the Shroud food store are:
+
+```text
+dev shroud food <name> status
+dev shroud food <name> consume in <3-30> days
+dev shroud remove webbing <name>
+```
+
+These controls expose only the source's unresolved timing choice; they do not grant a generic instant-kill or arbitrary suspension command.
+
+### Regression validation
+
+Four focused regression groups raise the integrated core suite from **776 to 780 tests**. They verify uninterrupted three-turn Carrion Crawler consumption, attack-order interruption and short-paralysis recovery, magical cure interaction, the Shroud Spider's exact 3–30 day window without an invented random schedule, spider-death/web-removal separation, and persistence through character normalization.
+
+```text
+Build: 0.4.130
+Tests: 780 / 780 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.131 — ordinary Troll regeneration / eventual-recovery closure only**. Keep that pass limited to the live monster Troll's printed three-round regeneration delay, 3 hp/round recovery, fire/acid exception and morale interaction, severed-part behavior, and the source-defined eventual-recovery boundary. The Shapechange Troll bridge already exists and should remain separate; do not combine this pass with Undead Beholder powers, additional gaze systems, or unrelated exceptional monsters.
+
+## v0.4.129 — Exceptional-monster delayed / environmental paralysis closure
+
+This checkpoint is deliberately limited to the **Sporacle delayed-venom procedure, giant-jellyfish round-duration paralysis, and Giant Shroud Spider environmental-web / food-store state** left open by v0.4.128. It extends the common paralysis record only far enough to represent delayed onset, durations measured in combat rounds, paralysis that lasts while physical contact continues, and suspended animation that ends when webbing is removed. It does not begin a new gaze, energy-drain, swallowing, spell-like-power, or general movement batch.
+
+### Sporacle tentacles now have their own delayed paralysis clock
+
+A Sporacle now exposes all **12 tentacles** as separately targetable appendages. In ordinary combat it uses the surviving tentacles rather than the bite; this implementation directs all surviving tentacles against the selected opponent because the source explicitly permits all twelve to be used against **one or two opponents** but supplies no rule for dividing attacks between two targets. That single-target allocation is therefore an engine tactical convention, not an additional creature power.
+
+Each successful tentacle hit deals the printed **1 point of damage** and immediately makes the target's **save vs. Paralysis**. Failure no longer freezes the victim immediately. The failed save creates a pending venom state, and the paralysis becomes active only after **one full combat round has passed**. Once active, it lasts the printed **one turn** unless cured. Multiple failed tentacle saves from the same Sporacle in the same round do not stack or manufacture additional durations.
+
+The targetable-tentacle procedure also preserves the source's **AC 4** limb rule. A declared melee attack with an edged weapon that hits a tentacle severs that tentacle without subtracting damage from the Sporacle's body hit points. The engine does not invent individual tentacle hit-point totals because the entry supplies none. Once all twelve tentacles are gone, the creature changes to its printed **2d10 bite**.
+
+A severed tentacle now creates a persistent detached-tentacle record. It remains **venomous for one hour**, and touching it during that interval routes through the same failed-save / one-round-delay / one-turn-paralysis procedure. The pass deliberately does not fold the Sporacle's unrelated regeneration, water-reproduction, sound immunity, spell interactions, or complete defensive package into this paralysis checkpoint.
+
+### Giant jellyfish use rounds instead of being forced into turn-based paralysis
+
+The two DMR2 giant-jellyfish profiles now have dedicated tentacle handlers rather than falling back to an ordinary single natural attack.
+
+- **Marauder** — may bring **1d4 tentacles** against the selected opponent in a round.
+- **Man-O-War** — may bring **1d10 tentacles** against the selected opponent in a round.
+- Each tentacle hit inflicts the printed **1d10 damage** and forces a save vs. Paralysis; failure creates **1d10 rounds** of paralysis.
+- Against a victim already paralyzed, the jellyfish receives the entry's **+4 attack bonus**. This intentionally bypasses the common hand-to-hand automatic-hit shortcut, because the jellyfish entry supplies its own more specific attack rule.
+
+The common paralysis record can now retain an exact remaining-round count during combat. A newly applied round-duration condition is not shortened on the round in which it was inflicted; it begins decrementing after later completed rounds. If combat ends while only a few rounds remain, the residual duration is converted to the campaign clock at six BECMI combat rounds per minute, rounded up to the engine's one-minute clock granularity, so a short paralysis does not become permanent merely because initiative ended.
+
+### Shroud Spider webs are now persistent environmental objects
+
+Shroud-spider webbing is no longer represented only by an attack annotation. The engine now keeps persistent `environmentalHazards` records for fresh web, fired strands, traps, and food-store shrouds, including creation time and the **24-hour freshness boundary**.
+
+Touching an ordinary fresh web uses the printed **save vs. Paralysis at +2**. Failure paralyzes the character for as long as contact continues. Leaving the web changes that state into the printed **two-round lingering paralysis**, which is handled by the new round-duration lifecycle.
+
+The fired **30-foot web strand** keeps its distinct **+1 save modifier** from v0.4.128 but no longer borrows the bite's 2d4-turn duration. Instead, a successful strand creates a web-contact hazard. This connects the strand to the immediately surrounding source rule for paralyzing web contact rather than inventing a second independent duration that the strand paragraph does not provide.
+
+A character placed into a represented Shroud Spider food-store shroud is now marked in **suspended animation**. That state is indefinite while the webbing remains and ends only when the represented webbing is removed. The engine does not invent a separate saving throw, wake-up interval, or recurring damage for the food-store state.
+
+### Persistence and save/load behavior
+
+`normalizeMember()` now preserves pending delayed-paralysis records and Shroud Spider suspended-animation data. Active round-based paralysis continues to preserve its exact remaining rounds in combat; environmental web hazards are top-level campaign state and therefore survive the normal JSON save/load path. Older active encounters also reconstruct the new Sporacle `grab` metadata and giant-jellyfish handler parameters from the authoritative creature profiles.
+
+### Regression validation
+
+Four focused regression groups raise the integrated suite from **772 to 776 tests**. They verify the Sporacle's one-round delayed onset, one-turn duration, twelve targetable AC-4 tentacles, one-hour detached-tentacle venom, and bite transition; the Marauder/Man-O-War 1d4-vs.-1d10 tentacle distinction, 1d10-round paralysis, and +4 paralyzed-prey attack rule; and Shroud Spider +2 fresh-web contact, two-round post-contact tail, food-store suspended animation, removal, and persistence.
+
+```text
+Build: 0.4.129
+Tests: 776 / 776 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.130 — helpless-victim feeding / stored-prey closure only**: connect the Carrion Crawler's printed three-turn feeding-on-paralyzed-victims procedure and the Giant Shroud Spider food-store consumption window to the persistent paralysis/captive states now in place. Keep that pass limited to source-defined helpless-prey timing and interruption/release boundaries; do not combine it with unrelated poison, spell-like powers, or another broad monster batch.
+
+## v0.4.128 — Exceptional-monster paralysis / adhesive restraint handler batch
+
+This checkpoint is deliberately limited to **common monster paralysis posture plus the Carrion Crawler, Gelatinous Cube, Ghoul, Giant Shroud Spider, and Scamille special procedures**. It does not begin the Sporacle, giant jellyfish, fresh-web lair/contact lifecycle, or other delayed/area paralysis cases; those remain a separate follow-up batch rather than being collapsed into one generic status rule.
+
+### Common BECMI paralysis now has a persistent combat and campaign-clock state
+
+Monster-inflicted paralysis now records its source, save type/modifier, rolled duration, start time, and expiration time instead of existing only as an immediate attack annotation. The ordinary Rules Cyclopedia posture is live while the condition remains: the victim is awake but unable to take movement-dependent actions, **hand-to-hand attacks automatically hit**, and **ranged attacks treat the victim as AC 9**. The duration expires on the campaign clock rather than merely at the end of an encounter.
+
+The existing Cure Light Wounds paralysis use now removes this monster-paralysis record without restoring hit points when used for that purpose. Existing artifact Cureall/paralysis clearing also recognizes the state. Multiple tentacle hits against an already paralyzed victim do not repeatedly reroll and extend the same represented monster-paralysis effect; this prevents eight Carrion Crawler tentacles from manufacturing an unprinted stacking-duration rule.
+
+### Carrion Crawler, Gelatinous Cube, and Ghoul attacks now carry their printed paralysis
+
+The Carrion Crawler's eight tentacles now deal **no direct damage** and each successful contact can force the printed save vs. Paralysis; failure creates the ordinary **2d4-turn** paralysis. The Gelatinous Cube's successful hit now combines its **2d4 damage** with the same save/duration lifecycle.
+
+Ghoul claw and bite hits now carry the printed paralysis check against eligible victims and preserve the explicit **Elf immunity**. Once the selected victim becomes paralyzed, the engine stops spending the Ghoul's remaining attacks on that same helpless target. The source says the Ghoul turns to another opponent; the current order model does not fabricate a new target after a monster order has already selected one, so cross-target reassignment remains a target-selection boundary rather than an invented extra action.
+
+The Carrion Crawler's later feeding timing is likewise not folded into this pass. The source's paralysis is now deterministic; consuming a helpless victim remains a separate behavior/lair procedure to be connected when the remaining paralysis-feeding cases are closed.
+
+### Giant Shroud Spider distinguishes its three paralysis delivery rules
+
+The Giant Shroud Spider now has a dedicated attack procedure rather than a generic poisonous bite. At hand-to-hand distance it uses the printed **1d10 bite**, followed by a **save vs. Poison** or **2d4 turns of paralysis**. At represented separation beyond melee but within **30 feet**, it can use the printed web strand; a hit requires the source's **save vs. Paralysis at +1**. Because the strand sentence supplies no separate duration, the engine uses the system's ordinary 2d4 paralysis duration rather than inventing a new interval.
+
+The spider's static fresh-web rule—save vs. Paralysis at +2, paralysis while in contact plus two rounds afterward—and the food-store suspended-animation procedure are deliberately not claimed complete here. They require persistent environmental web objects rather than an attack-only status and are reserved for the next environmental/delayed paralysis pass.
+
+For autonomous monster action, the spider bites when already in melee and uses its web strand when outside melee but within 30 feet. That choice is explicitly an **engine tactical convention** needed to make both printed attacks reachable; the source gives the alternatives but no probability for selecting between them.
+
+### Scamille adhesive is restraint, not paralysis and not a generic grapple
+
+A hostile Scamille now uses one sticky pseudopod to establish its printed adhesive hold. The successful sticky hit still deals **3d6**, and a stuck victim can attack only with the weapon that was already in hand and suffers **-4 on attack rolls**. The remaining dry pseudopods can continue to attack while the sticky limb holds the victim, up to the printed six-pseudopod total.
+
+The engine does **not** substitute an ordinary Strength check, wrestling roll, or Strength-18 threshold for escape. DMR2 says the victim must have **giant Strength** to pull free, so the explicit `pull free` command succeeds only when such a represented giant-Strength effect is actually present. Killing/removing the Scamille releases its adhesive victim automatically.
+
+### Persistence and regression validation
+
+`normalizeMember()` now preserves monster-paralysis and Scamille-adhesive state across save/load reconstruction, while active encounters recover the new source-defined paralysis/adhesive profiles from the authoritative monster catalogue when loading older combat state.
+
+Five focused regressions raise the integrated core suite from **767 to 772 tests**. They cover persistent/expiring Carrion Crawler and Gelatinous Cube paralysis; automatic melee hits and ranged AC 9 against paralyzed victims; Ghoul Elf immunity; Shroud Spider bite-vs.-web save distinctions; and Scamille adhesive weapon, attack-penalty, giant-Strength, and release rules.
+
+```text
+Build: 0.4.128
+Tests: 772 / 772 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.129 — exceptional-monster delayed / environmental paralysis closure only**: Sporacle delayed tentacle paralysis and severed-tentacle venom, giant-jellyfish paralysis, Giant Shroud Spider fresh-web/contact and food-store suspended-animation state, and other directly related delayed/environmental paralysis edges found in the authoritative catalogue. Do not combine that pass with gaze, level drain, swallowing, spell-like monster powers, or unrelated movement work.
+
+## v0.4.127 — Exceptional-monster multi-appendage grab / pull / constriction closure
+
+This checkpoint is deliberately limited to the **Killer Tree, Roper, and Kraken multi-appendage procedures** left open by v0.4.126. It adds separately targetable branches, strands, and tentacles, preserves the monsters' different sever/release rules, and connects their printed grab consequences to the existing positional combat and vessel systems. It does **not** replace those source procedures with a universal grapple contest, and it does not begin another poison, gaze, spell-like-power, or unusual-movement batch.
+
+### Killer Tree branches are now real combat parts instead of descriptive attacks
+
+A Killer Tree now creates **four separately tracked branch-tentacles**, each using the entry's **1 Hit Die** branch durability. The branches can reach **20 feet** and make their printed grab attacks without dealing ordinary branch damage. A victim still held on the following round is dragged to the tree's disguised mouth and then takes the printed **automatic 3d6 mouth damage each round thereafter**.
+
+Branch damage is separate from the tree's 6-HD body. A branch is severed by the entry's explicit **single successful hit for 5 or more damage**; because the source also gives each branch 1 Hit Die, reducing that branch's own rolled hit points to zero likewise disables that branch. One attack still affects only the selected branch regardless of excess damage. Severing a branch releases the victim and never subtracts those appendage hit points from the tree's body.
+
+Where several party members are within reach, the engine assigns unused branches to distinct eligible victims before reusing any target. That is an explicit **engine target-allocation convention** needed to represent the four simultaneous limb attacks; DMR2 supplies the four attacks and their effects but does not prescribe a modern party-database target-selection algorithm.
+
+### Roper strands preserve weakness, sever requirements, and the source's missing pull rate
+
+A Roper now carries **six separately targetable strands**, each reaching **60 feet**. A successful strand attack wraps the victim and immediately halves the victim's Strength for **three turns with no saving throw**, as printed. The temporary Strength state survives save/load normalization and expires through the campaign clock. Repeated strand contact while that weakness is already active refreshes the three-turn duration rather than halving the score again; this nonstacking treatment avoids inventing exponential Strength loss not stated by the entry.
+
+A strand can be severed only by **one edged magical-weapon blow dealing at least 5 damage**. Lesser blows, normal edged weapons, and non-edged magical weapons do not transfer their damage to the Roper's body. A severed strand records the printed **24-hour regrowth** time and releases any victim it was holding.
+
+DMR2 says a successful strand pulls its victim toward the mouth but supplies **no distance per round, number of rounds, Strength check, or escape roll**. The engine therefore records a persistent `pullTowardMouth` restraint but deliberately does not manufacture a numerical movement rate. If the represented battlefield position actually reaches the Roper's mouth, the Roper's separate **5d6 bite** can resolve there. This closes the deterministic portion of the rule while leaving the missing rate as a referee boundary rather than borrowing the Giant Poisonous Frog's unrelated 5-foot drag rate.
+
+### Kraken tentacles now interact with both ships and individual victims
+
+A Kraken now carries **ten individually tracked tentacles with 60 hit points each**, separate from its 64-HD body. A tentacle hit against a creature inflicts its printed **7d6 damage**, catches a surviving victim, imposes the printed **-4 on all attack rolls**, and rolls the entry's **2d4-round** travel time to the Kraken's mouth. When that interval expires the victim is moved to the represented mouth position; the Kraken's separate **8d10 bite** remains one bite attack rather than being folded into every tentacle.
+
+A caught character can attack the specific holding tentacle. Damage is recorded against that tentacle's 60-hit-point track and never against the body. The combat parser now also accepts direct attacks on a named branch, strand, tentacle, or limb, so appendages can be targeted even when the attacker is helping someone else rather than cutting only their own restraint.
+
+When the party is aboard a represented vessel, the Kraken uses the source's ship procedure instead of treating the vessel as a normal character target. Up to **six surviving uncommitted tentacles** wrap the ship and automatically inflict **7d6 each per round**, converted to **half that amount in hull points** through the existing BECMI vessel record; surviving tentacles not committed to the hull may attack crew. If the vessel is crushed, those surviving tentacles are released from the ship assignment for attacks on survivors.
+
+Once **five tentacles have been severed**, the Kraken immediately releases all held victims, flees, and creates the printed **1,000-foot × 1,000-foot ink cloud** centered on its represented position. While a combatant remains inside that cloud, the engine applies the Rules Cyclopedia's ordinary blindness combat modifiers—**-6 to attack rolls, -4 to saving throws, and +4 Armor Class**—and removes those modifiers automatically when the combatant leaves the square. The Rules Cyclopedia's slower long-distance blind-travel procedure is not converted into a new combat pathfinding rule in this pass; this checkpoint concerns the Kraken encounter's deterministic combat consequences.
+
+### Commands and persistence
+
+The existing `cut ... free` command now understands branch/strand/tentacle/limb wording. Separately targetable appendages can also be attacked directly with forms such as:
+
+```text
+Aldric attacks Kraken 1's tentacle 5
+Elwyn cuts Roper 1's strand 2
+Dori attacks the branch
+Dori cuts me free
+```
+
+Combat appendage state is stored on the monster instance, while held-victim state remains on the character. Temporary Roper weakness is included in member normalization/save-load reconstruction. Killing the parent monster still uses the common captive-release path, so no victim remains attached to a dead creature.
+
+### Regression validation
+
+Four focused regression groups raise the integrated suite from **763 to 767 tests**. They verify Killer Tree branch durability/grab/next-round mouth damage/body-HP separation; Roper no-save three-turn Strength loss, nonmagical rejection, edged-magical 5+ severing, and expiry; Kraken ten-by-60-hp tentacle state, -4 caught-victim attack penalty, 2d4 mouth timing, and separate body HP; and ship constriction plus the five-tentacle release/flight/ink-cloud threshold and dynamic blindness modifiers.
+
+```text
+Build: 0.4.127
+Tests: 767 / 767 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.128 — exceptional-monster paralysis / adhesive restraint handler batch only**. Keep the next pass to a small source-verified set of attacks whose entries explicitly provide paralysis, adhesion, entangling, or release timing; do not combine it with monster spell-like powers, unusual movement/carry-off systems, or another Name-level/endgame pass.
+
+## v0.4.126 — Exceptional-monster swallow / grab / engulf special-attack handler batch
+
+This checkpoint is deliberately limited to a **small source-verified swallow-whole and tongue-grab batch**, plus the common inside-the-creature lifecycle needed to make those attacks playable. It implements the Purple Worm, Caecilia, Slime Worm, and Giant Poisonous Frog procedures whose source text supplies deterministic triggers and consequences. It does **not** turn every descriptive “engulf,” tentacle, branch, constriction, or carry-off sentence in the catalogue into a guessed generic grapple subsystem.
+
+### A common swallow state now preserves each monster's printed trigger
+
+The engine now has one persistent swallowed-victim state, but the monster that creates it still supplies its own printed trigger and damage rather than being flattened into a universal “large monster swallows on 20” rule.
+
+- **Purple Worm** — a bite swallows a man-sized-or-smaller victim if the bite attack roll exceeds the number needed to hit by **4 or more**, or on a natural **20** in any case. A swallowed victim takes **3d6 damage each later round**.
+- **Caecilia** — an unadjusted **19 or 20** on the bite attack swallows the victim and the victim takes **1d8 damage each later round**.
+- **Slime Worm** — an unmodified **successful 18 or more** swallows the target; a natural **20** swallows even when that roll would not otherwise hit. The ordinary bite damage is not fabricated on that special natural-20 miss. A swallowed victim takes **2d6 damage each later round**.
+
+“Each round thereafter” is represented literally: entering the creature creates the swallowed state on the hit, and the automatic internal damage begins on the following combat round rather than being charged a second time on the swallowing round.
+
+The swallowed record carries the captor identity, printed internal-damage expression, interior Armor Class, round of swallowing, and digestion lifecycle. It survives member normalization/save-load reconstruction.
+
+### The generic BECMI inside-the-creature procedure is now live
+
+BECMI's common Swallow rule says a swallowed character with an **edged weapon** may attack the creature from inside at **-4 to the attack roll**, and the inside of a creature is **AC 7 unless the individual monster says otherwise**. That is now a real combat path rather than descriptive guidance. A swallowed character cannot redirect that inside attack to another target or substitute an unsupported missile attack.
+
+Killing the swallowing creature releases its represented swallowed victims immediately. If a swallowed victim dies first, the engine starts the common **one-hour / six-turn complete-digestion clock**. If the body remains inside until that clock expires, it is marked as completely digested and unrecoverable; killing the captor before then releases the body and prevents the later digestion transition. No resurrection restriction beyond the source's body-recovery consequence is invented here.
+
+The common rule is deliberately overridden only where a creature entry actually supplies different values. This pass therefore creates the state architecture needed for later exceptional stomach/interior cases without silently assigning those exceptions to ordinary swallowers.
+
+### Giant Poisonous Frog uses its separate tongue procedure and never becomes a swallower
+
+DMR2 gives the Giant Poisonous Frog a specific capture sequence rather than swallow whole. The engine now implements that sequence directly:
+
+- the tongue can attack a victim up to **15 feet** away using the normal chance to hit;
+- a trapped victim of **dwarf size or smaller** is dragged **5 feet per round** toward the frog's mouth;
+- once the victim reaches the mouth, the frog receives the printed **+2 attack bonus** against that trapped victim;
+- the tongue itself is **AC 8**;
+- **any successful attack that damages the tongue releases the victim**;
+- an **edged-weapon hit dealing 6 or more damage** severs the tongue;
+- the tongue is explicitly **not poisonous** and therefore does not apply the frog's contact poison merely for grabbing a victim;
+- the frog's bite/contact poison remains separate: touching or being bitten by the frog requires the printed **Poison save or 2d8 poison damage**.
+
+The attack-order layer also recognizes explicit attempts to cut free from a represented grab, and a held victim cannot simply move/withdraw away while the tongue restraint is still active.
+
+### “Engulf” remains source-bounded instead of becoming an invented universal contest
+
+The Giant Amoeba is the important negative boundary in this pass. DMR2 says that it attacks by **enveloping victims and then secreting acid**, but the entry supplies no distinct attack trigger, escape roll, contested Strength procedure, automatic-round timing, or separate interior Armor Class. The catalogue's existing implementation note already warns not to invent those missing numbers. Accordingly, v0.4.126 does **not** manufacture a generic amoeba grapple/engulf mechanic from unrelated swallow rules.
+
+Likewise, the **Killer Tree**, **Roper**, and **Kraken** have source-specific multi-limb/tentacle states, separate limb hit points or sever rules, pulling/constriction timing, and in the Kraken's case simultaneous ship and crew interactions. Those require a bounded multi-appendage architecture rather than being forced through the one-captor/one-victim tongue bridge in this checkpoint.
+
+### Regression validation
+
+Four focused regression groups raise the integrated suite from **759 to 763 tests**. They verify the distinct Purple Worm/Caecilia/Slime Worm trigger rules, delayed automatic internal damage and the one-hour body-digestion lifecycle, edged inside attacks at -4 against AC 7 plus release on captor death, the Slime Worm's natural-20 swallow even when ordinary Armor Class would make the bite miss, and the Giant Poisonous Frog's 15-foot nonpoisonous tongue, dwarf-size drag, later poisonous bite, and damage-to-tongue release rule.
+
+```text
+Build: 0.4.126
+Tests: 763 / 763 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.127 — exceptional-monster multi-appendage grab / pull / constriction closure only**. Keep that pass bounded to a small source-verified set such as Killer Tree, Roper, and Kraken, including separately targetable limbs/tentacles, sever/release thresholds, pull/constriction timing, and any explicit attack penalties. Do not combine it with unusual movement/carry-off, monster spell-like powers, another poison/gaze batch, or a general grappling rewrite.
+
+## v0.4.125 — Exceptional-monster poison / Energy Drain special-attack handler batch
+
+This checkpoint is deliberately limited to a **small source-verified poison, disease-like toxin, Energy Drain, immunity, and recovery batch**. It makes Wight/Spectre level drain and Dusanu dry-rot spores live combat procedures, and closes the explicit Energy Drain-immunity edge left open by v0.4.124 for the Nekrozon. It also records the Sea Hag's printed immunity to undead special abilities where that intersects poison and Energy Drain. It does **not** begin swallow/grab/engulf, unusual movement, monster spell-like powers, or another gaze/vision batch.
+
+### Wight and Spectre touch now use one common no-save Energy Drain transaction
+
+The existing artifact/Restore energy-loss machinery is now also the common monster Energy Drain transaction instead of having a separate monster-only level-loss approximation.
+
+A **Wight** uses the Mentzer Basic profile: a successful touch drains **one experience level or one Hit Die**, with **no saving throw**. A **Spectre** uses the Mentzer Expert profile: its successful touch inflicts its printed **1d8 damage plus double Energy Drain**, implemented as two sequential one-level Energy Drain transactions. This matters at the lower boundary: if the first drain leaves a victim at 1st level, the second drain can kill that victim rather than being collapsed into an abstract “-2 levels” value that skips the source's 1st-level death rule.
+
+For player characters, the common drain path continues to use the already-audited BECMI bookkeeping: XP falls to the midpoint of the new level, represented post-Name fixed hit-point benefits are removed deterministically, and a pre-Name historical Hit-Die loss that old saves cannot reconstruct remains explicitly flagged for referee resolution instead of fabricating an old die roll. For monsters, one Hit Die is removed per drain, retaining the existing proportional-HP boundary where no historical per-HD hit-point record exists.
+
+The ordinary **Restore** path now recovers a level lost to these monster attacks because both effects feed the same `energyDrainHistory` record. This closes a real integration gap: a level drained by a Wight/Spectre is no longer mechanically different from a represented level drained by another BECMI Energy Drain source merely because the producer was a monster attack.
+
+### Source-defined undead creation is retained without deleting the player character
+
+The source also specifies what happens to victims slain by these attacks. A character completely drained by a **Wight** becomes a Wight under the slayer's control after **1d4 days**; a creature slain by a **Spectre** rises the **next night** under the slayer's control.
+
+This pass records that consequence as persistent `pendingMonsterTransformation` campaign state, including source creature, target form, source timing, and a rolled due time where the source supplies a numerical delay. It deliberately does **not** replace the party-member record with a monster record yet. Doing that safely requires one common dead-PC-to-NPC/monster roster-conversion transaction so equipment, campaign history, references, and reversible effects are not destroyed. The current state therefore preserves the mandatory future consequence without pretending the roster-conversion subsystem already exists.
+
+### Nekrozon and Sea Hag Energy Drain/poison immunities are now live
+
+The v0.4.124 audit explicitly left the Nekrozon's broader instant-death/Energy Drain defenses outside the gaze-only checkpoint. The common Energy Drain function now checks source-defined immunity before changing levels, Hit Dice, XP, or hit points. The **Nekrozon** is therefore immune to Energy Drain as printed in its Master entry.
+
+The **Sea Hag** profile likewise now carries the part of its printed undead-special immunity relevant to this checkpoint: Energy Drain and poison cannot affect it. This pass does not claim to have completed every Sea Hag power or every category named by its immunity sentence; its touch disease/gaze procedures and unrelated special defenses remain governed by their own future handlers where not already represented.
+
+### Dusanu dry-rot spores now have their printed combat and campaign lifecycle
+
+DMR2's **Dusanu** no longer has a descriptive-only dry-rot attack. When a represented Dusanu takes its normal melee attack action, it releases the printed spores into a **5-foot radius** at the same time as its claws. Represented human, demihuman, or humanoid player characters in that radius make a **Saving Throw vs. Poison**. Poison immunity is checked before the roll. Failure inflicts the printed **1d8 damage** and establishes persistent dry-rot infection.
+
+The infection keeps the DMR2 timing instead of converting it to an arbitrary combat duration. It remains latent for **1d3+1 days**. While infected, **Cure Wounds magic cannot restore wounds**; this is implemented separately from the Expert `Cause Disease` natural-healing penalty so the engine does not incorrectly halve ordinary natural healing for Dusanu infection. At the end of the latent period the mold erupts, after which the victim makes the printed **daily Saving Throw vs. Death Ray**. Failure kills the victim.
+
+A victim killed by the spores or by the later erupted infection receives the source-defined pending transformation to **Dusanu after 1d3 days**, with the source note that prior memories and abilities are lost. As with the Wight/Spectre result, actual replacement of the player-character row is deferred to the common roster-conversion producer rather than silently destroying character data.
+
+**Cure Disease** now removes the represented Dusanu infection. The ordinary clerical spell, Cureall disease branch, and artifact Cure Disease affliction list all recognize the same persistent infection state. Thus the source's “Cure Disease kills the spores” sentence is a real recovery path rather than referee prose detached from the campaign clock.
+
+### Save/load and common combat integration
+
+`normalizeMember()` now preserves the persistent Dusanu infection and pending monster-transformation records. The campaign clock advances latent infection, eruption, and daily Death Ray checks. The ordinary monster attack path dispatches Energy Drain only after a successful touch and dispatches the Dusanu spore burst once for that Dusanu's attack action rather than once per claw.
+
+The deterministic harness fixture was also generalized to carry source attack arrays, special-attack identifiers, and poison/Energy Drain immunity fields. This does not alter production monsters; it ensures regression monsters exercise the same special-attack metadata as real spawned creatures instead of silently dropping those fields in tests.
+
+### Regression validation
+
+Three focused regression groups raise the integrated core suite from **756 to 759 tests**. They verify Wight single drain, Spectre double drain, Restore interoperability, 1st-level Wight death with persistent `1d4`-day transformation state, Nekrozon and Sea Hag Energy Drain immunity, Sea Hag poison immunity, Dusanu 5-foot spore exposure, Poison save, 1d8 damage, latent infection, magical wound-healing block, Cure Disease recovery, erupted daily Death Ray death, pending `1d3`-day Dusanu transformation, and save/load normalization of that pending state.
+
+The extracted final inline JavaScript passes `node --check`. The exact final self-contained document was executed in **three fresh headless Chromium processes** against clean contexts. All three completed the full deterministic core harness without page/runtime or console errors:
+
+```text
+Build: 0.4.125
+Tests: 759 / 759 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.126 — exceptional-monster swallow / grab / engulf special-attack handler batch only**. Keep that pass limited to a small source-verified set of tongue/grab, hold-and-drag, swallow-whole, engulf, escape/release, and inside-the-creature damage boundaries. Do not combine it with unusual movement, monster spell-like powers, additional gaze/vision work, or a general dead-PC monster-conversion subsystem.
+
+## v0.4.124 — Exceptional-monster gaze / vision-special-attack handler batch
+
+This checkpoint is deliberately limited to a **small source-verified visual-special-attack batch** and the common combat hooks needed to run those abilities without importing rules from unrelated monsters. It adds the Nekrozon's death gaze and the Greater Wyrd's appearance effect while retaining the already-implemented Basilisk/Medusa gaze procedures. It does **not** begin the poison/energy-drain, swallow/grab, unusual-movement, or monster spell-like-power batches.
+
+### Nekrozon death gaze now runs at encounter entry and once per combat round
+
+The Mentzer Master/Rules Cyclopedia Nekrozon procedure is now live instead of remaining descriptive catalogue text. A represented Nekrozon checks its gaze when first encountered and again once each normal combat round. The check is the printed **1 chance in 4**. If it looks up, it can affect **one** represented victim within the printed **60-foot** range; the victim makes a Saving Throw vs. Death Ray and dies immediately on failure.
+
+The handler uses the engine's 3D combat coordinates rather than treating the 60-foot figure as an abstract melee distance. A victim directly above the creature is excluded because the source explicitly says the Nekrozon never looks straight upward. Ordinary represented walls/solid barriers must also leave a valid line before a target can be selected.
+
+The special complete-surprise clause is now distinguishable from ordinary surprise. Wilderness and temple encounter setup preserve the underlying player-side surprise d6 instead of retaining only a boolean. A raw **1 on 1d6** therefore triggers the printed accidental direct-eye-contact result: one eligible victim is selected and **dies without a saving throw**. Being merely surprised on a 2 does not receive that harsher result.
+
+A player can also explicitly choose the source's suicidal edge with `meet gaze and attack <nekrozon>`. Deliberately looking directly into its eyes uses the printed no-save death result. The engine intentionally does **not** import the Basilisk's -4 avoid-gaze procedure or mirror-reflection rules into the Nekrozon: its source provides neither. A Prismatic Wall's existing blue gaze-blocking layer still blocks the gaze because that rule is already a common magical gaze boundary.
+
+The Nekrozon's tail knockdown/stun and its own broad immunity to energy drain/death-ray/instant-death attacks are deliberately **not** folded into this visual pass. The former belongs with physical special-hit handlers; the latter crosses the common death/energy-drain spell/effect machinery and remains for the following exceptional-attack work rather than being implemented incompletely in a gaze-only checkpoint.
+
+### Greater Wyrd appearance is distinct from a gaze attack
+
+DMR2 states that everyone who views a Greater Wyrd must save vs. Spells or suffer **-3 to attack and damage rolls**, with a successful hit on the Wyrd still inflicting at least **1 point**. That rule now has a persistent combat-local viewing record for each Greater Wyrd/character pair.
+
+A character makes the save only when the character actually has represented sight of that Wyrd. A blinded character therefore does not make a viewing save merely because the monster is in the encounter; if sight is later restored and the Wyrd can be viewed, the save is made then. Once made, the same source does not force a fresh save every round. On a failed save, the -3 attack penalty is applied by the common attack-roll path, and the -3 damage penalty is applied to ordinary weapon, unarmed, holy-water, set-spear, mastery-hook, and transformed-natural attack damage. When the struck target is the Greater Wyrd, a successful damaging hit bottoms out at 1 point as printed.
+
+The source does not provide a duration sentence or a stacking rule for the appearance penalty. The engine therefore uses a conservative visibility convention: a failed result is active while that same Greater Wyrd remains present and actually viewable; losing sight suppresses the penalty, and seeing the same source again restores it without a new save. Multiple Greater Wyrds do **not** stack the -3 penalty. These are explicit bookkeeping conventions, not invented additional monster powers.
+
+The Greater Wyrd effect is **not** routed through the gaze-reflection code. It is caused by viewing the creature's appearance, not by the creature directing a gaze ray. Mirrors therefore do not create an invented reflection attack, and the Prismatic Wall blue layer's rule for blocking gaze attacks is not silently broadened to suppress this separate appearance effect. The Wyrd's green-sphere damage/paralysis remains outside this checkpoint.
+
+### Common visual-special dispatch now has an explicit lifecycle
+
+`processVisionSpecials()` runs source-bounded visual abilities at two deterministic points: encounter opening and the start of each normal combat round. The visual handlers keep their own source-specific timing rather than forcing every creature into one generic “gaze each round” rule:
+
+- Basilisk and Medusa continue to use their existing facing/avoidance/mirror procedures;
+- Nekrozon uses the encounter/round 1-in-4 active gaze and its special no-save direct-eye cases;
+- Greater Wyrd uses a one-time-per-source viewing save and a visibility-dependent penalty.
+
+This preserves a shared lifecycle while keeping each monster's printed procedure distinct.
+
+### Regression validation
+
+Three focused regression groups raise the integrated core suite from **753 to 756 tests**. They verify the Nekrozon's 60-foot one-in-four Death Ray check and failed-save death; complete-surprise and deliberate-eye-contact no-save death; and the Greater Wyrd's blinded/viewing boundary, one-save-per-source record, -3 attack penalty, -3 damage penalty, and minimum-one damage rule against the Wyrd itself.
+
+The extracted final inline JavaScript passes `node --check`. The exact final self-contained document was executed in **three fresh headless Chromium processes** against clean `about:blank` contexts. All three completed the full deterministic core harness without page/runtime or console errors:
+
+```text
+Build: 0.4.124
+Tests: 756 / 756 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.125 — exceptional-monster poison / energy-drain special-attack handler batch only**. Keep that pass limited to a small source-verified set of poison, venom, disease-like toxin, level/energy-drain, and their saving-throw/immunity/recovery boundaries. Do not combine it with swallow/grab, unusual-movement, spell-like-power, or additional gaze/vision work.
+
+## v0.4.123 — Demihuman Name-level clan stronghold / clan-support closure
+
+This checkpoint is deliberately limited to the **Dwarf, Elf, and Halfling Clan relationship around a personal stronghold**: family construction support, Clan residence/transfer support, the Clanholder-versus-Clan-leadership distinction, emergency Clan aid, and the same-race mercenary restriction. It does not begin the next exceptional-monster mechanics batch and does not convert the demihuman Clan into an ordinary human-style taxable follower body.
+
+### A demihuman stronghold now belongs to a represented Clan relationship
+
+A Name-level Dwarf, Elf, or Halfling no longer receives the project's generic territorial stronghold authority merely because a fortification exists. Before Clan support can be applied, the campaign records the character's **Clan**, and may record the Clan's **Clanmaster** and **Keeper of the Relic**. The stronghold then becomes the character's recognized **Clanholder** holding rather than silently promoting the character to Clanmaster, Keeper, Baron/Baroness, or another unsupported Clan office.
+
+This preserves the source distinction between owning a stronghold and governing the Clan. A Clanholder may represent the Clan and may own the physical stronghold, but the character does **not** thereby control the Clan members. The political Clanmaster and spiritual Keeper remain separate offices unless the campaign independently establishes otherwise. Human-style noble standing therefore remains a separate political development rather than a consequence of the stronghold routine.
+
+The structured `demihumanEndgame` record persists the Clan name, Clanmaster, Keeper, home-stronghold relationship, known Clan population, transfer share, Clanholder status, recognized stronghold, resident Clan support, family construction loans, and emergency-aid history through save/load reconstruction. It is also included in the Comb of the Korrigans class snapshot/reversal fields so a temporary Elf transformation cannot erase the original character's Clan obligations and holdings.
+
+### Family construction support now has the printed 50% ceiling
+
+When a Dwarf, Elf, or Halfling constructs the source-defined stronghold with Clan backing, the character's family can help locate the site and, if the character lacks sufficient funds, can lend up to **50% of the construction cost**. The existing construction transaction now applies that as a bounded loan rather than an unlimited subsidy.
+
+The loan is used only when the represented character is eligible for demihuman Clan support and the expedition does not already have enough liquid funds for the project. It cannot exceed one-half of the represented **structure cost**. Ordinary construction supervision remains a separate expense under the existing stronghold engine. The amount actually borrowed is stored in the character's Clan record and in the construction record; this pass does not invent repayment interest, a due date, or a Clan-debt penalty that the source does not provide.
+
+### Clan residence follows the three source branches instead of always rolling a new family
+
+The previous generic demihuman follower routine always rolled `1d6 × 30` Clan members when a recognized stronghold appeared. That was too coarse. The engine now distinguishes the source-defined circumstances:
+
+- **No previous Clan stronghold** — the character's whole family is represented by **1d6 × 30 1st-level NPCs of the same class**, who may move into and help defend the new holding without ordinary wages.
+- **The Clan's existing stronghold is smaller than the new one** — the campaign may record the Clan population and represent the Clan moving into the superior holding instead of rolling an unrelated second family.
+- **The Clan already has an established stronghold** — the Clan may transfer a represented share to the new location, but the engine caps that transfer at the source's **40% maximum**.
+
+Where an existing-Clan branch requires a population figure the source leaves to the campaign, the engine does not manufacture one. The Clan support remains recognized, but the resident count stays pending until the referee records the relevant Clan population/transfer information.
+
+The Halfling's already-implemented early stronghold community is also protected from double counting. If a suitable pre-Name-level Halfling holding already attracted its Clan household, later Clanholder recognition adopts that existing household rather than rolling another automatic population.
+
+### Clan residents are not taxable dominion subjects
+
+A major bookkeeping defect is closed in this pass. The old dominion initializer could convert an early Halfling Clan community into ordinary taxable population families. That incorrectly blurred family/Clan support with the surrounding political population.
+
+Clan residents are now kept in `demihumanEndgame.clanResidents` and the stronghold follower record. They may live at, patrol, and defend the Clanholder's stronghold, but they are **not automatically converted into peasant families for monthly tax/resource income or ruler XP**. If the campaign separately establishes a territorial dominion around the holding, that dominion's ordinary population remains a distinct record.
+
+The resulting common dominion label is **Clanholder**, not an automatic Baron/Baroness or Halfling Sheriff title. The Halfling class's Sheriff usage remains the separate class/community title already represented elsewhere; this Clan stronghold procedure does not use it as a generic feudal rank.
+
+### The same-race mercenary limit is now enforced without overreaching into specialists
+
+The demihuman class procedures restrict **mercenary soldiers** by race: Dwarves hire Dwarven mercenaries, Elves hire Elven mercenaries, and Halflings hire Halfling mercenaries. That rule is now enforced by the common personnel employer selector.
+
+The currently represented Talamau light footmen and archers are explicitly Human. A lone Dwarf, Elf, or Halfling therefore cannot directly employ those Human mercenaries. If another legal Human employer is traveling with the party, the personnel may still be hired under that character instead of being falsely attributed to the demihuman. The employer and mercenary race are persistent roster fields.
+
+The restriction is deliberately **not** applied to ordinary non-mercenary hirelings and specialists. Porters, sailors, craftsmen, and other applicable personnel remain available where the class text allows non-soldier retainers or specialists of other races. This prevents a mercenary restriction from becoming an invented universal racial hiring ban.
+
+### Emergency Clan aid is persistent but does not invent an army size
+
+The source allows the whole Clan to come to a threatened demihuman stronghold's aid and notes that a sufficiently serious threat may draw help from other Clans. The engine can now record that state with `demihuman clan aid` and preserve it in the campaign history.
+
+No troop count, arrival time, War Machine BR, allied-Clan count, or automatic battlefield order is fabricated because the source does not give a universal numeric procedure for those details. This remains a campaign/referee fact until the relevant Clan forces are actually represented.
+
+### Commands
+
+The bounded commands added by this pass are:
+
+```text
+demihuman clan <name>: <clan>; clanmaster=<name>; keeper=<name>; home=none|smaller|established; population=<n>; transfer=<0-40>%
+demihuman clan aid <name>: threatened [; serious] [; note]
+demihuman clan aid <name>: stand down
+demihuman endgame <name>
+demihuman clan status <name>
+```
+
+The existing `plan clanhold`, fortification-construction, completion, and `establish stronghold` procedures now consume this Clan state instead of applying generic demihuman assumptions.
+
+### Regression validation
+
+Three focused regression groups raise the integrated core suite from **750 to 753 tests**. They verify the no-existing-stronghold `1d6 × 30` family branch and Clanholder/Clanmaster/Keeper separation; the family construction loan's 50% maximum, the recorded 40% existing-Clan transfer ceiling, normalization, and Comb-of-the-Korrigans preservation; and the same-race mercenary boundary while preserving access to ordinary non-mercenary personnel.
+
+The extracted inline JavaScript passes `node --check`. The exact final self-contained document was also executed in **three fresh headless Chromium processes** by injecting the document into a clean `about:blank` DevTools target (the runtime environment blocks direct `file:`/localhost navigation). All three runs completed the full deterministic core harness without page/runtime or log errors:
+
+```text
+Build: 0.4.123
+Tests: 753 / 753 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.124 — exceptional-monster gaze / vision-special-attack handler batch only**. Keep the pass limited to a small source-verified group of gaze/vision-dependent monster abilities and their common targeting, facing/avoidance, saving-throw, reflection, and immunity boundaries. Do not combine that pass with poison/energy-drain, swallow/grab, unusual-movement, or spell-like-power monster batches.
+
+## v0.4.122 — Mystic Name-level cloister / trainee closure
+
+This checkpoint is deliberately limited to the **optional Mystic's Name-level cloister institution and its resident/trainee lifecycle**. It does not turn on a half-implemented Mystic in the normal character creator, does not claim the optional Mystic class as a whole is now closed, and does not begin the demihuman or exceptional-monster endgames.
+
+### The Mystic cloister is now a school, not a territorial dominion
+
+A 9th-level Mystic is now recognized by the endgame layer as **Master** or **Mistress**. A Name-level Mystic can found a cloister only after the character's **Grand Abbot** approves the Mystic as fit to manage one. The institutional state records that Grand Abbot and, where supplied, the parent cloister.
+
+The resulting cloister is deliberately excluded from the common barony/dominion initializer. Mystics do **not** rule the nearby population, do not acquire a 24-mile political tract merely by opening a school, and do not receive peasant taxes, ruler XP, a Baron/Baroness title, liege-share accounting, or an automatic military obligation to a regional ruler. The cloister may still be physically fortified and can keep the surrounding area safe, but institutionally it behaves as a school rather than a ruler's fortress.
+
+The construction preset named `cloister` is an **engine convenience bundle**, not a claim that the source specifies a mandatory cloister floor plan. The source defines the institution and its financing/followers, not a universal architectural component list.
+
+### Grand Abbot approval and construction assistance are explicit
+
+The Rules Cyclopedia says that a Mystic with the appropriate career may receive help from the current cloister and that the Grand Abbot may pay **up to 100% of the construction cost of a modest cloister**. The engine does not attempt to score whether a player's career has been sufficiently "good and noble." Instead, the referee first records Grand Abbot approval and then may enter an approved construction share from **0–100%**.
+
+That percentage is applied to the represented **structure cost**. Construction supervision remains a separate project expense in the existing fortification engine; the cloister-aid rule is not treated as an automatic payment of unrelated engineer/master-builder contracts. A denied or not-yet-approved project remains an ordinary private monastic holding.
+
+The physical school also must be recorded as **self-sustaining** before it can open. This represents the printed requirement that the mystics-in-training work at fields or crafts so the community can feed and shelter itself. The engine records the fact and an optional campaign note but does not invent crop yields, craft-profit tables, or a new economic subsystem.
+
+### Founding residents and trainees use the printed dice
+
+When an approved, completed, self-sustaining cloister first opens, the engine rolls the two published founding groups exactly once:
+
+- **1d2 × 10 1st-level Mystics** join the founder;
+- **1d6 × 30 Normal Men** arrive as would-be Mystics in training.
+
+Those counts are persistent. Reconfirming the cloister or saving/reloading the campaign does not reroll the founding population. The engine intentionally stores the groups as institutional cohorts rather than fabricating names, ability scores, personalities, equipment, or detailed character sheets that the stronghold procedure does not provide.
+
+### Annual trainee turnover and the two-year boundary now run on campaign time
+
+An operating cloister now has a real annual trainee clock. At each campaign year boundary, **80% of the previous year's still-training cohort leaves**, and **1d6 × 20 new Normal Men** arrive as replacements. Departures, arrivals, and later graduates are retained in bounded history rather than being recalculated from scratch.
+
+The source also states that a Normal Man in training **typically takes two game years to become a 1st-level Mystic**, but supplies no graduation check, aptitude percentage beyond the annual attrition, or alternate training-time table. The engine therefore uses a deterministic bookkeeping interpretation rather than inventing a skill roll: a cohort suffers the printed 80% attrition after its first year; survivors who reach their second anniversary graduate to the resident 1st-level-Mystic population before another attrition is imposed on that same cohort. New 1d6 × 20 trainees still arrive at every yearly turnover.
+
+This treatment makes the published "typically two years" statement operational while leaving exceptional individual cases available to the referee rather than manufacturing a new probability system.
+
+### Thirteenth-level independence is institutional, not political
+
+Until 13th level, the new cloister remains a **branch of the founder's old cloister**. At 13th level the Mystic is recorded with the source's **Greater Master** title and may declare the cloister independent. The character may optionally give the independent discipline/school a campaign name.
+
+Independence changes only the cloister's institutional relationship to its parent. It does not create land rulership, taxes, a noble title, or a dominion. The engine consequently keeps branch/independent state inside `mysticEndgame` rather than translating it into the common political-ruler record.
+
+### Save/load boundary and optional-class scope
+
+The existing character creator still does **not** expose Mystic as a selectable class in this checkpoint. Full Mystic combat progression, special abilities, equipment restrictions, oath/property rules, level-challenge procedure, and the rest of the optional class remain separate audited work.
+
+However, an already-existing or externally imported character whose class is explicitly `Mystic` is no longer silently normalized into Fighter. The engine preserves that class identity so the new cloister state can survive save/load reconstruction. Fighter-style attack/saving-throw fallback already matches the Mystic's broad chassis, but that preservation is **not** a claim that all Mystic class rules have been implemented.
+
+The structured `mysticEndgame` record is also included in the Comb of the Korrigans class snapshot/reversal fields, so temporary Elf conversion cannot erase the Mystic's Grand Abbot approval, cloister population, turnover history, or independence state.
+
+### Commands
+
+The bounded commands added by this pass are:
+
+```text
+mystic cloister sanction <name>: approve <Grand Abbot> [; parent=<cloister>] [; note]
+mystic cloister sanction <name>: deny <Grand Abbot> [; parent=<cloister>] [; note]
+mystic cloister aid <name>: <0-100>%
+mystic school <name>: self-sustaining [note]
+mystic school <name>: not self-sustaining [note]
+mystic cloister independence <name> [; school=<name>]
+mystic endgame <name>
+```
+
+The ordinary fortification commands now also recognize `cloister` / `monastery` as the Mystic institutional design bundle. `establish stronghold` opens the completed school only after Grand Abbot sanction and the self-sustaining requirement are represented.
+
+### Regression validation
+
+Three focused regression groups raise the integrated core suite from **747 to 750 tests**. They verify that a sanctioned self-sustaining cloister receives the published 1d2 × 10 resident Mystics and 1d6 × 30 trainees without creating a dominion; that a 100% parent-cloister contribution covers the represented modest-cloister structure while leaving construction supervision separate; that annual 80% attrition, 1d6 × 20 replacement cohorts, and two-year graduation advance correctly; and that branch dependence through 12th level, 13th-level independence, save/load persistence, and Comb-of-the-Korrigans preservation all remain intact.
+
+```text
+Build: 0.4.122
+Tests: 750 / 750 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.123 — demihuman Name-level clan stronghold / clan-support closure only**. Keep that pass limited to the source-defined Dwarf/Elf/Halfling Clan assistance, family support, clan-leadership distinction, same-race mercenary boundary, and existing stronghold/dominion integration; do not combine it with exceptional-monster work.
+
+## v0.4.121 — Thief Name-level hideout / Thieves’ Guild closure
+
+This checkpoint is deliberately limited to the **9th-level Thief settlement-versus-Rogue choice, regional Thieves’ Guild approval, official hideout/branch recognition, apprentice lifecycle, and the source-bounded Guild income/contact procedures**. It does not begin the Mystic, demihuman, or exceptional-monster endgames.
+
+### Name level now creates a Master Thief choice instead of an automatic barony
+
+A Thief reaching 9th level is now identified as a **Master Thief** and records one of the two high-level procedures instead of falling through the project’s common territorial-stronghold routine:
+
+- **settling Guildmaster** — the character remains tied to a named regional Thieves’ Guild and identifies the intended station as a **new branch**, **expansion branch**, or **established branch with a vacancy**;
+- **traveling Rogue** — the character remains a member of a named Thieves’ Guild but establishes no local hideout/station.
+
+This closes the old generic behavior in which a 9th-level Thief could complete a hideout and accidentally become a Baron/Baroness with a 24-mile tax dominion. A recognized Thief hideout is now **criminal-guild authority, not territorial sovereignty**. It creates no noble title, peasant population, monthly dominion income, confidence score, liege share, ruler XP, or automatic political tract.
+
+The project’s existing general private-base convention is left intact: a Thief may still own an ordinary private fortification as campaign property. That is distinct from the printed Name-level **Guild hideout**. The class benefit begins only when the Master Thief settlement procedure and Guild recognition are represented.
+
+### Guild approval is explicit and the engine does not invent branch availability
+
+Mentzer requires a settling Thief to contact the regional Thieves’ Guild. The Guild may recognize a new branch, an expansion into another neighborhood, or an established branch whose prior leader has stepped down or died. The stronghold procedure also says that an existing Guild presence may cause permission to be denied; most villages and small towns should not have hideouts, and larger communities should have at most roughly one branch per 1,000 normal residents.
+
+Those are campaign facts rather than a printed probability table. The engine therefore does **not** roll a fictional “Guild approval chance,” fabricate a town population, or silently declare a vacancy. The player/referee records the intended branch form and then records the Guild’s **approve/deny** decision. A planned or completed physical holding remains private while approval is pending or denied.
+
+Once approval exists, an unfinished hideout can carry recognized intended-branch standing, but the apprentice and operational branch benefits wait for physical completion. A completed approved hideout becomes the official branch without invoking `establishDominion()`.
+
+### The Rogue branch now persists its permanent and annual consequences
+
+A Name-level Thief who chooses the traveling path is stored as a **Rogue**. The Rogue remains a member of a Thieves’ Guild and receives a persistent annual-contact clock: the initial choice records the current Guild contact and the next required Guild visit one campaign year later. `thief guild visit` renews that represented contact for another year.
+
+The printed permanent restriction is also enforced. Once a character has become a Rogue, that character can never later become Guildmaster of an **established** branch. If the Rogue later settles, the engine accepts only the source’s exception: a **new branch where none currently exists**, still requiring Guild permission. The `rogueEver` flag survives save/load normalization and cannot be erased by switching to the settling path.
+
+Mentzer also calls for a DM check **once per game week** for treasure maps or rumors concerning great treasures, based on the Rogue’s access to the thieves’ grapevine. No numerical probability is supplied in the reviewed text. The engine therefore records this as an explicit referee procedure rather than manufacturing a percentage. Local tips, rumors, information, and low-level temporary assistance likewise remain subject to the local Guildmaster instead of being auto-generated from an unsupported table.
+
+### Hideout apprentices are one persistent 2d6 cohort
+
+When an approved hideout becomes operational, it attracts **2d6 1st-level Thief apprentices**. They may be of any alignment and are generally, though not invariably, loyal. The compatible Rules Cyclopedia clarification that **at least one is a spy for the local Guild** is represented as a persistent branch fact.
+
+The engine rolls this cohort **once**, when the hideout first becomes the official branch. Reconfirming or reloading the hideout does not reroll it. Apprentice losses can be recorded explicitly, and those losses reduce the persistent roster. The automatic cohort is **not replaced** when apprentices die or leave, matching the source; later recruitment is a separate campaign action rather than a fresh 2d6 benefit.
+
+The engine deliberately does not auto-create apprentice names, alignments, personalities, individual loyalty scores, equipment, or detailed thief-skill sheets. Those details are not fixed by the class procedure.
+
+### Guild income is represented without inventing an economic rate
+
+The high-level Thief rules state that the Guild generates income from illegal activities, but leave the amount to the Dungeon Master. Consequently there is no automatic weekly or monthly Guild-income formula in the engine.
+
+`thief guild income <name>: <gp> gp` records a **referee-determined** amount, adds that exact cash amount to the expedition treasury, and stores a bounded income history. This permits the printed income benefit to exist mechanically without pretending that BECMI supplies a universal tax rate, percentage, or profitability table for a thieves’ guild.
+
+The broader advancement hooks are retained as campaign guidance rather than automatic promotions: control of a larger branch is suggested around **18th level**, and eventual office in Guild Headquarters remains something to pursue through play. Difficult and unusual jobs also remain campaign opportunities rather than a random automatic mission generator.
+
+### Commands and persistence
+
+The bounded commands added by this pass are:
+
+```text
+thief path <name>: settle <guild>; branch=new
+thief path <name>: settle <guild>; branch=expansion
+thief path <name>: settle <guild>; branch=established
+thief path <name>: rogue <guild>
+thief guild approval <name>: approve <authority> [; note]
+thief guild approval <name>: deny <authority> [; note]
+thief apprentices <name>: lose <count> [note]
+thief guild income <name>: <gp> gp [; note]
+thief guild visit <rogue>: [guild]
+thief endgame <name>
+```
+
+The structured `thiefEndgame` record survives member normalization/save-load reconstruction and is included in the Comb of the Korrigans class snapshot/reversal fields, so the artifact’s temporary Elf conversion cannot erase a Master Thief’s Guild/Rogue history.
+
+### Regression validation
+
+Three focused regression groups raise the integrated core suite from **744 to 747 tests**. They verify that a Guild-approved completed hideout receives the 2d6 persistent apprentice cohort and spy marker without creating a barony/dominion; that Rogue annual contact and the permanent established-branch restriction survive normalization while the later new-branch exception remains available; and that apprentice losses do not reroll while Guild income appears only when a referee enters an explicit amount.
+
+```text
+Build: 0.4.121
+Tests: 747 / 747 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.122 — Mystic Name-level cloister / trainee closure only**. Keep that pass limited to the source-defined Mystic cloister, resident 1st-level mystics, normal-person trainees, self-sustaining school requirement, annual trainee turnover, and the printed training-time boundary; do not combine it with demihuman endgames or exceptional-monster work.
+
+## v0.4.120 — Magic-User Name-level tower / proclamation / apprentice closure
+
+This checkpoint is deliberately limited to the **high-level Magic-User tower procedure**: the primary Mentzer level threshold, completion of the physical tower, the local ruler's proclamation of noninterference, the printed ruler-assistance boundary, and the tower apprentices. It does not begin the Thief, Mystic, demihuman, or exceptional-monster endgames.
+
+### Name-level status and the tower privilege are now separate
+
+The primary Mentzer rules make the Magic-User a **Wizard at 9th level** (or **Maga** for the female title used by the source) and permit the ordinary Name-level status at that point, but separately state that **upon reaching 11th level** a Magic-User may build a tower and that one who constructs a tower will usually attract **1–6 Magic-User apprentices of levels 1–3**. The engine therefore retains 9th level as ordinary Magic-User Name level while using a separate 11th-level gate for the tower/proclamation/apprentice procedure.
+
+The Rules Cyclopedia consolidation places the tower procedure at Name level (9th). Because this project treats Mentzer BECM as the primary authority and the Rules Cyclopedia as secondary where compatible, the explicit Mentzer 11th-level threshold controls this transaction.
+
+A 9th- or 10th-level Wizard/Maga may still use the project's ordinary fortification system to build a physical tower. It remains a **private arcane holding** until 11th level. If the tower is already complete when the character reaches 11th level, `establish stronghold` can then recognize it under the primary tower procedure. Advancement messaging now distinguishes the 9th-level Name title from the 11th-level tower privilege instead of treating them as the same event.
+
+### Tower recognition no longer creates an automatic barony or tax dominion
+
+The previous common stronghold path could treat a recognized non-Halfling holding as a territorial dominion. That is not part of the primary Magic-User tower rule. A recognized Magic-User tower now remains an **arcane stronghold**, with no automatic 24-mile tract, peasant population, monthly dominion income, ruler XP, or Baron/Baroness title.
+
+A campaign may separately grant a wizard land, a political office, or a noble title, but those are campaign events rather than automatic consequences of this class procedure. The common dominion initializer now explicitly refuses to create a new territorial dominion merely from Magic-User tower recognition. Legacy saves with an already-established Magic-User dominion are not destructively rewritten because old save data cannot prove whether such a dominion was an obsolete automatic creation or a legitimate campaign grant.
+
+The fortification and dominion status text has also been corrected so a recognized arcane tower is not presented as waiting for territorial population/accounting initialization.
+
+### The proclamation and ruler-assistance boundary are persistent
+
+When an eligible 11th-level-or-higher Magic-User completes, or later establishes, a represented tower, the engine records the local ruler's normal proclamation that subjects are not to interfere with the Magic-User or the tower. The character does **not** need to seek permission or have previously met the ruler.
+
+The attack response preserves the source's nonabsolute wording. Against an ordinary attacker, ruler assistance is recorded as **normally expected** rather than forcing an unconditional troop spawn. If the attacker is **another Magic-User**, the ruler does **not** interfere.
+
+The persistent `magicUserEndgame` record stores the proclamation time, ruler label, tower identity/location, apprentice count, and those assistance-policy boundaries. `magic-user endgame <name>`, `magic user tower status <name>`, and `wizard tower status <name>` report the state without fabricating a political title or territorial holding.
+
+### Tower followers use the primary apprentice rule
+
+A recognized tower now stores only the primary automatic follower result: **1d6 Magic-User apprentices of levels 1–3**. The old extra automatic normal-trainee branch has been removed because it is not established by the primary Mentzer procedure used for this checkpoint.
+
+The engine deliberately does not fabricate the apprentices' exact levels, names, backgrounds, spellbooks, personalities, or loyalty results. The source supplies the number and level range but not a random generation method for those individual details. Re-reading or re-establishing the same recognized tower does not reroll the follower result.
+
+The new `magicUserEndgame` state survives member normalization/save-load reconstruction and is included in the Comb of the Korrigans class snapshot/reversal fields, so a temporary Elf conversion cannot erase a Wizard/Maga's tower history.
+
+### Commands and persistence
+
+The bounded player/referee-facing status commands added by this pass are:
+
+```text
+magic-user endgame <name>
+magic user tower status <name>
+wizard tower status <name>
+establish stronghold
+fortification status
+domain status
+```
+
+The existing `plan tower for <name>` / construction commands remain the physical-building path. At 9th–10th level they create only a private tower. At 11th level or higher, completion of a represented Magic-User tower can receive the proclamation automatically; an already-complete private tower can receive it later through `establish stronghold`.
+
+### Regression validation
+
+Two new focused regression groups raise the integrated core suite from **742 to 744 tests**. They verify the separation of 9th-level Name status from the 11th-level tower privilege; denial of the primary tower benefit at 9th level; later recognition of an already-completed tower at 11th; apprentices and proclamation without an automatic dominion/barony; persistence of the endgame record; and the ordinary-attacker versus Magic-User-attacker assistance distinction.
+
+The older class-follower regression was also tightened so it asserts the **1d6 apprentice rule** and rejects reintroduction of an unsupported automatic normal-trainee branch.
+
+```text
+Build: 0.4.120
+Tests: 744 / 744 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.121 — Thief Name-level hideout / Thieves' Guild closure only**. Keep that pass limited to Master Thief/rogue status, Guild approval and branch placement, 2d6 level-1 apprentices including the Guild-spy condition, and the deterministic parts of Guild progression/income. Do not combine it with Mystic, demihuman, or exceptional-monster work.
 
 ## v0.4.119 — Cleric Name-level / stronghold-order closure
 
