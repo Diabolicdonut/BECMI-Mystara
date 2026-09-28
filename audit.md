@@ -1,9 +1,3476 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.135c**  
+Build: **0.4.183**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
-Audit date: 2026-09-23
+Audit date: 2026-09-28
+
+
+## v0.4.183 — DMR2 Mountain Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only DMR2's explicitly headed Mountain d100 wilderness table** across printed pages 119-120 (PDF pages 120-121). **Ocean and every later terrain table remain outside this pass.**
+
+The source contains **52 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves each printed roll band, monster label, Number Appearing expression, and the table's page break after roll **22**. Source landmarks checked against the rendered pages include **01-02 Ape, Snow / 2d10**, **17 Dark Wing / 1d3x10**, **19 Dragon, Gold / 1d4**, **20-21 Dragon, Red / 1d4**, **23-25 Dwarf / 5d8**, **50-51 Hellhound / 2d4**, **60-62 Kobold / 1d6x10**, **84-85 Roc / 1d6**, **90-91 Rock Rattler, Giant / 1d3**, and **100 Yowler / 4d4**.
+
+### Mountain d100 routing is executable but remains source-only
+
+`DMR2_MOUNTAIN_WILDERNESS_ENCOUNTERS` stores the complete source table. `dmr2MountainEncounterEntry()` performs pure d100 lookup, `rollDmr2MountainEncounter()` resolves the printed Number Appearing expression through the existing DMR2 dice-expression helper, and `dmr2MountainEncounterIntegrationStatus()` audits exact d100 coverage plus runtime-catalogue resolution.
+
+Rows **01-22** retain printed-page/PDF provenance **119/120**; rows **23-100** retain provenance **120/121**. The lookup remains intentionally non-mutating: it does not start combat, create a pending encounter, advance time, consume a wilderness encounter check, or replace the active region/module encounter procedure. DMR2's Mountain table supplies only the monster result and Number Appearing; this checkpoint does not invent encounter-check frequency, encounter distance, surprise, reaction, or an automatic rule for selecting Mountain context.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter mountain [d100]
+```
+
+Without an explicit d100, the command rolls the source table and Number Appearing. With a supplied d100 it inspects that exact source row, including runtime routing and printed/PDF page provenance.
+
+### Runtime routing preserves source labels and genuine family ambiguity
+
+The Mountain table retains DMR2's printed labels. Narrow aliases are used only where identity is unambiguous: **Eagle → Eagle, Normal; Earthdrake → Drake, Earthdrake; Hawk → Hawk, Normal; Rock Baboon → Baboon, Rock; Rock Rattler, Giant → Snake, Giant Rock Rattler**. The source itself distinguishes **Eagle** from **Eagle, Great**, **Hawk** from **Hawk, Giant**, and explicitly says **Rock Rattler, Giant**, so those routes do not collapse separate forms.
+
+Four source rows deliberately remain **variant-required** because the wilderness table names a family without selecting among the engine's separately represented forms:
+
+- **Dragon, Gold** — Small, Large, or Huge;
+- **Dragon, Red** — Small, Large, or Huge;
+- **Ice Wolf** — 3+1 HD, 4+1 HD, or 5+1 HD;
+- **Roc** — Small, Large, or Giant.
+
+No other Mountain row remains unresolved.
+
+### Existing Kai Besil encounter handling remains intact
+
+As with the preceding DMR2 terrain-table checkpoints, Mountain is a source-bounded encounter-table hook only. The status contract records `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false`, preserving the existing module-specific Kai Besil wilderness cadence/table.
+
+### Regression coverage
+
+Four deterministic v0.4.183 tests were added, raising the integrated core suite from **1016 to 1020 tests**. They verify: (1) exact **01-100** coverage across all **52** Mountain rows plus correct provenance on both sides of the page break; (2) explicit source-name routing while preserving the two dragon families, three Ice Wolf forms, and three Roc sizes; (3) exact multiplied Number Appearing handling for **1d3x10**, **1d6x10**, and **1d4x10**; and (4) source-only lookup behavior with no campaign encounter-state mutation or Kai Besil override.
+
+The focused v0.4.183 suite passes **4/4**. The complete integrated suite passes **1020/1020 core tests**. To remain inside the project's timeout limits, final verification was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **270/270**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML also loads independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.184 — DMR2 Ocean Wilderness Encounter Table audit/integration only**. Source-verify the Ocean d100 table on printed page 120, preserve its Number Appearing expressions and any family ambiguity, and leave Open and later terrain tables for subsequent checkpoints.
+
+
+## v0.4.182 — DMR2 Jungle Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only DMR2's explicitly headed Jungle d100 wilderness table** on printed page 119 (PDF page 120). **Mountain and every later terrain table remain outside this pass.**
+
+The source contains **50 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves each printed roll band, monster label, Number Appearing field, and page provenance. Source landmarks checked against the rendered page include **01-02 Amber Lotus Flower / 3d6**, **33-36 Grab Grass / n/a**, **46-47 Kara-Kara / 10d6**, **50-52 Kobold / 1d6x10**, **70 Piranha Bird, Greater / 2d6**, **81-82 Strangle Vine / Special**, **94-96 Wereboar / 2d4**, **97 Werejaguar / 1**, and **100 Wooddrake / 1d4**.
+
+### Jungle d100 routing is executable while preserving nonnumeric source results
+
+`DMR2_JUNGLE_WILDERNESS_ENCOUNTERS` stores the complete source table. `dmr2JungleEncounterEntry()` performs pure d100 lookup, `rollDmr2JungleEncounter()` resolves ordinary Number Appearing expressions, and `dmr2JungleEncounterIntegrationStatus()` audits exact d100 coverage plus runtime catalogue resolution.
+
+This table introduces two source fields that are deliberately **not converted into invented creature counts**. **Grab Grass** prints Number Appearing as `n/a`; its lookup therefore returns a successful source result with `total:null` and an explicit `notApplicable` marker. **Strangle Vine** prints `Special`; its lookup likewise returns `total:null` with an explicit `special` marker. All ordinary dice/count expressions continue to use the existing DMR2 Number Appearing roller.
+
+The table lookup remains intentionally non-mutating. It does not start combat, create a pending encounter, advance time, consume a wilderness encounter check, or override the active regional encounter procedure. DMR2's Jungle table supplies the result and Number Appearing field only; this checkpoint does not invent encounter-check frequency, encounter distance, surprise, reaction, or a rule that automatically selects Jungle context.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter jungle [d100]
+```
+
+Without an explicit d100, the command rolls the source table and any numeric Number Appearing expression. With a supplied d100 it inspects that exact source row. `n/a` and `Special` are displayed as source-defined nonnumeric results rather than fabricated totals.
+
+### Runtime routing preserves source labels and explicit variant boundaries
+
+The Jungle table retains DMR2's printed labels. Narrow source-name bridges are used only when the represented identity is clear: **Decapus → Land Decapus; Odic → Spirit, Odic; Tarantella → Spider, Giant, Tarantella; Trader → Man, Trader; Werejaguar → Lycanthrope, Werejaguar; Wooddrake → Drake, Wooddrake**. Direct catalogue matching handles the remaining ordinary rows such as Amber Lotus Flower, Aranea, Bekkah, Chameleon Man, Jaguar, Phanaton, the two Piranha Bird forms, Vampire Rose, Wereboar, and Whipweed.
+
+Four source rows deliberately remain **variant-required** because the wilderness table names a family but does not select among the engine's separately represented forms:
+
+- **Archon** — male or female;
+- **Dragon, Gold** — Small, Large, or Huge;
+- **Dragon, Green** — Small, Large, or Huge;
+- **Kara-Kara** — Warrior or Leader.
+
+**Snail, Giant** is separately marked **variant-incomplete** rather than silently spawned as an ordinary Giant Slug. The current catalogue contains the governing Giant Slug record and its Giant Snail wilderness-variant description, but not a distinct spawn profile carrying the snail-specific **AC -2 and no-squeezing** override. Table lookup therefore preserves the source row and reports the missing runtime specialization instead of creating the wrong creature.
+
+No other Jungle row remains unresolved.
+
+### Existing Kai Besil encounter handling remains intact
+
+As with the preceding DMR2 terrain-table checkpoints, Jungle is a source-bounded encounter-table hook only. The status contract records `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false`, preserving the existing module-specific Kai Besil wilderness cadence/table.
+
+### Regression coverage
+
+Four deterministic v0.4.182 tests were added, raising the integrated core suite from **1012 to 1016 tests**. They verify: (1) exact **01-100** coverage across all **50** Jungle rows and selected landmark fields; (2) source-name routing plus the Archon/dragon/Kara-Kara/Giant-Snail runtime boundaries; (3) exact handling of **1d6x10**, `n/a`, and `Special` without inventing counts; and (4) source-only lookup behavior with no campaign encounter-state mutation or Kai Besil override.
+
+The focused v0.4.182 suite passes **4/4**. The complete integrated suite passes **1016/1016 core tests**. To stay inside the project's timeout limits, final verification was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **266/266**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML also loads independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.183 — DMR2 Mountain Wilderness Encounter Table audit/integration only**. Source-verify the Mountain d100 table across printed pages 119-120, preserve its Number Appearing expressions and runtime family ambiguity, and leave Ocean and later terrain tables for subsequent checkpoints.
+
+
+## v0.4.181 — DMR2 Hills Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only DMR2's explicitly headed Hills d100 wilderness table** on printed page 119 (PDF page 120). **Jungle and every later terrain table remain outside this pass.**
+
+The source contains **46 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves each printed roll band, monster label, Number Appearing expression, and page provenance. Source landmarks checked against the rendered page include **01-02 Ant, Giant / 4d6**, **34 Dark Wing / 1d3x10**, **44-47 Dwarf / 5d8**, **69-71 Hill Giant / 1d4**, **79-81 Kobold / 1d6x10**, **90-92 Rock Rattler / 1d4+1**, **98 Wychglow / 1d6**, **99 Wychlamp / 1d8**, and **100 Yowler / 4d4**.
+
+### Hills d100 routing is executable but remains source-only
+
+`DMR2_HILLS_WILDERNESS_ENCOUNTERS` stores the complete source table. `dmr2HillsEncounterEntry()` performs pure d100 lookup, `rollDmr2HillsEncounter()` resolves the printed Number Appearing expression through the existing DMR2 dice-expression helper, and `dmr2HillsEncounterIntegrationStatus()` audits exact d100 coverage plus runtime catalogue resolution.
+
+The table lookup remains intentionally non-mutating. It does not start combat, create a pending encounter, advance time, consume a wilderness encounter check, or override the active regional encounter procedure. DMR2's Hills table supplies the monster result and Number Appearing only; this checkpoint does not invent encounter-check frequency, encounter distance, surprise, reaction, or a rule that automatically selects Hills context.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter hills [d100]
+```
+
+Without an explicit d100, the command rolls the source table and Number Appearing. With a supplied d100 it inspects that exact source row, including runtime routing status and printed/PDF page provenance.
+
+### Runtime routing preserves source labels and genuine family ambiguity
+
+The Hills table retains DMR2's labels and uses narrow aliases only where the catalogue identity is unambiguous: **Brigand → Man, Brigand; Eagle → Eagle, Normal; Hill Giant → Giant, Hill; Hunting Spider, Giant → Spider, Giant, Hunting; Rock Baboon → Baboon, Rock; Rock Rattler → Snake, Rock Rattler; Wild Man → Man, Wild**.
+
+Two potentially ambiguous labels were resolved from the DMR2 source itself rather than guessed. The Hills row says **Eagle / 1d8**, matching the Normal Eagle wilderness appearance value, while DMR2's Great Eagle uses `1d20`; therefore the row routes to the Normal Eagle profile. Likewise, DMR2's Rock Rattler entry has separate Normal and Giant forms: the Normal form has wilderness Number Appearing `1d4+1`, exactly matching the Hills row, while the Giant form uses `1d3`. The Hills row therefore routes to **Snake, Rock Rattler** rather than the giant form.
+
+Four source rows deliberately remain **variant-required** because the wilderness table does not choose among the engine's separately represented forms:
+
+- **Archon** — male or female;
+- **Dragon, Gold** — Small, Large, or Huge;
+- **Dragon, Red** — Small, Large, or Huge;
+- **Dragon, Ruby** — Small, Large, or Huge.
+
+No other Hills row remains unresolved.
+
+### Existing Kai Besil encounter handling remains intact
+
+As with the preceding DMR2 terrain-table checkpoints, Hills is a source-bounded encounter-table hook only. The status contract records `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false`, preserving the existing module-specific Kai Besil wilderness cadence/table.
+
+### Regression coverage
+
+Four deterministic v0.4.181 tests were added, raising the integrated core suite from **1008 to 1012 tests**. They verify: (1) exact **01-100** coverage across all **46** Hills rows and selected landmark entries/count expressions; (2) explicit source-name routing while preserving the four Archon/dragon variant families; (3) exact multiplied/additive Number Appearing handling for **1d3x10**, **1d6x10**, and **1d4+1**; and (4) source-only lookup behavior with no campaign encounter-state mutation or Kai Besil override.
+
+The focused v0.4.181 suite passes **4/4**. The complete integrated suite passes **1012/1012 core tests**. To remain within the project's timeout limits, final verification was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **262/262**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML also loads independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.182 — DMR2 Jungle Wilderness Encounter Table audit/integration only**. Source-verify the Jungle d100 table across its page boundary, preserve the printed Number Appearing expressions and runtime family ambiguity, and leave Mountain and later terrain tables for subsequent checkpoints.
+
+
+## v0.4.180 — DMR2 Desert Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only DMR2's explicitly headed Desert d100 wilderness table** on printed page 119 (PDF page 120). **Hills and every later terrain table remain outside this pass.**
+
+The source contains **48 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves each printed roll band, monster label, Number Appearing expression, and page provenance. Source landmarks checked against the rendered page include **01-02 Ant, Giant / 4d6**, **09-12 Blink Dog / 1d6+3**, **37-40 Eagle / 1d20**, **59-60 Mystic / 6d8**, **70-73 Orc / 1d6x10**, **91-92 Sis'thik / 3d6x10**, **98 Undead Dragon / 1d3**, and **99-100 Xytar / 1d12**.
+
+### Desert d100 routing is executable but remains source-only
+
+`DMR2_DESERT_WILDERNESS_ENCOUNTERS` stores the full source table. `dmr2DesertEncounterEntry()` performs a pure d100 lookup, `rollDmr2DesertEncounter()` resolves the printed Number Appearing expression through the existing DMR2 dice-expression helper, and `dmr2DesertEncounterIntegrationStatus()` audits both d100 coverage and runtime catalogue resolution.
+
+The table lookup remains intentionally non-mutating. It does not begin combat, create a pending encounter, advance time, consume a wilderness encounter check, or override the active regional encounter procedure. DMR2's table supplies the monster result and Number Appearing only; this checkpoint does not invent encounter-check frequency, encounter distance, surprise, reaction, or a rule that automatically selects Desert context.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter desert [d100]
+```
+
+Without an explicit d100, the command rolls the source table and Number Appearing. With a supplied d100 it inspects that exact source row, including runtime routing status and printed/PDF page provenance.
+
+### Runtime routing preserves source labels and genuine family ambiguity
+
+The Desert table keeps DMR2's printed labels rather than rewriting the source data to workbook names. Small explicit routing aliases are used only when identity is unambiguous: **Dervish → Man, Dervish; Djinni, Greater → Djinni, Greater (Pasha); Druj → Spirit, Druj; Eagle → Eagle, Normal; Efreeti, Greater → Efreeti, Greater (Amir); Firedrake → Drake, Firedrake; Flame Salamander → Salamander, Flame; Nomad → Man, Nomad; Rattlesnake, Giant → Giant Rattler; Revenant → Spirit, Revenant**. Token-order matching also resolves source labels such as **Sand Spider, Giant → Spider, Giant, Sand** and **Undead Dragon → Dragon, Undead** without changing the table row itself.
+
+Five source rows deliberately remain **variant-required** instead of receiving an unsupported automatic choice:
+
+- **Archon** — male or female runtime form;
+- **Desert Ghost** — immature or mature runtime form;
+- **Dragon, Blue** — Small, Large, or Huge;
+- **Dragon, Gold** — Small, Large, or Huge;
+- **Mystic** — the separately represented 1-HD through 16-HD Mystic profiles.
+
+The Desert Ghost row's printed `3d4` Number Appearing is preserved, but the row itself does not explicitly say "Immature" or "Mature"; this checkpoint therefore does not silently convert the label into one lifecycle form. Likewise, the Mystic row gives `6d8` creatures but no represented Mystic level/HD selection rule.
+
+### Existing Kai Besil encounter handling remains intact
+
+As with the preceding DMR2 terrain-table checkpoints, Desert is a source-bounded encounter-table hook only. The status contract records `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false`, preserving the existing module-specific Kai Besil wilderness cadence/table.
+
+### Regression coverage
+
+Four deterministic v0.4.180 tests were added, raising the integrated core suite from **1004 to 1008 tests**. They verify: (1) exact **01-100** coverage across all **48** Desert rows and selected landmark entries/count expressions; (2) explicit alias/direct routing while preserving the five Archon/Desert-Ghost/dragon/Mystic variant families; (3) exact additive/multiplicative Number Appearing handling for **1d6+3**, **1d6x10**, and **3d6x10**; and (4) source-only lookup behavior with no campaign encounter-state mutation or Kai Besil override.
+
+The focused v0.4.180 suite passes **4/4**. The complete integrated suite passes **1008/1008 core tests**. To remain within the project's timeout limits, final verification was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **258/258**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML also loads independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.181 — DMR2 Hills Wilderness Encounter Table audit/integration only**. Source-verify the Hills d100 table on printed page 119, preserve its Number Appearing expressions and runtime family ambiguity, and leave Jungle and later terrain tables for subsequent checkpoints.
+
+
+## v0.4.179 — DMR2 Cold/Arctic Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only DMR2's explicitly headed Cold/Arctic d100 wilderness table**, which begins on printed page 118 (PDF page 119) and continues across the page break onto printed page 119 (PDF page 120). **Desert and every later terrain table remain outside this pass.**
+
+The source contains **30 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves the printed roll bands, monster labels, Number Appearing expressions, and per-row page provenance. Source landmarks checked against the rendered pages include **01-04 Ape, Snow / 2d10**, **06-15 Barbarian / 3d10**, **66-69 Neanderthal / 1d4x10**, **75-78 Orc / 1d6x10**, **79-83 Polar Bear / 1d2**, **85-86 Sasquatch / 11d10**, **95-97 White-Fang / 1d3**, and **98-100 Woolly Rhinoceros / 1d8**. The unusual **11d10** Sasquatch quantity is preserved exactly as printed rather than normalized to a more familiar encounter size.
+
+### Cold/Arctic d100 routing is executable but remains source-only
+
+`DMR2_COLD_ARCTIC_WILDERNESS_ENCOUNTERS` stores the full table. `dmr2ColdArcticEncounterEntry()` performs pure d100 lookup, `rollDmr2ColdArcticEncounter()` resolves the printed Number Appearing expression through the existing DMR2 dice-expression helper, and `dmr2ColdArcticEncounterIntegrationStatus()` audits coverage plus runtime identity resolution. Rows through **75-78** retain printed-page 118/PDF-page 119 provenance; the continuation beginning at **79-83** retains printed-page 119/PDF-page 120 provenance.
+
+The table remains intentionally non-mutating. Looking up or rolling it does not start combat, create a pending encounter, consume travel time, alter the campaign seed when a fixed roll/count roller is supplied, or override the active regional encounter procedure. DMR2's table supplies the monster result and Number Appearing only; this checkpoint does not invent encounter-check frequency, encounter distance, surprise, reaction, or a rule for when the Cold/Arctic table must be selected.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter cold [d100]
+```
+
+`dev dmr2 encounter cold/arctic [d100]` is accepted as the same command. Output includes the exact source row, rolled Number Appearing, runtime routing status, and the source page on which that row appears.
+
+### Runtime routing preserves real source ambiguity
+
+Most Cold/Arctic results resolve directly to an authoritative catalogue profile. Three small naming bridges are explicit: **Dog → Dog, Normal**, **Nomad → Man, Nomad**, and **Qaurik → Qauriks**. The unqualified Dog row is treated as the normal Dog profile because DMR2 separately indexes **Dog**, **Dog, Elven**, and **Dog, War** as distinct creature entries; the table itself says only `Dog`.
+
+Five source rows deliberately remain **variant-required** rather than being silently collapsed:
+
+- **Archon** has separately represented male and female runtime forms; the source result does not select sex.
+- **Dragon, Crystal**, **Dragon, Gold**, and **Dragon, White** each have separately represented Small, Large, and Huge runtime profiles; the table does not specify size.
+- **Ice Wolf** is a single source creature with 3+1, 4+1, and 5+1 HD forms, represented separately by the engine; the table does not specify which HD form appears.
+
+Accordingly, the integration status reports exactly these **five** rows as `variant_required`, with no otherwise-unresolved Cold/Arctic entry.
+
+### Existing Kai Besil encounter handling remains intact
+
+The DMR2 Cold/Arctic table is available as a source-bounded encounter hook only. It does **not** replace Kai Besil's module-specific wilderness cadence/table, and the status contract continues to record `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false`.
+
+### Regression coverage
+
+Four deterministic v0.4.179 tests were added, raising the integrated core suite from **1000 to 1004 tests**. They verify: (1) exact **01-100** coverage across the **30** source rows plus the printed-page break between rolls 78 and 79; (2) direct/alias routing while preserving the five Archon/dragon/Ice-Wolf variant families; (3) exact handling of the source's large/multiplicative Number Appearing expressions, including **11d10**, **1d4x10**, and **1d6x10**; and (4) source-only lookup behavior with no campaign encounter-state mutation or Kai Besil override.
+
+The focused v0.4.179 suite passes **4/4**. The complete integrated suite passes **1004/1004 core tests**. To remain within the project's timeout limits, final validation was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **254/254**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML also loads independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.180 — DMR2 Desert Wilderness Encounter Table audit/integration only**. Source-verify that single d100 table and preserve its Number Appearing expressions and variant ambiguity without pulling Hills or later terrain tables into the same pass.
+
+
+## v0.4.178 — DMR2 Cavern Wilderness Encounter Table audit/integration
+
+This bounded checkpoint integrates **only the second d100 table on DMR2 printed page 118 (PDF page 119)**, treated by this project as the **Cavern** wilderness table. The rendered page does not visibly print a category heading above this second table, so `cavern` is retained as a project/source-order identifier rather than represented as literal printed heading text. **Cold/Arctic and every later terrain table remain outside this pass.**
+
+The source table contains **83 rows covering every d100 result from 01 through 100 exactly once**. The implementation preserves the printed roll bands, monster labels, and Number Appearing expressions verbatim as table data. Source landmarks checked directly against the rendered table include: 01 Ape, White / 2d4; 16-18 Centipede, Giant / 2d4; 29 Dusanu / 1d3+1; 43 Giant Foot-Pad Lizard / 1d3; 81-82 Shrieker / 1d8; and 100 Yellow Mold / 1d8.
+
+### Cavern d100 routing is now executable without becoming a universal encounter procedure
+
+`DMR2_CAVERN_WILDERNESS_ENCOUNTERS` stores the complete source table with DMR2 page provenance. `dmr2CavernEncounterEntry()` performs the bounded d100 lookup. `rollDmr2CavernEncounter()` combines the selected row with the existing source-safe `rollDmr2NumberAppearing()` resolver introduced for the Aerial table, so expressions such as the Cavern table's **1d3+1** are rolled without converting the source entry to a hard-coded average or fixed count.
+
+The lookup is intentionally non-mutating. It does not start combat, alter campaign time, create a pending encounter, consume a wilderness check, or replace the active regional encounter procedure. The table itself does not define encounter-check frequency, surprise, encounter distance, reaction, or a rule for automatically deciding when a cavern-context encounter check occurs.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter cavern [d100]
+```
+
+With no d100 supplied, the command rolls the source table and Number Appearing. With an explicit result it inspects that exact source row and reports its runtime catalogue routing status.
+
+### Source names are preserved while authoritative runtime identities are resolved
+
+The table keeps DMR2's printed creature labels instead of rewriting them to workbook display names. Where the runtime catalogue uses a different but unambiguous identity, routing is resolved without altering the source row. Examples include **Crab Spider, Giant → Spider, Giant, Crab**, **Elf, Shadow → Shadow Elf**, **Giant Foot-Pad Lizard → Lizard, Giant Foot-Pad**, **Pocket Dragon → Dragon, Pocket**, **Rockhome Lizard → Lizard, Rockhome**, and **Stone Giant → Giant, Stone**.
+
+Three explicit aliases are required because simple name/token normalization does not uniquely bridge the DMR2 table wording to the authoritative catalogue profile:
+
+- **Cave Toad → Toad, Rock or Cave**;
+- **Colddrake → Drake, Colddrake**;
+- **Earthdrake → Drake, Earthdrake**.
+
+The generic **Earth Elemental** result deliberately remains **variant-required**. The 600-entry catalogue separately represents Earth Elemental, Device; Earth Elemental, Spell; and Earth Elemental, Staff. DMR2's wilderness row does not select one of those summoning-source variants, so the engine exposes all three candidates and waits for explicit referee/region context rather than inventing one. After the three aliases above, Earth Elemental is the only non-uniquely-resolved Cavern row.
+
+### Existing Kai Besil encounter handling remains intact
+
+As with v0.4.177's Aerial table, the DMR2 Cavern table is a source-bounded hook and does **not** silently replace the Kai Besil module-specific wilderness encounter cadence/table. The integration status records `automaticSelection:false`, `kaiBesilOverride:false`, `encounterFrequencyFromTable:false`, and `contextSelectionFromTable:false` so later work cannot accidentally reinterpret the source table as a complete encounter engine.
+
+### Regression coverage
+
+Four deterministic v0.4.178 tests were added, raising the integrated core suite from **996 to 1000 tests**. They verify: (1) all **100 d100 results** are covered exactly once across the **83** source rows and landmark roll/count pairs remain exact; (2) Cave Toad/Colddrake/Earthdrake aliases resolve while generic Earth Elemental remains a three-candidate family; (3) token-order/source-name differences route to the intended authoritative catalogue profiles without rewriting the stored DMR2 labels; and (4) a fixed Cavern roll correctly resolves **Dusanu 1d3+1** while leaving campaign encounter/combat state untouched.
+
+The focused v0.4.178 suite passes **4/4**. The complete integrated suite passes **1000/1000 core tests**. To remain within the project's timeout limits, final validation was run in four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **250/250**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final HTML was also loaded independently in fresh Chromium with **0 page/runtime or console errors**, and its extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.179 — DMR2 Cold/Arctic Wilderness Encounter Table audit/integration only**. Source-verify the Cold/Arctic d100 table across its page break, preserve its Number Appearing expressions and variant ambiguity, and leave Desert and later terrain tables for subsequent checkpoints.
+
+## v0.4.177 — DMR2 Aerial Wilderness Encounter Table audit/integration
+
+This bounded checkpoint moves out of the creature-description sequence and into **DMR2's Wilderness Encounter Tables**, integrating **only the first d100 table used by this project as the Aerial table**. The remaining DMR2 terrain tables are deliberately left for later checkpoints. The source page's first table is not visibly labeled with a category heading in the rendered page itself, so the engine records the project/category identification separately rather than pretending that the word “Aerial” is printed above the table.
+
+The source table contains **56 rows covering every d100 result from 01 through 100 exactly once**. Each row preserves its printed monster label and printed **Number Appearing** expression. Examples checked directly against the rendered source include Aerial Servant 01-02 / 1d4, Dark Wing 20 / 1d3x10, Faerie 46-47 / 5d8+20, Kal-Maru 61 / 10d6, and Wyvern 99-100 / 1d6.
+
+### The d100 table and Number Appearing are now executable source data
+
+`DMR2_AERIAL_WILDERNESS_ENCOUNTERS` stores the complete printed roll bands, monster labels, Number Appearing expressions, and DMR2 page provenance. `dmr2AerialEncounterEntry()` performs a pure table lookup for a supplied d100 result.
+
+`rollDmr2NumberAppearing()` adds only the expression forms actually required by this table: constants, ordinary dice such as `1d4`/`3d12`, a die without a leading count such as `d100`, additive forms such as `5d8+20`, and multiplicative forms such as `1d3x10`. The count roller preserves the individual dice and multiplication/addition trace instead of reducing the source text to a bare total.
+
+`rollDmr2AerialEncounter()` combines the d100 result, the table row, the rolled Number Appearing, and the runtime-profile resolution status. It is intentionally a **pure source-table roll**: it does not start combat, change campaign time, consume a wilderness encounter check, or mutate a pending encounter.
+
+### Runtime catalogue routing preserves source ambiguity instead of choosing unsupported variants
+
+Most table labels can be routed deterministically into the authoritative 600-entry runtime catalogue. Small explicit alias bridges were added only where the table/source naming differs from the workbook identity without changing the creature: Aerial Servant → Aerial Servant (Haoou), Airdrake → Drake, Airdrake, Bat → Bat, Normal, Blackball → Blackball (Deadly Sphere), Djinni, Greater → Djinni, Greater (Pasha), Eagle → Eagle, Normal, Kal-Maru → Kal-Muru, Nightwing → Nightshade, Nightwing, and Raven/Crow, Giant → Raven & Crow, Large.
+
+Two kinds of table result deliberately remain **variant-required** rather than being silently collapsed:
+
+- **Air Elemental** can map to the separately represented Device, Spell, or Staff Air Elemental profiles. The table does not specify which source/size form to use.
+- Each generic chromatic/gold dragon row (**Black, Blue, Gold, Green, Red, White**) can map to the separately represented Small, Large, or Huge profiles. The table does not specify a size.
+
+The engine exposes those candidate profiles and waits for explicit referee/region context. It does not randomly choose a size or summoning-source variant that DMR2 did not select.
+
+### Existing wilderness procedures are not silently replaced
+
+The existing Kai Besil wilderness procedure remains module-specific: its hourly/secure-camp check cadence and 1d8 encounter table continue to govern that campaign region. The new DMR2 Aerial table is therefore available as a **source-bounded encounter-table hook**, not as an unconditional replacement for every wilderness check.
+
+The DMR2 table page supplies a d100 monster result and Number Appearing, but this checkpoint does not treat it as a complete universal encounter procedure. It does not invent or infer:
+
+- a new encounter-check frequency;
+- a rule for when ordinary ground travel should invoke the Aerial table;
+- surprise rolls;
+- encounter distance;
+- reaction behavior; or
+- an automatic choice among the unresolved Air Elemental/dragon variants.
+
+Those belong to the governing region/travel/encounter context or to later source integration.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev dmr2 encounter aerial [d100]
+```
+
+Without a supplied d100 the command rolls the table and Number Appearing. With an explicit value it inspects that exact row. The output reports the source monster/count result, whether the runtime profile resolves uniquely, and any variant candidates that require referee context.
+
+### Regression coverage
+
+Four deterministic v0.4.177 tests were added. They verify: (1) all **100 d100 results** are covered exactly once across the 56 source rows and selected landmark rows/count expressions remain exact; (2) `d100`, `5d8+20`, and `1d3x10` Number Appearing expressions resolve correctly; (3) the unambiguous naming bridges resolve to the intended authoritative catalogue profiles while Air Elemental and generic dragons remain explicit multi-profile families; and (4) a source-table roll does not mutate combat/pending-encounter state or silently replace the Kai Besil selector.
+
+The focused v0.4.177 suite passes **4/4**. The complete integrated build now passes **996/996 core tests**. To stay within the project's timeout limits, the suite was also validated in four fresh Chromium slices: **250/250**, **250/250**, **250/250**, and **246/246**. Every slice preserved state isolation and reported **0 page/runtime errors and 0 console errors**. A separate fresh Chromium run of the exact final HTML passed **996/996** with the same zero-error result. The extracted inline JavaScript passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.178 — DMR2 Cavern Wilderness Encounter Table audit/integration only**. Source-verify the second d100 table on printed page 118 and its continuation, preserve its Number Appearing expressions and any family/variant ambiguity, and do not pull Cold/Arctic or later terrain tables into the same pass.
+
+
+
+## v0.4.176 — Yowler flight / baying / damage-gate closure
+
+This bounded checkpoint implements the **DMR2 Yowler only**, using the final creature entry before DMR2 transitions into its Wilderness Encounter Tables. No encounter-table transcription or later cross-system work is included in this pass.
+
+DMR2 gives the Yowler AC 0, 3+3** HD, 150' (30') ground movement, 270' (90') flying movement, one 2d4 bite, Magic-User 11 saves, Morale 10, Intelligence 4, Chaotic alignment, XP 100, and Cavern/Mountain/Open/Ruins/Woods terrain. The description states that its flight is magical. Its pack baying can be heard up to one mile away; characters within 90 feet make a Save vs. Spells each round or flee in panic until a save succeeds. Packs larger than five impose -1 per additional Yowler, to a maximum -10. A successful save makes that character immune to that particular pack while the character remains in its immediate vicinity. Yowlers can only be struck by silvered or magical weapons; a magical weapon inflicts only its magical plus, while a silvered weapon inflicts 1 point.
+
+### Magical flight and ordinary bite remain in the common combat model
+
+The canonical Yowler profile now explicitly preserves **30 ft/round ground movement** and **90 ft/round magical flight**. Because the common 3D positional layer already recognizes a monster's flying movement mode as elevation-capable, no separate invented flight toggle or aerial attack restriction was added. The Yowler retains its ordinary **2d4 bite** through the common monster attack procedure.
+
+The source's nocturnal hunting, gloomy-cavern lairs, warm-blooded prey, and preference for demihuman meat remain descriptive behavior. This checkpoint does not invent mandatory AI target priorities, daylight penalties, or a requirement that a Yowler can only fight at night.
+
+### Pack baying is now a round-start fear procedure
+
+At the start of each represented combat round, a living character whose center is within **90 feet** of an active Yowler in the represented pack and who can hear the baying makes a **Save vs. Spells**. The 90-foot measurement uses actual 3D center-to-center distance rather than Influence-Sphere separation, because the printed rule is an auditory range from the creature rather than a melee-contact distance.
+
+The current represented pack size determines the save modifier: no penalty for one through five active Yowlers, then **-1 for each active Yowler beyond five**, capped at **-10**. One save is resolved per affected character per round rather than one save per individual Yowler.
+
+A failed save creates a persistent panic state. It enters the engine's existing hard action-lock / forced-flight layer, so the character uses the next movement opportunity to move away from the represented Yowler pack rather than attacking or casting normally. The source says the victim flees **until the saving throw is successful**, so a character who has already failed continues making the once-per-round save even after fleeing beyond the initial 90-foot effect radius. On the first successful save the panic state ends immediately.
+
+A successful save also records immunity to that **particular represented pack**. DMR2 uses the phrase "as long as they remain within its immediate vicinity" but supplies no distance or time measurement for that phrase. The engine therefore does not fabricate one. Pack immunity is keyed to the represented pack and is bounded to the current combat encounter; it is cleared when that represented encounter ends. The audit records this explicitly as the engine's bounded representation of an otherwise unquantified source phrase.
+
+The baying's **one-mile audible range** is retained in the canonical/source metadata and developer status. It does not itself force a save outside 90 feet; the source separately states that the fear save applies only within 90 feet.
+
+### Silver/magical weapon damage gate is executable
+
+Yowler weapon defense now occurs in the common monster-damage path:
+
+- an ordinary nonsilver weapon cannot damage a Yowler;
+- a nonmagical silvered weapon inflicts exactly **1 point** on a successful hit;
+- a magical weapon inflicts damage equal to its represented **magical plus only**, ignoring its ordinary damage dice, Strength bonus, and other ordinary weapon damage;
+- a represented magical weapon with no positive magical plus and no silver property inflicts 0 through this rule rather than receiving invented base damage;
+- the rule is a weapon restriction, not blanket magic immunity, so ordinary spell damage is not discarded merely because it is magical.
+
+This uses the silver-material flag already preserved in the common weapon damage context by the Wyrd checkpoint. No unrelated lycanthrope, undead, or enchanted-monster defense has been imported.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev yowler status [name]
+```
+
+The report exposes ground/flying movement, magical flight, audible/effect baying ranges, current active pack size and save modifier, failure/success behavior, the explicit unquantified-immediate-vicinity boundary, and the silver/magical weapon damage rule.
+
+### Save/load and encounter lifecycle
+
+The Yowler panic/immunity record is preserved by party-member normalization, including pack identity, source Yowler IDs/names, the current pack penalty, and recent save history. This keeps a mid-combat save/load from silently discarding the fear state or granting an extra save in the same represented round. When combat ends, the temporary particular-pack/immediate-vicinity record is cleared with the other encounter-local fear states.
+
+### Regression coverage
+
+Four deterministic v0.4.176 tests were added. They cover profile/normalization and magical flight; the 90-foot baying boundary plus the seven-Yowler **-2** pack penalty; failed-save forced flight followed by repeat saving outside 90 feet and successful pack immunity; and the ordinary/silver/magical weapon damage gate while confirming that ordinary spell damage is not blocked.
+
+The focused v0.4.176 suite passes **4/4**. The complete integrated harness now passes **992/992 core tests**. To stay within the project's timeout limits, final validation was again divided into four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **242/242**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+The Yowler is the last creature description before DMR2's **Wilderness Encounter Tables** begin. Proceed with **v0.4.177 — DMR2 Aerial Wilderness Encounter Table audit/integration only**: source-verify that single d100 table, compare it against the existing wilderness encounter selector, and add only the Aerial table/number-appearing routing that can be represented without inventing missing campaign context. Leave the remaining DMR2 terrain tables for later checkpoints.
+
+
+## v0.4.175 — Xytar breath / combat-choice closure
+
+This bounded checkpoint implements the **DMR2 Xytar only**, using the Xytar entry on DMR2 PDF pages 117–118 (printed creature page 116), with AC9 used only as a secondary stat cross-check. Yowler and later catalogue creatures remain outside this pass.
+
+DMR2 gives the Xytar AC 3, 5+1* HD, 120' (40') movement, one bite or one breath attack, 1d10 or 3d6 damage, Fighter 2 saves, Morale 8, Intelligence 4, Neutral alignment, XP 400, and Desert terrain. The combat paragraph defines a fire cone **30 feet long and 10 feet wide at its widest point**, requires the Xytar to **breathe on its first attack**, then close to use its jaws, and gives a **1–2 on 1d6** chance to breathe instead of biting once it is in melee.
+
+### The opening breath is now mandatory and uses represented cone geometry
+
+A represented Xytar begins combat with an opening-breath state. Its first attack resolves as the printed **3d6 fire breath** rather than a bite. The attack uses the engine's existing tapered-cone geometry at **30 feet long × 10 feet wide at the far end**, so every represented creature actually inside that cone receives the same rolled 3d6 breath packet. Creatures outside the cone do not take damage merely because they are near the selected target.
+
+If the selected target is beyond 30 feet, the engine does not silently substitute a bite or consume the opening-breath requirement. The attack remains unresolved until a valid breath target/geometry exists. This preserves the source's mandatory first-breath instruction instead of inventing an alternate opening tactic.
+
+The damage context is explicitly marked **breath / fire / cone**. That allows already-implemented rules which expressly protect against breath weapons to recognize the attack. It does not make the Xytar a dragon or import unrelated dragon abilities.
+
+### No unprinted Xytar saving throw has been invented
+
+Neither the DMR2 Xytar entry nor its AC9 predecessor states that the Xytar's 3d6 breath permits a saving throw or that a successful save halves the damage. The Rules Cyclopedia does state a save-for-half procedure in its **dragon** breath section, but that text is specifically describing dragon breath and the Xytar entry does not refer the reader to that procedure.
+
+Accordingly, this implementation does **not** add an ordinary Save vs. Breath Attacks to the Xytar breath. The engine still honors defenses whose own rules explicitly apply to any breath weapon (for example an already-represented breath-weapon immunity/resistance), because the Xytar attack itself is expressly described as a breath weapon. This separates a defender's broad breath protection from an unsupported new saving throw granted by the Xytar entry.
+
+### Printed close-then-choose behavior is executable
+
+After the opening breath, a Xytar outside melee does not repeatedly fire from range. Its combat procedure records the source-defined next behavior as **close to use its jaws**. Actual movement remains in the normal positional movement system; this special attack routine does not teleport the Xytar or invent extra movement.
+
+Once the Xytar is in melee, the engine rolls **1d6 each attack opportunity**. On **1–2** it breathes instead of biting. On **3–6** it makes its ordinary **1d10 bite** through the common monster-attack path, retaining the normal attack-roll, Armor Class, and other shared combat rules. The profile's preferred melee distance is now source-bounded to **close**, matching the creature's printed instruction to close and use its jaws.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev xytar status [name]
+```
+
+The report exposes whether the mandatory opener is still pending, the 30-by-10 cone and 3d6 fire packet, the explicit no-printed-save boundary, the 1d10 bite, the melee 1–2-on-d6 breath choice, and the most recent Xytar combat decision.
+
+### Regression coverage
+
+Four deterministic v0.4.175 tests were added. They cover profile/normalization and close-range preference; mandatory opening breath with shared 3d6 cone geometry and no invented save; the required post-opener close behavior before another ranged choice; and the melee **1–2 breath / 3–6 bite** decision split.
+
+The focused v0.4.175 suite passes **4/4**. The complete integrated harness now passes **988/988 core tests**. To remain within the project's timeout limits, final validation was run as four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **238/238**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The exact final inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.176 — Yowler flight / baying / damage-gate closure only**. Source-verify the Yowler entry before implementation; keep any following creature or broader audit work for a separate checkpoint.
+
+
+## v0.4.174 — Wyrd closure
+
+This bounded checkpoint implements the **Normal Wyrd and Greater Wyrd only**, using the DMR2 Wyrd entry on PDF pages 116–117. Xytar and later catalogue entries remain outside this pass.
+
+DMR2 gives the Normal Wyrd AC 4, 4* HD, 120' (40') movement, two glowing-sphere attacks for 1d6/1d6, Elf 4 saves, Morale 12, Intelligence 6, Chaotic alignment, and XP 125. The Greater Wyrd is AC 0, 8** HD, 120' (40') ground movement plus 240' (80') flight, two spheres plus its special appearance effect, 1d10/1d10 plus paralysis, Elf 8 saves, Morale 12, Intelligence 9, Chaotic alignment, and XP 2,300.
+
+### Normal Wyrd sphere combat is now executable
+
+A Normal Wyrd now makes exactly **two sphere attacks per round**. Each uses a normal attack roll. The spheres can be used as melee attacks or as missiles; the printed missile ranges are **30/60/90 feet**, using the engine's normal short/medium/long missile modifiers. On a hit a sphere explodes for **1d6** damage against most targets or **1d6+3 against an Elf**. The profile records that a replacement sphere appears instantly and that no more than two attacks may be made in the round.
+
+DMR2 explicitly permits a Normal Wyrd to use both spheres in melee, both as missiles, or one of each. That mixed-use permission is retained in the source trait record. The common monster attack order is intentionally single-target and therefore chooses one represented mode for the selected target rather than fabricating a second target; a higher-level referee/AI order may use the stored mixed-use permission when it explicitly selects separate attack assignments.
+
+### Greater Wyrd spheres, paralysis, and Elf exception are executable
+
+A Greater Wyrd creates two green spheres each round and can use them in melee or as missiles. Each successful sphere hit inflicts **1d10** damage. A non-Elf target then makes **Save vs. Paralysis**; failure causes paralysis for **2d4 turns** through the common monster-paralysis subsystem. Elves instead take **1d10+5** damage and are explicitly immune to the sphere paralysis.
+
+The Greater paragraph says its spheres may be used as missiles but does not repeat a separate missile range. The implementation reuses the Normal Wyrd's printed **30/60/90** sphere-missile range as the shared Wyrd sphere procedure and marks that range as inherited rather than pretending DMR2 prints a second Greater-only range.
+
+The existing Greater Wyrd viewing procedure remains intact: a viewer who fails Save vs. Spells suffers **-3 to attack and damage rolls**, while a successful hit against the Greater Wyrd still inflicts at least 1 point. The new Wyrd sphere attack path was added without replacing that earlier source-verified appearance effect.
+
+### Wyrd defenses and turning categories now use the common engine paths
+
+Both Wyrd forms can only be hit by **magical or silver weapons**. The weapon-damage context now preserves a weapon's silver material flag, and the Wyrd damage gate rejects ordinary nonmagical, nonsilver weapons while allowing either qualifying category. This gate applies to weapon attacks rather than silently making the Wyrd immune to unrelated spell damage.
+
+Both forms are explicitly immune to **sleep, charm, and hold spells**. The common spell-immunity path now recognizes those exact Wyrd immunities without expanding them into a blanket immunity to all magic or all mind-affecting effects.
+
+Turning now follows the printed categories instead of allowing the generic undead fallback to classify Wyrds as Special: **Normal Wyrds turn as Wraiths; Greater Wyrds turn as Phantoms**. This changes the turning-table rank only; it does not import unrelated Phantom special abilities into the Greater Wyrd.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev wyrd status [name]
+```
+
+The report identifies the variant, sphere count/damage/range, Elf damage bonus, Greater paralysis/vision rules, magical-or-silver weapon requirement, sleep/charm/hold immunity, and turning category.
+
+### Regression coverage
+
+Four deterministic v0.4.174 tests were added. They cover both profiles and normalization; Normal Wyrd two-sphere missile attacks plus the Elf damage bonus and 90-foot boundary; Greater Wyrd 2d4-turn paralysis plus the Elf exception; and magical/silver weapon gating with the three printed spell immunities.
+
+The complete integrated harness now passes **984/984 core tests**. To stay within the project's timeout limits, final validation was run as four fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **234/234**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. The extracted inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.175 — Xytar breath / combat-choice closure only**. Source-verify the Xytar entry before implementation and keep Yowler for a later checkpoint.
+
+
+
+## v0.4.173 — Wychlamp anti-magic / reflection / discharge closure
+
+This bounded checkpoint implements the **DMR2 Wychlamp only**, using the Wychlamp entry on PDF pages 115–116. Wyrd and later catalogue entries remain outside this pass. The runtime profile preserves the printed **AC 2**, **3+3 HD**, **210' (70') levitating movement**, one **1d4+1 discharge**, Magic-User 3 saves, Morale 12, Intelligence 0, and Neutral alignment.
+
+### The 20-foot field now resolves the three printed magic-distortion cases
+
+A represented Wychlamp projects the source-defined **20-foot magic-distortion field**. Spell resolution now performs a Wychlamp preflight before the normal spell effect is applied.
+
+Magic **launched from within 20 feet** uses the printed d6 table: **1–2** directs the effect back upon the caster for full effect, **3–4** changes the target and/or area at random, **5** halves represented damage or finite duration, and **6** leaves the effect unchanged. Where DMR2 calls for a random target/direction but supplies no random-selection table, the engine consumes the launched effect and records a referee-resolution event rather than inventing a direction or victim. Where a requested half/double result is mechanically impossible for a non-damaging area effect, the source's own instruction to treat impossible results as complete nullification is used.
+
+Aimed magic crossing a Wychlamp field has the printed **77%** chance to be deflected in a random direction. The same no-invented-direction boundary applies. Area-effect magic intersecting the field uses the separate d6 table: **1–2 doubles area and halves damage; 3–4 halves area and doubles damage; 5 nullifies; 6 is unaffected**.
+
+For represented circular spell areas such as Fire Ball, “double/half area” is implemented geometrically by multiplying radius by the square root of the area multiplier; this changes actual two-dimensional area by exactly x2 or x0.5 rather than incorrectly doubling/halving the radius. For represented linear rectangular Lightning Bolt geometry, width is multiplied while the printed length remains unchanged. These are geometry implementations of the printed area instruction, not new Wychlamp powers.
+
+### Direct magic is reflected 100% onto the caster or wielder
+
+If magic is specifically directed at a Wychlamp and reaches it, the Wychlamp is not affected and the effect is reflected **100% back upon the caster or wielder**. The common spell path now carries enough source information for damage reflection rather than simply discarding magical damage.
+
+This includes spell-backed magical-item attacks. Artifact spells still use their artifact caster level for the reflected effect, but the **actual artifact wielder** is used as the launch position and reflection recipient instead of the engine's virtual artifact-caster object. Ring-of-Spell-Storing casts already originate from the actual ring user and consequently enter the same spell preflight normally.
+
+A generic Wychlamp magic-item preflight helper now encodes the same printed origin, aimed-deflection, area, and direct-reflection outcomes for bespoke magical-item attack callers. When an item result requires a random direction/target that DMR2 never defines, the helper returns the explicit referee-resolution boundary rather than fabricating one. Existing bespoke item mechanics that do not route through the common spell engine must call that helper when their individual item procedure is implemented; this checkpoint does not rewrite every unrelated artifact/item subsystem merely to invent effect-specific scaling rules.
+
+### Physical defense, contact discharge, and movement boundary are executable
+
+A Wychlamp begins at **AC 2**. After the first physical hit that actually inflicts hit-point damage, it begins bobbing and weaving and its effective Armor Class improves to **0**. That state survives combat normalization.
+
+The Wychlamp's own contact attack first establishes physical contact. On contact it discharges only **40%** of the time. A discharge inflicts **1d4+1 electrical damage** and marks the victim to move at **half speed during the following round only**. The slow state is normalized with the character and is automatically inactive before and after that one following round.
+
+The physical trait record also enforces the source's size boundary through a dedicated passage check: a Wychlamp cannot pass through a gap less than **6 inches wide and high**. It is explicitly a valid nettable physical creature. No unsupported squeeze percentage or net escape modifier has been added.
+
+### Elemental defenses, electrical healing, and Energy Drain destruction are in the common damage path
+
+Fire, heat, and cold damage are reduced to zero. Lightning/electrical damage instead **restores hit points equal to the represented damage**, capped at the Wychlamp's normal maximum.
+
+An **undead Energy Drain attack** destroys the Wychlamp immediately. The implementation deliberately distinguishes that source wording from a spell or spell-like effect merely carrying an energy-drain label: DMR2 expressly excludes “similar spells” from this destruction route because such magic goes through the Wychlamp distortion rules instead.
+
+### Attraction to magic is recorded without invented movement AI
+
+The source says Wychlamps are attracted to **any use of magic within 70 feet**. Spell and magic-item preflight now records that attraction when the source lies within 70 feet. DMR2 does not give an approach rate, target priority, compulsory movement amount, or pathing procedure, so no autonomous movement is invented. The event is exposed as a referee-owned behavioral cue while ordinary levitating movement remains the printed **70 feet per encounter round**.
+
+Developer/referee inspection added/extended in this checkpoint:
+
+```text
+ dev wychlamp status [name]
+```
+
+The report shows the 70-foot magic attraction, 20-foot distortion field, direct reflection rule, current AC/first-hit state, contact-discharge rule, six-inch gap/net boundary, elemental defenses, and the most recent Wychlamp magic event.
+
+### Regression coverage
+
+Seven deterministic v0.4.173 tests were added. They cover profile/normalization and AC 2→0 behavior; the 40% contact discharge and following-round-only half movement; fire/heat/cold immunity, electrical healing, and undead Energy Drain destruction; direct reflection and the launch-origin table; all three meaningful Fire Ball area-table branches; 70-foot attraction plus magic-item/gap boundaries; and spell-backed artifact reflection onto the actual wielder rather than the virtual caster.
+
+The complete integrated harness now passes **980/980 core tests**. To remain within the project's timeout limits, the final validation was repeated as four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **230/230**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. Extracted inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.174 — Wyrd closure only**. Source-verify the Normal and Greater Wyrd entry before implementation, then keep the following catalogue creature for a separate checkpoint.
+
+
+## v0.4.172 — Wychglow closure
+
+This bounded checkpoint implements the **DMR2 Wychglow only**. The source entry defines its night/dark-cavern appearance, attraction to metal, electrochemical feeding, automatic electrical bolt, armor-dependent saving-throw results, and three defensive rules. Wychlamp and later catalogue entries remain outside this pass.
+
+### The 30-foot electrical bolt is an automatic-hit attack rather than a normal missile roll
+
+A represented Wychglow now carries the source attack packet as an explicit `wychglow_bolt` special attack. Once per round it may fire a **2-foot-wide, 30-foot-long** electrical bolt at a selected creature within represented range. The bolt **hits automatically**, so no attack roll is made, and rolls **1d10 damage** before the target's saving throw is resolved.
+
+The combat range check uses actual center-to-center positional distance. Targets beyond 30 feet are rejected. The printed two-foot width is retained in the trait data, but the engine does not invent collateral targets along the line: DMR2 describes the bolt as being fired at a creature/target and supplies no additional multi-target interception procedure.
+
+The target makes **Save vs. Magic Wands**. The armor-dependent successful-save results are executable:
+
+- **metal armor:** half damage on a successful save;
+- **leather armor or normal clothing:** **+5** to the saving throw and no damage on success; and
+- **other represented armor:** the entry's base successful-save wording is used, so a successful save negates the bolt damage unless a more specific source rule says otherwise.
+
+The special attack is integrated into the ordinary monster-attack pipeline, so the Wychglow does not also make an unsupported conventional weapon attack in the same action.
+
+### Electrical, magical-fire, and weapon defenses are enforced in the common damage path
+
+The Wychglow is now **immune to electrical attacks**. Damage packets represented as lightning/electrical are reduced to zero before hit points are changed.
+
+Weapon and unarmed weapon-like packets require an enchantment of **+1 or better** to harm the Wychglow. A normal weapon is rejected; a represented +1 or better weapon proceeds normally. This does not invent a ruling for unrelated non-weapon physical special effects that the source does not discuss.
+
+For **magical fire**, DMR2 says that the Wychglow takes minimum damage. Where the incoming spell/effect preserves the number of damage dice, the engine therefore uses the minimum possible represented roll — one point per die — instead of the rolled total. If the fire attack has already succeeded on a save-for-half procedure, the represented minimum is halved through that same result. Ordinary nonmagical fire is not reduced by this rule.
+
+An unusual magical-fire packet that does not preserve its dice count cannot be converted to a trustworthy source minimum. In that case the engine records the unresolved boundary and leaves the packet unchanged rather than inventing a die decomposition.
+
+### Appearance and metal behavior are retained without invented probabilities
+
+The canonical/runtime trait records now preserve that Wychglows appear **only at night or in dark underground caverns**. A dedicated eligibility/status helper can distinguish night, dark underground, and daylight-surface conditions. The current project does not have one universal all-creature random-encounter selector into which this restriction could be safely injected, so this checkpoint does not fabricate a new encounter table merely to enforce the trait globally.
+
+The source-defined metal behavior is also preserved: Wychglows are attracted to metallic objects, **larger metal objects attract them more strongly**, and plate armor, metal shields, and metal swords are natural focuses. Their feeding drains electrochemical energy from metal over **hours or days** and ultimately reduces it to **fine chalky dust**.
+
+DMR2 does not give numerical attraction weights, a target-selection probability, or an exact feeding duration/rate. Those remain referee-owned instead of being silently converted into AI tactics or a made-up countdown.
+
+Developer/referee inspection added in this checkpoint:
+
+```text
+ dev wychglow status [name]
+```
+
+The report exposes the bolt geometry/save split, defenses, current appearance eligibility, and the explicit source boundaries around metal attraction and feeding.
+
+### Focused regression coverage
+
+Four deterministic v0.4.172 tests were added. They cover canonical/runtime profile propagation and normalization; night/dark-underground appearance eligibility; the automatic 30-foot bolt with metal and leather/clothing save behavior; and electrical immunity, +1 weapon gating, magical-fire minimum damage, and ordinary-fire behavior.
+
+The focused v0.4.172 suite passes **4/4**, with harness state isolation preserved and **0 page/runtime errors and 0 console errors**.
+
+To remain within the project's timeout limits, the complete integrated suite was again run as four independent fresh-Chromium slices using the full UI shell: **250/250**, **250/250**, **250/250**, and **223/223**. Combined validation is **973/973 core tests passed**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. Extracted inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.173 — Wychlamp anti-magic / reflection / discharge closure only**. Source-verify its 20-foot magic-distortion rules, reflection of magic directed at the Wychlamp, physical-defense/AC change, contact discharge, elemental immunities/electrical healing, and undead-energy-drain destruction before implementation. Keep Wyrd and later creatures for separate checkpoints.
+
+
+## v0.4.171 — Wood Imp leadership / shaman / lair closure
+
+This bounded checkpoint completes the **remaining DMR2 Wood Imp tribe structure only**. The immediate combat procedure from v0.4.170 remains intact. The primary DMR2 entry supplies the leadership ratios, leader/chief Hit Dice, Morale change, shaman count and level range, and lair/prisoner structure. The Rules Cyclopedia Monster Spellcasters section is used only as the compatible secondary rule for what a monster **shaman** may cast and use. Wychglow and later creature entries remain outside this pass.
+
+### Full tribe construction is explicit rather than silently added to every Wood Imp encounter
+
+Ordinary Wood Imp encounters continue to use the normal monster-count path. A distinct full-tribe path can now be requested when the encounter actually represents a tribe. Given an explicit ordinary-Wood-Imp count, it adds:
+
+- **one 1-1 HD leader for every 10 ordinary Wood Imps**;
+- **one 1 HD chief**; and
+- **1d4 shamans**.
+
+The leader and chief Hit Dice are applied to those individual instances, including d8-based monster hit-point rolls for 1-1 HD and 1 HD. No extra AC, attacks, saves, XP awards, weapons, or special powers are invented for the leadership variants because DMR2 does not provide such overrides.
+
+Each generated tribe has an encounter-scoped registry linking ordinary members, leaders, the chief, and shamans. The registry and individual tribe-role state survive combat normalization/save-style restoration.
+
+### Tribal Morale now follows the printed leadership state
+
+The canonical Wood Imp profile's `7 or 9` Morale is now resolved for a represented full tribe. While at least one represented leader or the chief remains **unslain**, tribe members use **Morale 9**. Once every represented leader and the chief has been slain, the tribe's Morale becomes **7**.
+
+This changes the Morale score used when a normal engine Morale check occurs. It does **not** create a new automatic Morale-check trigger at the instant the final leader dies, because the DMR2 passage changes the score but does not separately specify a new check timing. Fleeing leadership is not treated as "slain."
+
+Ordinary Wood Imp encounters that were not explicitly constructed as a full tribe retain their existing profile Morale instead of receiving an invented off-screen chief or leader state.
+
+### Shamans retain the source's unspecified level distribution
+
+DMR2 states that a tribe has **1d4 shamans, clerics of 1st-4th level**, but it does not provide a die roll or probability distribution for assigning those individual levels. The engine therefore rolls only the printed **1d4 shaman count**. Each shaman's actual Cleric level remains unset until the referee explicitly assigns a value from 1 through 4.
+
+Once assigned, the shaman uses the normal BECMI Cleric slot progression for that level but the **Rules Cyclopedia restricted shaman spell list**, not the unrestricted Cleric list. For the Wood Imp's possible 1st-4th Cleric levels, the relevant list is:
+
+```text
+1st-level shaman spells:
+Cure Light Wounds*, Light*, Detect Magic, Protection from Evil
+
+2nd-level shaman spells:
+Bless, Snake Charm, Hold Person, Speak with Animals
+```
+
+An asterisked reversible prayer remains reversible at casting time through the common Cleric reversal procedure. The engine does not randomly select prepared spells because neither DMR2 nor the RC shaman rule supplies an encounter-specific preparation. Preparation therefore remains referee-declared within the normal slots.
+
+The secondary shaman boundary is also retained as metadata: shamans **cannot read scrolls**, but **can use clerical magic items**. This pass does not invent an item loadout for them.
+
+### Shaman spells use the existing BECMI spell engine
+
+A referee-declared Wood Imp shaman preparation is validated against both the restricted RC list and the assigned Cleric level's normal slots. A successful cast resolves through `resolveBecmiSpellEffect` and consumes the ready prepared spell through the common prepared-spell mechanism.
+
+To support a monster shaman healing another represented creature, the common Cure Light Wounds handler now accepts an **explicit represented monster target only when a concrete `targetId` is supplied**. This avoids changing no-target player behavior: an ordinary Cure Light Wounds cast without an explicit monster target still follows the existing PC/self targeting path.
+
+### Lair population is recorded without fabricating prisoner identities
+
+When the encounter is explicitly declared to be a Wood Imp lair, the tribe record now stores the source-defined setting of **old and rotted trees**, the presence of **fresh-food supplies**, and a **2d6 prisoner count**. Prisoner categories are retained from the text — evil humanoids, humans, and small forest creatures — but individual identities, statistics, exact species, equipment, and disposition are not generated unless supplied by the referee or another source.
+
+The lair record survives combat normalization. A field tribe does not automatically receive a lair or prisoner roll.
+
+Developer/referee controls added in this checkpoint:
+
+```text
+ dev wood imp tribe <ordinary count> | <field|lair>
+ dev wood imp tribe status
+ dev wood imp shaman level <name> | <1-4>
+ dev wood imp shaman prepare <name> | <spell>; <spell>; ...
+ dev wood imp shaman cast <name> | <spell> [| <target>]
+```
+
+The existing `dev wood imp status [name]` report now also shows tribe role, represented tribal Morale, and shaman level/preparation state where applicable.
+
+### Focused regression coverage
+
+Five deterministic v0.4.171 tests were added. They cover full-tribe composition and leader/chief Hit Dice without invented shaman levels; Morale 9-to-7 leadership behavior; explicit 1st-4th shaman level assignment plus restricted RC spell preparation; common-engine spell resolution and slot consumption; and the 2d6 anonymous lair-prisoner record plus normalization persistence.
+
+The focused v0.4.171 suite passes **5/5**, with harness state isolation preserved and **0 page/runtime errors and 0 console errors**.
+
+To stay inside the project's timeout limits, the complete integrated suite was again run as four independent fresh-Chromium slices using the full UI shell: **250/250**, **250/250**, **250/250**, and **219/219**. Combined validation is **969/969 core tests passed**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. Extracted inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.172 — Wychglow closure only**. Source-verify the Wychglow entry before implementation and keep later catalogue creatures for separate checkpoints.
+
+
+## v0.4.170 — Wood Imp trap / mounted-ambush / venom-arrow closure
+
+This bounded checkpoint implements the **DMR2 Wood Imp immediate combat procedure only**, with the Huge Wood Spider included only where required to execute the printed mount and venom rules. DMR2 pages 113-114 were rendered and visually checked for this pass. Leadership, shamans, lair population, and later creature entries remain deliberately separate.
+
+### Woodland surprise and short-bow procedure are explicit
+
+The Wood Imp runtime now carries the source-defined **1-3 on 1d6** surprise chance. Pure Wood Imp campaign encounters reuse the encounter's existing party-surprise d6 rather than rolling a second hidden die. Mixed encounters do not silently extend this special surprise chance to unrelated creatures.
+
+The preferred ranged weapon is represented as the printed short bow. It deals **1d4** damage, can be fired every round, and uses the existing BECMI short-bow range bands **50/100/150 feet**. The source statement that Wood Imps can fire while upside down is retained as creature capability rather than converted into an invented attack bonus or penalty.
+
+A Wood Imp that is already engaged is **forced into melee** rather than continuing to fire its bow. Monster-order selection now switches an engaged Wood Imp to melee, and the dedicated missile resolver rejects an engaged bow shot. This closes the printed "if forced to" melee boundary without changing ordinary missile-monster behavior.
+
+### Huge Wood Spider mount linkage is executable but bounded
+
+A represented Wood Imp can be linked to a **living Huge Wood Spider** mount. The mount and rider share the same represented combat position while linked. A mounted spider does not receive an additional independent monster order; its bite is resolved as part of the Wood Imp's mounted forced-melee action. This prevents the same spider from receiving an unsupported second attack merely because it is also present in the combat roster.
+
+The supporting Huge Wood Spider profile preserves the source facts needed by this procedure: **120' (40') movement**, **1d6 bite + poison**, **1-4 on 1d6 surprise**, tree/underside clinging, and the same poison packet used for extracted venom. The spider is not widened into unrelated spider mechanics.
+
+### Venom preparation consumes a round and expires on the printed boundary
+
+A Wood Imp can spend one complete round coating one arrow with venom secreted by its linked living Huge Wood Spider. Preparation is rejected if no living linked spider is represented. The prepared arrow:
+
+- cannot be fired in the same round it is coated;
+- must be fired in the **following round**; and
+- loses its poison if that firing window is missed.
+
+The engine does not allow venom extraction from a dead spider. The source restriction that only Wood Imps can control Huge Wood Spiders well enough to extract the venom is retained by exposing this preparation procedure only through the Wood Imp path.
+
+### Poison save, bonus damage, and sluggishness use the printed packet
+
+A successful envenomed-arrow hit, or a Huge Wood Spider bite, uses **Save vs. Poison at +2**. On a successful save, both the venom's bonus damage and sluggishness are negated. On a failed save, the victim takes **an additional 1d8 damage** and becomes sluggish for **2d4+2 rounds**.
+
+Sluggishness is executable rather than descriptive:
+
+- initiative receives **-2** for the affected PC side;
+- encounter movement is reduced to **half speed**; and
+- repeated applications do **not stack** the penalties.
+
+The active state survives member normalization/save-load. The common `Neutralize Poison` bridge clears represented Huge Wood Spider sluggishness without restoring hit points already lost to either the original weapon/bite or venom damage.
+
+### Mounted drop/melee and concealed traps remain source-bounded
+
+When forced into melee, a mounted Wood Imp uses the printed **small two-handed sword for 1d6**, while its Huge Wood Spider mount makes its **1d6 bite + poison** attack. The "drop from the trees" description is retained in the action narration but does not create an unprinted charge, surprise, falling, or damage bonus.
+
+The engine can record the two source-named Wood Imp trap categories — **concealed pit** and **snare** — with referee-supplied notes. DMR2 gives no universal trap-detection number, trigger roll, construction time, escape procedure, or damage packet for these particular traps, so this pass deliberately does not invent one.
+
+Developer/referee controls added in this checkpoint:
+
+```text
+ dev wood imp status [name]
+ dev wood imp mount <imp> | <huge wood spider|none>
+ dev wood imp envenom <name>
+ dev wood imp trap <name> | <pit|snare> | <description>
+```
+
+### Focused regression coverage
+
+Six deterministic v0.4.170 tests were added. They cover canonical/runtime trait propagation and surprise; living-mount venom preparation plus next-round evaporation; envenomed short-bow damage/save/sluggishness; successful Huge Wood Spider poison saves and Neutralize Poison cleanup; movement/initiative/duration/save-load behavior; and mounted forced melee, rider/mount position sharing, engaged bow suppression, duplicate-spider-order suppression, plus the referee-owned pit/snare boundary.
+
+The focused v0.4.170 suite passes **6/6**, with harness state isolation preserved and **0 page/runtime errors and 0 console errors**.
+
+To stay inside the project's timeout limits, the complete integrated suite was run as four independent fresh-Chromium slices using the full UI shell: **250/250**, **250/250**, **250/250**, and **214/214**. Combined validation is **964/964 core tests passed**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. Extracted inline JavaScript also passes `node --check` syntax validation.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.171 — Wood Imp leadership / shaman / lair closure only**. Source-verify and implement the remaining printed tribe structure: one 1-1 HD leader per 10 Wood Imps, a 1 HD chief, Morale falling to 7 when those leaders are slain, **1d4 shamans (clerics of 1st-4th level)**, and the old/rotted-tree lair with **2d6 prisoners**. Keep Wychglow and later creature entries for subsequent checkpoints.
+
+
+## v0.4.169 — Winged Warrior flight / landing / wing-attack / construct closure
+
+This bounded checkpoint implements the **DMR2 Winged Warrior flight, landing, wing-only combat, construct defense, and creator-instruction boundary only**. It deliberately leaves Wood Imp and later catalogue entries for subsequent passes. DMR2 page 113 is the governing creature entry for this checkpoint; the Rules Cyclopedia living-statue material is used only as compatible background for the construct relationship and does not add abilities that DMR2 does not give the Winged Warrior.
+
+### Permanent creator-granted flight is explicit without inventing a spell timer
+
+The Winged Warrior now carries the complete printed movement packet:
+
+- ground movement **60' per turn / 20' per combat round**; and
+- flying movement **180' / 60'**.
+
+Its flight is recorded as the source-defined **permanent Fly effect placed by its creator**, not as a prepared spell, daily use, concentration effect, or separately expiring spell timer. A dedicated `wingedWarriorTraits` / `wingedWarriorState` record survives canonical profile construction, combat instantiation, save/load normalization, and developer inspection.
+
+The runtime distinguishes **airborne** from **landed** state. Taking flight does not fabricate an altitude that the referee has not represented. Landing explicitly returns an airborne combatant to represented ground elevation when positional combat is active.
+
+### The construct must land before it can fight
+
+The Winged Warrior cannot attack while airborne. This is enforced in the ordinary monster-attack pipeline rather than left as descriptive text.
+
+Once landed, it receives exactly the source attack packet:
+
+```text
+ wing  1d6
+ wing  1d6
+```
+
+Both wing attacks may be made in the same round. The wing edges are the creature's own natural/construct weapons; the profile is marked **no ordinary weapons**, its equipment weapon slot is cleared, and the generic monster-weapon resolver will not silently assign or recover a carried weapon for it.
+
+No aerial slash, fly-by attack, dive attack, landing attack bonus, or other unprinted maneuver has been added.
+
+### Mind-affecting spell immunity is executable
+
+The Winged Warrior now participates in the common spell-immunity gate for represented **mind-affecting magic**, including the source examples *Sleep*, *Charm*, and *Hold*. The same classification also covers represented effects such as ESP and Feeblemind when they enter the engine through the common mind-affecting-spell path.
+
+This is not widened into generic magic immunity. The checkpoint does not import unrelated Crystal Living Statue resistances or grant immunity to physical, elemental, or non-mind-affecting spells merely because the creature is a construct.
+
+### Simple creator instructions persist until explicitly replaced
+
+The runtime can now record an explicit creator and simple instruction. The instruction persists until the referee supplies a replacement, matching the creature's basic nonintelligent command behavior.
+
+The engine deliberately stores rather than interprets open-ended commands. It therefore does not fabricate tactical priorities, route selection, creature classification, exceptions, or autonomous judgment from prose such as “patrol the court.” A target creature type can be recorded when the referee has explicitly supplied one.
+
+Developer/referee controls:
+
+```text
+ dev winged warrior status [name]
+ dev winged warrior flight <name> <airborne|landed>
+ dev winged warrior order <name> | <creator> | <simple instruction>
+```
+
+### Speech and password recognition remain creation-time options
+
+DMR2 allows a Winged Warrior to recognize a password only when it was created with the ability to speak. The runtime therefore keeps speech as an explicit referee-declared creation-state feature rather than granting it to every specimen.
+
+A password cannot be recorded while speech is absent. Turning speech off clears the represented password rather than leaving an impossible recognition state behind.
+
+Developer/referee controls:
+
+```text
+ dev winged warrior speech <name> <on|off>
+ dev winged warrior password <name> | <password>
+```
+
+### Focused regression coverage
+
+Four deterministic v0.4.169 tests were added:
+
+1. canonical/runtime propagation of AC 5, 2 HD, ground/flying movement, two 1d6 wing attacks, permanent-flight metadata, construct immunity, no-weapon state, and normalization;
+2. airborne attack suppression followed by restoration of both wing attacks after landing;
+3. mind-affecting immunity across represented Sleep, Charm Monster, Hold Monster, ESP, and Feeblemind effects; and
+4. persistent creator instruction, explicit replacement, speech-gated password recognition, and save/load normalization.
+
+The focused v0.4.169 suite passes **4/4**, with harness state isolation preserved and **0 page/runtime errors and 0 console errors**.
+
+To stay within the project's timeout limits, the complete integrated suite was run as four independent fresh-Chromium slices: **250/250**, **250/250**, **250/250**, and **208/208**. Combined validation is **958/958 core tests passed**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. JavaScript syntax is clean.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.170 — Wood Imp trap / mounted-ambush / venom-arrow closure only**. Source-verify and implement the Wood Imp's 1-3/d6 woodland surprise, short-bow attack, living-Huge-Wood-Spider venom preparation and next-round evaporation boundary, +2 Poison save, 1d8 venom damage plus nonstacking sluggishness, and mounted drop/melee behavior. Keep leadership, shamans, lair population, and later creature entries for separate checkpoints unless they are required by the bounded combat procedure.
+
+
+
+## v0.4.168 — White-Fang movement / concealment / poison closure
+
+This bounded checkpoint implements the **DMR2 White-Fang movement, concealment, warm-creature detection, surprise, and magical-venom procedure only**. It deliberately leaves Winged Warrior and later catalogue entries for subsequent passes. DMR2 pages 112-113 are the governing creature entry for this checkpoint.
+
+### All four printed movement rates are now explicit runtime data
+
+The White-Fang no longer runs as a generic ground-only monster. Its canonical and combat profiles now carry the complete printed movement packet:
+
+- surface movement **180' per turn / 60' per combat round**;
+- swimming **120' / 40'**;
+- burrowing through snow **90' / 30'**; and
+- burrowing through ice **45' / 15'**.
+
+The ordinary ground/swim/burrow movement channels receive the appropriate encounter rates, while the snow- and ice-specific rates remain separately identified so later terrain-aware movement code does not have to guess which burrowing rate applies.
+
+A dedicated `whiteFangTraits` record now survives canonical profile construction, combat instantiation, combat normalization, and developer inspection.
+
+### Concealment, surprise, and heat detection retain the printed numerical boundaries
+
+The source-specific concealment package is executable rather than prose-only:
+
+- the White-Fang is **80% undetectable by infravision**;
+- its native coloration/temperature matching is recorded as native-environment camouflage;
+- it surprises opponents on **1-4 on 1d6**; and
+- represented warm creatures can be detected through **30 feet of snow, ice, or water**, or at up to **120 feet in the open**.
+
+The encounter procedure reuses the encounter's existing party-surprise d6 when one is already available instead of rolling a second hidden surprise die. A result of 1-4 therefore marks the party surprised for a pure White-Fang encounter and can produce the normal free surprise round when the opposing side is not also surprised.
+
+The 80% infravision boundary and thermal ranges are exposed as explicit rule functions. The engine does not infer whether an intervening medium is snow, ice, or water when that geometry has not been represented; callers/referee logic must identify the medium rather than silently granting through-cover detection.
+
+### Bite and tail attacks now match the DMR2 packet
+
+The White-Fang's combat profile now contains exactly:
+
+```text
+ bite      2d6 + magical venom
+ tail lash 2d6
+```
+
+The bite's venom rider is attached to successful bite hits in the ordinary monster attack pipeline. The tail remains an ordinary 2d6 physical attack and receives no invented poison rider.
+
+### Failed Poison save: paralysis plus 1d8 damage per represented round
+
+A victim who fails **Save vs. Poison** is marked with the severe freezing-blood state. The effect:
+
+- immediately paralyzes the victim;
+- deals **1d8 poison damage once per represented combat round** while active;
+- does not roll duplicate damage if the round-start processor is invoked twice for the same round; and
+- remains in force until the poison is neutralized or the victim dies.
+
+The ongoing packet is identified as magical poison damage so existing represented poison immunity can suppress damage without being mistaken for a cure. The paralysis flag also participates in the common paralysis-status refresh logic, preventing unrelated status cleanup from accidentally releasing a still-poisoned victim.
+
+### Successful Poison save: one nonstacking -2 Strength / -2 Dexterity effect
+
+A successful Poison save applies the source's lesser result instead of negating the venom completely:
+
+- **Strength -2**;
+- **Dexterity -2**;
+- duration **2d6 combat rounds**.
+
+The exact amount actually removed from each ability is retained so the original values can be restored when the effect ends or the poison is neutralized. Dexterity-derived Armor Class is recalculated when the penalty begins and ends.
+
+If the character is bitten again while this milder venom state is already active, the engine rolls another **2d6 rounds and adds that time to the remaining duration**. It does **not** apply another -2/-2 penalty, matching the printed instruction that further bites extend the duration rather than increase the effects.
+
+The full venom state survives member save/load normalization without reapplying the ability penalty.
+
+### Neutralize Poison and equivalent represented poison cures clear the venom without healing lost hit points
+
+The common `Neutralize Poison` procedure now recognizes White-Fang venom. Neutralization:
+
+- ends severe ongoing damage;
+- removes White-Fang-caused paralysis;
+- removes/restores the successful-save Strength/Dexterity penalty; and
+- **does not restore hit points already lost to the venom**.
+
+The same cleanup bridge is used by the existing Heal/Cureall poison branch and artifact poison-removal path, preventing those systems from deleting only a generic `poisoned` flag while leaving the executable White-Fang state behind.
+
+Developer/referee inspection:
+
+```text
+ dev white fang status [name]
+```
+
+The status view reports the four movement modes, 80% infravision concealment, 1-4/d6 surprise, warm-detection ranges, both venom outcomes, and the source's pelt/head-plate maximum values. The printed values of up to **500 gp** for a pelt and **100 gp** total for the ivory head plates are retained as metadata only; DMR2 gives no harvesting test or procedure, so this pass does not invent one.
+
+### Focused regression coverage
+
+Four deterministic v0.4.168 tests were added:
+
+1. canonical/runtime profile propagation for all four movement rates, both attacks, concealment/surprise, warm detection, venom metadata, and combat normalization;
+2. exact 1-4/d6 surprise, 80% infravision boundary, 120-foot open / 30-foot snow-ice-water thermal ranges, and reuse of the existing encounter surprise d6;
+3. failed Poison save, indefinite freezing paralysis, exact once-per-round 1d8 venom damage, duplicate-round suppression, and Neutralize Poison ending the condition without restoring lost hp; and
+4. successful Poison save, exact nonstacking -2 Strength/-2 Dexterity, 2d6 duration, 2d6 extension from a later bite, member normalization, and exact ability restoration on cure.
+
+The focused v0.4.168 suite passes **4/4**, with harness state isolation preserved and **0 page/runtime errors and 0 console errors**.
+
+To stay within the project's timeout limits, the full integrated suite was again run as four independent fresh-Chromium slices against the production script and complete page DOM: **250/250**, **250/250**, **250/250**, and **204/204**. Combined validation is **954/954 core tests passed**. Every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. JavaScript syntax is clean.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.169 — Winged Warrior flight / landing / wing-attack / construct closure only**. Source-verify and implement its permanent creator-granted flight, requirement to land before fighting, two 1d6 wing attacks, inability to carry ordinary weapons, mind-affecting spell immunity, simple creator-command behavior, and optional creator-granted speech/password recognition. Keep that pass separate from Wood Imp and later entries.
+
+
+## v0.4.167 — Water Weird seize / drowning / disruption closure
+
+This bounded checkpoint implements the **DMR2 Water Weird procedure only**. It deliberately does not broaden into White-Fang or later catalogue entries. The creature now runs as the source's water-bound seizure/drowning hazard rather than as a generic one-attack monster.
+
+### Two-round manifestation is represented before the Weird can attack
+
+A newly represented Water Weird begins **forming from its pool** and requires the printed **2 melee rounds** before it can act. While it is forming it is not treated as an ordinary dead/defeated hostile, so the encounter does not auto-close merely because no conventional attack is currently available.
+
+The canonical profile and combat state now carry a dedicated `waterWeirdTraits` / `waterWeirdState` packet through profile construction, combat creation, normalization, save/load-style restoration, and developer inspection.
+
+### The seizure attack uses the printed 10-foot pool range and saving throw
+
+The Water Weird does not make a normal Hit roll for its special attack. A target must be represented within **10 feet of the Weird/pool center**. The engine deliberately measures this from represented coordinates rather than Influence-Sphere edge separation, because the source specifies distance from the pool rather than melee contact.
+
+The target then makes **Save vs. Paralysis**, with the target's positive **Dexterity adjustment** applied as the source directs. On a successful save nothing further happens. On a failed save the victim:
+
+- takes the printed **1 point of damage**;
+- is seized and dragged underwater;
+- cannot independently move away while the hold remains; and
+- becomes the Weird's exclusive victim, causing it to ignore other opponents until that victim dies or is rescued.
+
+The source says a trapped character may attack the Weird at **-4**. The common attack-roll path now applies that exact penalty against the captor without inventing a general Armor Class penalty, spell prohibition, Strength check, or escape roll that DMR2 does not provide.
+
+Developer/referee inspection and rescue controls:
+
+```text
+ dev water weird status [name]
+ dev water weird rescue <character>
+```
+
+The rescue command is intentionally referee-declared: DMR2 says an unconscious victim dies unless rescued but does not print a separate rescue roll or action test.
+
+### Underwater damage, Death Ray saves, unconsciousness, and drowning are round-tracked
+
+Beginning on later represented rounds while the victim remains submerged, the Weird inflicts its printed **1 point of damage per round** and the conscious victim makes **Save vs. Death Ray each round**. A failed Death Ray save makes the victim unconscious.
+
+An unconscious victim is given the source's exact **three-round drowning clock**. If still trapped when that clock expires, the character dies. Rescue before the due round clears the Water-Weird hold and the Water-Weird-caused unconscious state. The engine does not fabricate additional drowning damage or new saving throws while that three-round unconscious countdown is running.
+
+### Weapon and spell damage now obey the unusual Water Weird boundary
+
+The common monster-damage pipeline recognizes the printed special defenses:
+
+- a **sharp weapon** causes only **1 point per hit**, with represented positive Strength and magical bonuses still added;
+- a **blunt weapon** inflicts normal represented damage;
+- **cold attacks** inflict no hit-point damage but halve movement and restrict the Weird to attacking every second round;
+- a **fire-based spell** inflicts half normal damage on a failed save and no damage on a successful save;
+- **Purify Food and Water** destroys the Weird immediately; and
+- attacks outside those printed categories do not harm it.
+
+DMR2 gives no duration for the cold slow. The engine therefore persists that state instead of inventing an expiry and gives the referee an explicit clearing control:
+
+```text
+ dev water weird cold <name> | <yes/no>
+```
+
+The Purify Food and Water handler can now resolve a specifically named represented Water Weird directly, rather than losing the monster because the ordinary combat spell-order helper expected a pre-resolved/random `targetId`.
+
+### Zero hit points cause disruption and two-round reformation, not ordinary death
+
+Damage equal to the Weird's total hit points no longer sends it through the ordinary monster-death path. It becomes **disrupted**, releases any represented victim, and is unable to attack. After the printed **2 melee rounds**, it reforms.
+
+For executable hit-point bookkeeping, reformation restores the represented Water Weird to its existing maximum hit-point total. DMR2 says the creature reforms but does not separately print a post-reformation hit-point value; restoring the same represented total is an explicit engine convention required to avoid immediately redisrupting a reformed creature at 0 hp. *Purify Food and Water* bypasses this disruption lifecycle and destroys it instead.
+
+### Larger Water Weird scaling is executable without replacing the base profile
+
+The source's larger-Weird rule is represented in +3-HD steps. For every step the engine applies exactly the printed changes:
+
+- **+3 Hit Dice**;
+- Armor Class improves by **2**;
+- damage increases by **1**;
+- attack range increases by **5 feet**; and
+- the victim suffers an additional **-2** on the relevant saving throws and attacks against the Weird.
+
+Added Hit Dice receive represented d8 hit points when the referee enlarges an existing Weird. The base Water Weird remains the normal 3-HD creature unless this explicit scaling control is used:
+
+```text
+ dev water weird scale <name> | <steps>
+```
+
+### Focused regression coverage
+
+Six deterministic v0.4.167 tests were added:
+
+1. canonical/runtime Water Weird profile propagation, two-round initial manifestation, pending-hostile combat continuity, and normalization;
+2. exact 10-foot center-to-pool range, Save vs. Paralysis with Dexterity bonus, failed-save 1-point seizure, movement lock, exclusive victim state, and trapped-victim -4 attack penalty;
+3. underwater round damage, Death Ray saves, unconscious-state persistence, exact three-round drowning clock, save/load-style member normalization, and referee-declared rescue;
+4. sharp-weapon 1-plus-Strength/magic handling, normal blunt damage, immunity to an unlisted spell, fire half/zero behavior, and cold slow/every-second-round attacks;
+5. zero-hit-point disruption, two-round reformation, combat-continuity handling, and immediate destruction by *Purify Food and Water*; and
+6. every printed +3-HD larger-Weird scaling change to Hit Dice, Armor Class, damage, reach, victim saves, and trapped-victim attacks.
+
+The focused v0.4.167 suite passes **6/6** with no page or console errors. To respect the project's timeout constraint, the full integrated suite was then run as **four bounded fresh-Chromium slices** rather than one monolithic browser job: 250/250, 250/250, 250/250, and 200/200. Combined validation is therefore **950/950 core tests passed**; every slice preserved harness state isolation and reported **0 page/runtime errors and 0 console errors**. JavaScript syntax is also clean.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.168 — White-Fang movement / concealment / poison closure only**. Whipweed, which follows Water Weird in the printed catalogue, was already completed in v0.4.135b, so the next unclosed source-order creature is White-Fang. Keep the pass limited to its multiple movement modes, 80% infravision concealment, 1-4-in-6 surprise, concealment-oriented behavior boundaries, and bite-poison procedure before moving on to Winged Warrior or later entries.
+
+## v0.4.166 — Swamp Velya delta closure
+
+This bounded checkpoint implements **only the DMR2 Swamp Velya differences** from the already completed ocean Velya subsystem. DMR2 explicitly says the swamp cousin is identical to the ocean Velya in all other respects, including statistics, so this pass reuses the existing Velya regeneration, human-form touch/song, holy-symbol restriction, crypt-rest obligation, wight creation, magical-weapon defense, mind-magic immunity, staking, and high-level Cleric-turning procedures rather than cloning them into a second subsystem.
+
+### Swamp Velya is now a true variant of the ocean chassis
+
+The canonical `velya_swamp` profile now inherits the completed ocean Velya trait package and replaces only the printed deltas:
+
+- terrain is **Swamp**;
+- forms are **gilled human**, **albino crocodile**, **white eel**, and **water current**;
+- the human-form summon calls **3d6 crocodiles** instead of mako sharks; and
+- open-air destruction occurs only when the creature is **fully clear of the swamp**.
+
+The runtime carries `variant: swamp` plus the swamp-contact state through save/load normalization. The default encounter state assumes at least part of a swamp Velya remains in its native swamp until the referee explicitly declares otherwise.
+
+### Albino crocodile is mapped; White Eel remains source-bounded
+
+The unqualified **albino crocodile** form is mapped to the existing **Crocodile, Normal** catalogue profile. As with the ocean Velya's shark and manta forms, only movement, attacks, and damage are borrowed; the Velya keeps its own Armor Class, Hit Dice, Morale, and saving throws.
+
+DMR2 names a **white eel** form but provides no separate White Eel statistics and no unqualified eel profile that can be imported without adding an unsupported electric shock, entanglement attack, or other subtype mechanic. The engine therefore records the form and appearance but deliberately does **not** fabricate its animal attack packet. While in that form, automatic monster attacks are held at an explicit referee boundary until a governing source supplies the missing movement/attack/damage profile.
+
+This is a source gap rather than a generic creature-system omission.
+
+### Crocodile summon uses the same bounded arrival procedure
+
+The common Velya summon procedure now chooses allies from the represented variant:
+
+```text
+Ocean Velya: 3d6 mako sharks
+Swamp Velya: 3d6 crocodiles
+```
+
+Both retain the same source boundaries: allies must be within **one mile**, and if they are explicitly declared **close by**, they arrive in **1d4 rounds**. DMR2 does not define the threshold for “close by” or exact entry coordinates, so the referee still declares that condition and places the arriving creatures.
+
+The existing developer command is now variant-aware:
+
+```text
+ dev velya summon <name> | <distance ft> | <yes/no close by>
+```
+
+### Swamp contact modifies open-air destruction exactly as printed
+
+A swamp Velya no longer inherits the ocean cousin's unconditional air exposure result. If **any part of its body remains in the swamp**, exposure to open air does not destroy it. Once it is represented as fully clear of the swamp, open-air exposure instantly disintegrates it through the same terminal destruction path used by the ocean form.
+
+Developer/referee control:
+
+```text
+ dev velya swamp contact <name> | <yes/no>
+ dev velya expose air <name>
+```
+
+The first command records only the source-required physical condition; it does not invent water depth, body orientation, or shoreline geometry.
+
+`dev velya status [name]` now identifies the ocean/swamp variant, its printed form list, variant-specific summoned creature, swamp-contact state, and any unresolved animal-form profile boundary.
+
+### Focused regression coverage
+
+Four deterministic v0.4.166 tests were added:
+
+1. swamp-profile inheritance plus exact form/summon/terrain/open-air deltas and save/load normalization;
+2. albino-crocodile animal-stat inheritance while preserving Velya AC/HD/Morale/saves, plus the noninvented White Eel boundary and shared water-current form;
+3. 3d6 crocodile summoning within one mile, referee-declared close-by status, 1d4-round arrival, no fabricated placement, and removal of the ocean mako summon; and
+4. survival in open air while any body part remains in the swamp, disintegration when fully clear, persistence of swamp-contact state, and unchanged ocean-Velya air destruction.
+
+Adding the four tests changed the deterministic RNG position before an older v0.4.163 post-transformation attack check. That pre-existing check has been stabilized with an explicit test seed; this changes **test determinism only**, not game behavior.
+
+Validation is clean: **944/944 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.167 — Water Weird seize / drowning / disruption closure only**. Source-verify and implement the two-round manifestation from its pool, 10-foot victim range, Save vs. Paralysis with Dexterity bonus, seizure/dragging and underwater Death Ray saves, unconscious-drowning timer, sharp-vs.-blunt weapon damage boundary, two-round reformation after disruption, cold slowing, fire half/zero interaction, *Purify Food and Water* instant destruction, and the printed larger-Water-Weird scaling. Keep this as one independently validated creature checkpoint.
+
+## v0.4.165 — Velya weakness / creation / destruction closure
+
+This bounded checkpoint closes the **ocean Velya's remaining DMR2 weakness, daytime-rest, slain-victim, defensive, and destruction rules only**. It builds directly on the v0.4.163 form/regeneration lifecycle and v0.4.164 human-form offense/summoning work. The swamp Velya remains deliberately deferred as a separate delta checkpoint.
+
+### Strongly presented holy symbols bar a 10-foot approach, directionally
+
+A represented ocean Velya now respects the printed holy-symbol restriction without turning it into an invented omnidirectional aura. A strongly presented holy symbol prevents that Velya from approaching to within **10 feet** along the represented approach from that character. Because the source explicitly allows the Velya to move and attack from another direction, the presentation is keyed to the presenting character and Velya rather than globally freezing the monster.
+
+The 3D movement resolver caps a barred Velya movement segment at the 10-foot boundary, and a Velya already on a barred approach cannot use its ordinary attack through that restriction. Clearing the explicit presentation allows a different approach without inventing facing or line-of-sight data the engine does not possess.
+
+Developer/referee control:
+
+```text
+ dev velya holy symbol <name> | <character> | <yes/no>
+```
+
+### Open air, magical weapons, mind-affecting magic, reflection, and shadow
+
+The remaining printed defensive and physical boundaries are now explicit and executable where appropriate:
+
+- entering **open air** instantly disintegrates the ocean Velya rather than sending it through its ordinary 0-hp water-current retreat;
+- **nonmagical weapon attacks** inflict no damage in any form;
+- as an undead creature, the Velya is immune to represented **mind-affecting spells** such as *sleep*, *charm*, and *hold* through the common spell-immunity gate;
+- the water-current form retains its stronger previously implemented immunity to **all weapon damage** and to **spell damage**; and
+- the source statements that a Velya has **no reflection** and **casts no shadow** are retained as explicit runtime/profile data rather than being expanded into an unsupported mirror or illumination subsystem.
+
+Open-air exposure is referee/AI-declared because the existing encounter model does not reliably infer whether a particular represented water position is enclosed or exposed to air.
+
+Developer/referee control:
+
+```text
+ dev velya expose air <name>
+```
+
+### Daytime crypt rest and the 2d8 missed-rest damage pool
+
+The engine now tracks the Velya's compulsory **daytime crypt rest** against the same campaign daylight window already used by the game, **06:00-18:00**. For a represented ocean Velya to satisfy a day, it must be continuously resting in its crypt through that daylight interval. A crypt affected by the clerical *bless* spell provides **no valid rest**.
+
+When a represented Velya reaches the end of a required daylight interval without valid rest, it takes exactly **2d8 damage for that day**. Actual hit-point loss from this cause is recorded in a separate missed-rest pool and is **not eligible for regeneration** until the creature completes a **full 1,440 minutes of valid crypt rest**. Once that full-day requirement has been met, the pool becomes eligible for the ordinary previously implemented **2 hp per represented combat round** regeneration; it is not instantaneously healed.
+
+The same crypt-rest gate now also applies to the already implemented fire/acid regeneration pool: merely being marked at the crypt is no longer enough if the creature is not actually resting there or the crypt is blessed. This checkpoint still does not invent the Velya's unspecified hit-point total after its special 0-hp whole-day recovery.
+
+Developer/referee controls:
+
+```text
+ dev velya crypt bless <name> | <yes/no>
+ dev velya crypt rest <name> | <yes/no>
+ dev velya crypt leave <name>
+```
+
+The existing `dev velya crypt arrive <name>` command now begins valid crypt rest when the crypt is not blessed.
+
+### A Velya-slain character returns as a controlled wight after exactly three days
+
+When the Velya's represented attack actually kills a character, the engine records the printed consequence separately from ordinary Energy Drain handling: after exactly **three campaign days / 4,320 minutes**, a still-dead victim becomes a **wight under that Velya's control**. The pending transformation survives campaign save/load normalization and matures as campaign time advances.
+
+The source does not state what happens if the victim is restored to life before the three days expire. Rather than inventing a resurrection override, the engine records that as a **referee boundary** and does not silently transform a living character.
+
+### The three printed destruction methods are distinct from ordinary defeat
+
+Ocean Velya now have explicit terminal destruction paths:
+
+- **exposure to open air** instantly disintegrates the creature;
+- a **wooden stake through the heart** destroys it only while it is lying/resting in its crypt; and
+- **turning by an actual Cleric of level 13 or higher** can destroy it only when the normal destroyed-Hit-Dice roll has enough remaining Hit Dice to equal or exceed that Velya's Hit Dice.
+
+The turning rule therefore does not treat a high-level Cleric's automatic destruction result as sufficient by itself, and artifact-derived or other non-Cleric turning ability does not satisfy the source's explicit Cleric-level requirement. Successful destruction bypasses the ordinary 0-hp Velya retreat so the creature cannot incorrectly become a water current and escape after being staked, exposed to air, or validly destroyed by turning.
+
+Developer/referee control:
+
+```text
+ dev velya stake <name>
+```
+
+`dev velya status [name]` now reports the holy-symbol restriction, magical-weapon and mind-magic defenses, crypt/rest/blessing state, blocked damage pools, physical signs, and terminal destruction state alongside the previously implemented forms, regeneration, song, touch, and summons.
+
+### Focused regression coverage
+
+Five deterministic v0.4.165 tests were added:
+
+1. Velya weakness/defense/rest/slain-victim/destruction profile propagation and save/load normalization;
+2. magical-weapon-only damage, mind-affecting spell immunity, and directional strongly presented holy-symbol movement/attack restriction;
+3. missed daytime crypt rest causing exactly 2d8 damage, blocked regeneration, full-day crypt-rest unlock, and blessed-crypt denial;
+4. exact three-day Velya-controlled wight creation while preserving a referee boundary for a victim revived before maturity; and
+5. destruction by staking in the crypt, open-air disintegration, and level-13+ Cleric turning with both insufficient and sufficient destroyed-Hit-Dice rolls.
+
+Validation is clean: **940/940 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.166 — Swamp Velya delta closure only**. Source-verify and implement only the swamp cousin's deltas: gilled-human / albino-crocodile / white-eel / water-current forms, the 3d6 crocodile summon from within one mile with the same source-bounded 1d4-round close-by arrival rule, and its modified open-air weakness whereby it survives as long as part of its body remains in the swamp. Preserve all rules explicitly stated to be identical to the ocean Velya and avoid duplicating the entire Velya subsystem.
+
+## v0.4.164 — Velya human-form offense / summon closure
+
+This bounded checkpoint closes the **ocean Velya's human-form touch, song, and mako-shark summoning only**. DMR2's Velya entry was source-checked directly before implementation. The previously completed four-form / regeneration lifecycle remains intact. Holy-symbol and open-air weaknesses, compulsory daytime crypt rest, wight creation, and the printed destruction methods remain deliberately deferred to the next checkpoint.
+
+### Human form has one mutually exclusive action: touch, song, or summon
+
+The human profile now carries the printed **1d8 touch plus one-level Energy Drain** as its sole ordinary attack. Energy Drain uses the existing BECMI common Energy Drain procedure, so the touch applies the level loss with **no saving throw** in addition to its 1d8 hit-point damage. This pass deliberately does **not** attach the later "slain victim becomes a wight" consequence; that belongs to the next bounded checkpoint.
+
+During represented combat, the Velya can make exactly one human-form choice in a round:
+
+- draining **touch**;
+- charming **song**; or
+- **summon mako sharks**.
+
+A form change still consumes the entire round, so it cannot be combined with any of these human-form actions. Likewise, after a touch, song, or summon has been used, the Velya cannot change form or use one of the other human-form options until the next represented round. Outside combat the engine does not fabricate a round limit where no combat round exists.
+
+### Song: one-mile audibility, 200-foot Charm Person radius, 24-hour immunity after a successful save
+
+The song now uses explicit represented hearers rather than assuming that every creature in the encounter can hear through unknown walls, water conditions, or other barriers. In represented encounter geometry:
+
+- the song is audible out to **1 mile / 5,280 feet**;
+- only a valid Charm Person subject within **200 feet** can be charmed;
+- an affected subject makes a **Saving Throw vs. Spells**;
+- a failed save establishes the ordinary continuing **Charm Person** state and its normal Intelligence-based resave cycle; and
+- **any successful save** against that individual Velya's song grants exactly **24 hours / 1,440 campaign minutes of immunity** to that Velya's song.
+
+That immunity is keyed to the individual Velya, expires on campaign time, and survives PC save/load normalization. A successful later periodic Charm Person resave grants the same 24-hour immunity. Merely dispelling/removing the charm does **not** fabricate a successful save, so the victim remains susceptible until an actual save succeeds, exactly preserving the source distinction.
+
+Developer/referee control:
+
+```text
+ dev velya song <name> | <target>; <target>; ...
+```
+
+### Summoning: 3d6 mako sharks within one mile; 1d4 rounds only when "close by" is explicitly represented
+
+Human-form Velya can now summon the printed **3d6 mako sharks** from up to **one mile** away. DMR2 says the sharks arrive in **1d4 rounds if they are close by**, but supplies neither a numerical definition of "close by" nor exact tactical entry coordinates. The implementation therefore preserves those source gaps instead of inventing them:
+
+- the referee/AI layer explicitly states whether the sharks are **close by**;
+- if close by, the engine rolls and records **1d4 combat rounds** to arrival;
+- if not declared close by, the summons are recorded but arrival timing remains unresolved;
+- when the rolled close-by delay elapses, the sharks become **ready for referee placement**; and
+- the engine does not fabricate an exact map edge, coordinate, formation, or automatic target.
+
+Developer/referee control:
+
+```text
+ dev velya summon <name> | <distance ft> | <yes/no close by>
+```
+
+`dev velya status [name]` now also reports the current human-form action, source song ranges, mako-summon limits, and pending/ready summon records alongside the existing form and regeneration state.
+
+### Focused regression coverage
+
+Four deterministic v0.4.164 tests were added:
+
+1. human profile propagation for the exact 1d8 + one-level draining touch, one-mile / 200-foot / 24-hour song metadata, and 3d6 / 1d4 mako-summon source boundaries;
+2. live draining-touch damage and one-level Energy Drain plus same-round exclusion of song and summoning;
+3. one-mile hearing / 200-foot charm geometry, successful-save 24-hour immunity, PC save/load survival, exact expiry, dispel-without-immunity behavior, and immunity granted by a later periodic Charm Person resave; and
+4. one-mile mako-summon range, 3d6 count, referee-declared close-by 1d4 arrival, round readiness, unresolved non-close timing, and no invented entry placement.
+
+Validation is clean: **935/935 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.165 — Velya weakness / creation / destruction closure only**: source-verify and implement the 10-foot strongly presented holy-symbol restriction, instant open-air disintegration, undead mind-affecting immunity / magical-weapon-only defense if not already supplied by the common undead layer, mandatory daytime crypt rest and 2d8 daily failure damage with its regeneration boundary, three-day wight creation for Velya-slain victims, no reflection/shadow, and the printed destruction methods. Keep the checkpoint limited to the ocean Velya before moving to another creature.
+
+## v0.4.163 — Velya form / regeneration closure
+
+This bounded checkpoint closes the **ocean Velya's form-changing and regeneration lifecycle only**. It intentionally leaves the human-form song, energy-draining touch, shark summoning, holy-symbol/open-air/crypt weaknesses, wight creation, and final destruction methods for later checkpoints.
+
+### Four at-will forms with one-round changes
+
+The ocean Velya now carries a dedicated `velyaTraits` / `velyaState` record through canonical profile construction, combat creation, save/load normalization, and developer inspection. Its four printed forms are represented explicitly:
+
+- blue-skinned **gilled human**;
+- **great white shark**;
+- **manta ray**; and
+- **water current**.
+
+Changing form during represented combat consumes the **entire current round**. A Velya cannot change twice in the same round and cannot also make an attack in the round it changes. Outside combat the engine records the form change without fabricating a round that does not exist.
+
+For shark and manta-ray forms, only the source-directed animal statistics are inherited: **movement, attacks, and damage**. The Velya's own Armor Class, Hit Dice, Morale, and saving throws remain unchanged. The animal profiles are taken from the existing authoritative BECMI creature catalogue rather than re-created as new ad hoc stat blocks.
+
+Developer/referee controls:
+
+```text
+ dev velya status [name]
+ dev velya form <name> | <human/great white shark/manta ray/water current>
+```
+
+### Water-current form
+
+Water-current form now has the source's explicit combat boundary:
+
+- swimming movement is **180 feet per turn / 60 feet per combat round**;
+- the Velya **cannot attack** in that form;
+- **all weapon attacks** inflict no damage; and
+- spells may still have applicable non-damaging effects, but **spells inflict no damage**.
+
+The implementation deliberately does not turn this into blanket immunity to every nonweapon, nonspell hazard because the source does not say that.
+
+### Two hit points per round, with fire/acid tracked separately
+
+A damaged Velya now regenerates exactly **2 hit points per represented combat round**. Damage is separated into two persistent pools:
+
+- ordinary damage, which can regenerate immediately at the printed 2 hp/round rate; and
+- fire/acid damage, which does **not** regenerate while the Velya remains away from its crypt.
+
+Once crypt presence/rest is explicitly represented, the same 2 hp/round regeneration can begin consuming the previously blocked fire/acid pool. The engine does not merge the two pools, heal more than the missing hit points, or regenerate more than once in a represented round.
+
+### Zero hit points: water-current retreat, not ordinary death
+
+A Velya reduced to **0 hit points** no longer enters the ordinary monster-death path. Instead it:
+
+1. remains not-dead at 0 hp;
+2. immediately assumes **water-current form**;
+3. leaves the represented fight and is marked as **fleeing to its crypt**;
+4. does **not regenerate from 0 hp**; and
+5. requires a **whole day of crypt rest** before its 0-hp recovery can be considered resolved.
+
+The source gives no travel time from the encounter to the crypt, so arrival is never invented. The referee must explicitly mark it:
+
+```text
+ dev velya crypt arrive <name>
+```
+
+That starts an exact **1,440-minute** whole-day rest timer. The source also does not specify the Velya's exact hit-point total immediately after that required rest, so this checkpoint does not fabricate a post-rest full-heal or 1-hp restart rule.
+
+### Focused regression coverage
+
+Five deterministic v0.4.163 tests were added:
+
+1. four-form source profile, one-round changes, 2-hp regeneration metadata, and save/load survival;
+2. great-white and manta-ray movement/attack inheritance while preserving Velya AC, HD, Morale, and saves;
+3. water-current 180'/turn movement, no-attack rule, weapon immunity, spell-damage immunity, and restoration of the human attack profile after changing back;
+4. ordinary versus fire/acid regeneration pools, exact 2-hp-per-round healing, once-per-round enforcement, and crypt-gated fire/acid regeneration; and
+5. 0-hp water-current retreat, non-death state, no regeneration from zero, explicit crypt arrival, and the exact whole-day rest timer.
+
+Validation is clean: **931/931 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.164 — Velya human-form offense / summon closure only**: implement the human-form 1d8 + one-level energy-draining touch, the one-mile song / 200-foot Charm Person radius with its 24-hour successful-save immunity, and the 3d6 mako-shark summon / 1d4-round arrival boundary. Keep the holy-symbol/open-air/day-rest weaknesses, wight creation, and destruction methods for the following bounded checkpoint.
+
+## v0.4.162 — Magen subtype special-power closure
+
+This bounded checkpoint closes the **four DMR2 Magen subtypes** without importing abilities from later constructs or inventing a generic Magen spell system. The shared runtime profile now also carries the source's common construct boundary: Magen are magically sustained nonliving beings, require no air, water, food, or sleep, do not age, follow their creator's commands to the death, and dissolve into multicolored flame and smoke when destroyed.
+
+### Common Magen lifecycle and source boundary
+
+All four subtype profiles now carry a dedicated `magenTraits` record through canonical profile construction, combat creation, save/load normalization, and developer inspection. Destruction marks the body as dissolved/no-corpse rather than leaving an ordinary recoverable corpse. The common life-needs flags are explicit data for survival/environment systems; this pass does not invent extra construct immunities that DMR2 does not print for Magen.
+
+Developer/referee inspection:
+
+```text
+ dev magen status [name]
+```
+
+### Caldron: 20-foot wrapping limbs, automatic acid, and Strength -2 escape
+
+The Caldron's special attack is no longer represented as an unexplained generic 1d10 packet. Its limbs can stretch **20 feet** and make a normal attack roll to wrap an explicitly represented PC. On a successful wrap:
+
+- the victim immediately receives the printed **1d10 acid** packet;
+- the victim remains physically held and cannot move, attack, or cast while the wrapping state remains;
+- the acid automatically inflicts another **1d10 once per subsequent represented combat round**;
+- the victim may escape with a **Strength ability check at -2**; and
+- killing the Caldron immediately releases the victim before the Magen body dissolves.
+
+The implementation does not add an unstated saving throw, opposed grapple roll, Armor Class penalty, or escalating acid damage.
+
+Developer/referee controls:
+
+```text
+ dev magen caldron wrap <name> | <character>
+ dev magen caldron escape <character>
+```
+
+### Demos: ordinary weapon user with armor-defined Armor Class
+
+The Demos receives **no invented special power**. It continues to use its ordinary weapon profile. Its source-specific Armor Class rule is now explicit: an unarmored Demos is **AC 7**, while worn armor supplies that armor type's represented AC. Because the source does not specify a fixed armor table or random equipment distribution, the referee/AI layer declares the armor and its already-resolved BECMI AC rather than the engine fabricating a loadout.
+
+Developer/referee control:
+
+```text
+ dev magen demos armor <name> | <description> | <AC>
+```
+
+Using `none` as the description returns the Demos to AC 7.
+
+### Galvan: three 60-foot × 5-foot 3d6 lightning bolts per day
+
+The Galvan now has its printed stored-static-electricity attack as an executable line effect:
+
+- **3d6 electrical damage**;
+- **60 feet long × 5 feet wide** using represented 3D combat geometry;
+- **Save vs. Dragon Breath for half damage** for every represented creature in the line;
+- **three uses per campaign day**; and
+- the printed attack choice remains **weapon OR lightning bolt** in a round, never both.
+
+One 3d6 damage roll is shared across creatures struck by the same bolt, while each creature rolls its own saving throw. The bolt is an innate Magen electrical discharge rather than being silently converted into the Magic-User *Lightning Bolt* spell, so spell-specific caster-level, memorization, and spell-immunity rules are not imported.
+
+Developer/referee control:
+
+```text
+ dev magen galvan bolt <name> | <target>
+```
+
+### Hypnos: permanent Charm Person power, telepathic commands, and individual immunity
+
+The Hypnos now uses its printed permanent **Charm Person ability** rather than an ordinary attack. It can make **one charm attempt per represented combat round**. The effect uses the common BECMI *Charm Person* eligibility/range/duration-resave procedure where the DMR2 phrase invokes that spell, while preserving the Magen-specific overrides:
+
+- commands are **telepathic**;
+- a charmed victim **will not obey a suicidal command**; and
+- once a victim **successfully saves**, that victim is permanently immune to the charm power of **that particular Hypnos Magen**.
+
+The immunity is keyed to the individual Magen, not the entire subtype. A different Hypnos can still attempt to charm the same victim. A successful later periodic Charm Person resave also grants the individual immunity. Merely dispelling/removing the charm, or breaking it because the Hypnos attacks its charmed victim, does not fabricate a successful save and therefore does not grant that immunity.
+
+Developer/referee controls:
+
+```text
+ dev magen hypnos charm <name> | <target>
+ dev magen hypnos command <name> | <target> | <yes/no suicidal> | <command>
+```
+
+### Focused regression coverage
+
+Five deterministic v0.4.162 tests were added:
+
+1. all four Magen subtype profiles, common nonliving/life-needs boundaries, subtype rules, and save/load normalization;
+2. Caldron 20-foot wrap, initial and subsequent 1d10 acid, action lock, Strength -2 escape, death release, and body dissolution;
+3. Demos ordinary-combat/no-special boundary, worn-armor AC override, normalization, and restoration to unarmored AC 7;
+4. Galvan 60-foot × 5-foot geometry, shared 3d6 damage roll, Dragon Breath saves, weapon-or-bolt round action, three-per-day limit, and next-day recharge; and
+5. Hypnos once-per-round telepathic Charm Person, per-individual successful-save immunity, normal periodic resave inheritance, different-Hypnos independence, and refusal of suicidal commands.
+
+Validation is clean: **926/926 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.163 — Velya form / regeneration closure only**. Source-verify and implement the ocean Velya's one-round at-will changes among gilled human, great white shark, manta ray, and water current; the animal-form movement/attack inheritance; water-current movement and weapon/spell-damage boundary; and the printed 2 hp/round regeneration / 0-hp return-to-crypt behavior. Keep the human-form song/energy drain, shark summoning, 24-hour song immunity, open-air/holy-symbol/crypt weaknesses, wight creation, and destruction methods for later bounded checkpoints.
+
+## v0.4.161 — Hephaeston fist-grab / iron-control / heat-object / Wall of Iron closure
+
+This bounded checkpoint closes the **Hephaeston's explicitly printed DMR2 attack structure, defensive immunities, fist grab/throw, iron-and-steel manipulation, and temporary Wall of Iron power**. The implementation keeps the creature's ordinary combat and its three special options on one shared round-level secondary-action boundary rather than granting all of them simultaneously.
+
+### The Hephaeston has one weapon attack plus either its fist or one special ability
+
+The canonical profile now explicitly represents the source's ordinary attack as a **4d10 huge iron weapon** plus a **3d10 fist**, with the fist occupying the same secondary-action slot as the creature's special abilities. During a combat round the Hephaeston therefore receives its weapon attack and then exactly one of:
+
+- its fist;
+- iron/steel levitation;
+- heating an iron/steel object; or
+- its daily Wall of Iron, if still available.
+
+Choosing a special power before the normal hand-to-hand resolution suppresses only the fist; the 4d10 weapon attack remains available. Conversely, once the fist has been attempted, another fist-replacing special cannot also be taken in that round. Outside represented combat the engine does not fabricate a round-action restriction where no round exists.
+
+The attack implementation treats the huge iron weapon as a source-defined ordinary weapon attack and the fist as a natural attack rather than accidentally borrowing an unrelated equipment loadout or Weapon Mastery rider.
+
+### Natural fist rolls of 18-20 queue the printed end-of-round throw
+
+A successful fist attack whose **natural d20 result is 18, 19, or 20** now records the victim as grabbed. The initial fist still deals its printed **3d10 damage**. At the end of that represented combat round, if both combatants remain able to participate, the Hephaeston throws the victim to the ground for **5d6 additional damage**. A **Save vs. Death Ray** halves that throw damage.
+
+The implementation deliberately does not add an unstated pin, paralysis, escape check, attack penalty, or movement prohibition merely because the source uses the word "grabbed." The grab record exists to guarantee the printed end-of-round throw and then clears after resolution. If the Hephaeston is destroyed before the queued throw, or the victim is already dead, no invented posthumous throw occurs.
+
+### Printed defensive immunities are executable
+
+The common monster damage/spell pipelines now recognize all four Hephaeston defensive boundaries:
+
+- blows from weapons of **less than +2 enchantment** inflict no damage;
+- **all 1st- and 2nd-level spells** are negated;
+- **all spells or magic affecting the mind** are negated even when their spell level is higher; and
+- **all forms of fire** inflict no damage, including represented magical fire and burning oil.
+
+A +2 or better weapon deals normal damage. The low-level spell immunity does not expand into blanket spell immunity: for example, a represented non-fire, non-mind-affecting 3rd-level damaging spell remains capable of harming the creature.
+
+### Iron/steel Levitate imports only the applicable spell mechanics
+
+The Hephaeston's at-will levitation ability requires the referee/AI layer to name an object explicitly as **iron or steel**; material is not inferred from a generic object name. The printed special range is **120 feet**.
+
+DMR2 says this works as the 2nd-level Magic-User *Levitate* spell except that movement is at **double speed** and **no concentration is required**. The Rules Cyclopedia's normal monster Spell Ability rule supplies caster level equal to Hit Dice where no other level is printed. For the 25-HD Hephaeston this means:
+
+- caster level **25**;
+- duration **31 turns** (6 turns + 1 turn/level);
+- vertical movement **40 feet per round**, double the ordinary spell's 20 feet; and
+- the ordinary Levitate horizontal-movement boundary remains: sideways motion requires pushing/pulling against a surface.
+
+The effect is recorded as an innate spell-like special rather than a prepared Magic-User spell and has no daily-use counter. In combat, activating it replaces that round's fist.
+
+Developer/referee control:
+
+```text
+ dev hephaeston levitate <name> | <iron/steel object> | <distance ft>
+```
+
+### Red-hot iron/steel objects use explicit contact, not inferred handling
+
+The second at-will special now enforces all printed quantities:
+
+- the object must be explicitly identified as **iron or steel**;
+- maximum weight **700 en**;
+- maximum range **100 feet**;
+- duration **1d4+1 rounds**; and
+- contact damage **2d6 per round**, with **Save vs. Spells for half**.
+
+The engine does not infer that someone continues holding, wearing, or touching the object from one round to the next. Each represented creature in contact must be stated explicitly for that round. A given target can receive the object's contact packet only once in the same represented round, preventing duplicate command resolution from multiplying the printed per-round damage.
+
+Developer/referee controls:
+
+```text
+ dev hephaeston heat <name> | <iron/steel object> | <weight en> | <distance ft> | <contact targets/none>
+ dev hephaeston heat contact <name> | <heated object/#> | <target>; <target>; ...
+```
+
+### Wall of Iron is once per day and lasts exactly three turns
+
+The Hephaeston's final special ability is now a separate **once-per-day** use. It imports the ordinary *Wall of Iron* geometry and physical properties that apply to the phrase "as the 6th-level magic-user spell":
+
+- maximum range **120 feet**;
+- maximum area **500 square feet**;
+- exactly **2 feet thick** and vertical;
+- must be supported and cannot be created in occupied space;
+- at the Hephaeston's default caster level 25, **25 hit points against battering**;
+- ordinary spells do not normally harm the wall;
+- one rust-monster touch destroys it; and
+- if toppled it deals the common spell's **10d10** damage and shatters.
+
+DMR2 overrides the ordinary permanent duration: the Hephaeston wall lasts exactly **3 turns / 30 campaign minutes**. Its daily charge resets on the next campaign day. An invalid unsupported/occupied placement or out-of-range request does not spend the use; an actual activation is the fist-replacing special action for that combat round.
+
+Developer/referee control:
+
+```text
+ dev hephaeston wall <name> | <area sq ft> | <distance ft> | <supported yes/no> | <occupied yes/no>
+```
+
+General inspection:
+
+```text
+ dev hephaeston status [name]
+```
+
+### Focused regression coverage
+
+Seven deterministic v0.4.161 tests were added:
+
+1. profile propagation for the source-defined attack structure, immunities, powers, 25-HD caster level, daily wall state, and save/load normalization;
+2. +2 weapon threshold, fire immunity, 1st-2nd-level spell immunity, higher-level mind-affecting immunity, and the non-fire 3rd-level-spell boundary;
+3. ordinary **weapon + fist** resolution versus **weapon + chosen special** fist substitution;
+4. natural 18-20 fist grab, end-of-round 5d6 throw, Death Ray save, and cleanup without invented grapple conditions;
+5. iron/steel Levitate range, 40-foot speed, no-concentration flag, caster level 25, 31-turn duration, at-will next-round reuse, and invalid-input non-consumption;
+6. heat-object material/weight/range/duration/contact/save rules, same-round duplicate-contact suppression, and round countdown; and
+7. Wall of Iron source/common geometry, 25 hit points, exactly three-turn duration, once-per-day limit, invalid-placement non-consumption, and next-day recharge.
+
+Validation is clean: **921/921 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.162 — Magen subtype special-power closure only**. Source-verify and implement the Caldron's 20-foot limb wrap / automatic acid damage / Strength-check escape, the Galvan's three-per-day 60-foot lightning bolt, and the Hypnos's telepathic permanent Charm Person attempt with successful-save immunity to that individual Magen. Keep Demos on its ordinary weapon profile and preserve the common Magen construct/life-needs boundaries without widening this checkpoint.
+
+## v0.4.160 — Mesmer hypnotic-pattern / Charm Monster / spell-reflection closure
+
+This bounded checkpoint closes the **Mesmer's explicitly printed DMR2 lair-control, charm, spell-reflection, turning, and damage boundaries** without inventing unprinted geometry for complex reflected spells. The Mesmer remains an undead creature with its printed **1d10 bite**, and the runtime now carries a dedicated `mesmerTraits`/`mesmerState` record through canonical profile construction, combat creation, save/load normalization, and developer inspection.
+
+### The spiraling lair pattern is a no-save positional compulsion
+
+A represented Mesmer can now apply its hypnotic lair pattern only when the engine has enough spatial information to enforce the printed conditions. The target must be explicitly named, represented within **240 feet**, and represented **above** the Mesmer/pattern. Targets on the ocean-floor approach are not silently treated as viewing the pattern from above.
+
+A qualifying viewer receives **no saving throw** and becomes action-locked by the compulsion while the movement phase automatically carries the creature toward the Mesmer/lair center using its represented movement. The engine does not invent line of sight or identify viewers automatically; the referee/AI layer must explicitly declare which represented creatures are actually looking at the pattern.
+
+The printed release condition is executable: when that Mesmer attacks a victim, the victim's pattern compulsion ends before the attack resolves. This applies to both the Mesmer's ordinary bite and its dedicated Charm Monster attack procedure.
+
+Developer/referee control:
+
+```text
+ dev mesmer pattern <name> | <target>; <target>; ...
+```
+
+### Two powerful Charm Monster casts per combat round
+
+The Mesmer now has its separate printed **two Charm Monster casts per round**. Each use:
+
+- requires one explicitly represented target within **60 feet**;
+- applies **Save vs. Spells at -6**;
+- consumes one of that round's two uses on a resolved attempt, including an immune/ineligible target;
+- establishes the normal continuing Charm Monster state and resave lifecycle on a failed save; and
+- refreshes to two available casts when the represented combat round advances.
+
+DMR2 does not state a separate caster level for this spell-like ability. The Rules Cyclopedia default monster Spell Ability rule therefore supplies **caster level 7**, equal to the Mesmer's 7 Hit Dice. This caster-level choice is confined to mechanics that actually require a caster level and does not alter the explicitly printed 60-foot range or -6 save modifier.
+
+Developer/referee control:
+
+```text
+ dev mesmer charm <name> | <target>
+```
+
+### Spells cast at the Mesmer are reflected and expanded to 10 feet
+
+The common spell resolver now intercepts an **explicit spell target that is the Mesmer** before the Mesmer can become the original recipient. The original Mesmer is unaffected; the spell is reflected to the caster and expands to other represented living creatures within **10 feet of the caster**.
+
+For target-local spells whose existing engine procedure can be applied independently to each represented reflected recipient, the reflected spell is resolved through the ordinary spell machinery and its persistent effects are tagged as Mesmer reflections. The reflection target lookup also recognizes an explicit named Mesmer even when the normal combat target helper has not pre-populated a `targetId`, which prevents deterministic named spell orders from bypassing the reflection rule.
+
+For spells whose outcome depends on an area, projectile, creation, environmental, or other remapped geometry that DMR2 does not explain, the engine records a **reflection boundary** instead of inventing how that geometry changes. It records the spell, caster, Mesmer, 10-foot radius, and represented recipients currently inside that radius, confirms that the Mesmer is unaffected, and leaves the unprinted remapping to the referee. `Sleep`, for example, remains on this conservative boundary rather than being transformed into invented recipient-by-recipient casts.
+
+### Turning, magical-weapon defense, and incidental spell immunity are active
+
+The Mesmer's Undead type already enters the common turning table at its printed **Special** rank; this checkpoint verifies that bridge rather than creating a second turning system.
+
+The common damage pipeline now enforces the stronger printed boundary that a Mesmer **can only be harmed by magical weapons**. Ordinary weapons, spell damage, and other non-weapon damage packets do not reduce its hit points. A represented magical weapon still deals normal damage.
+
+The common spell-immunity gate also recognizes the Mesmer so that a spell which includes it incidentally, rather than being explicitly cast *at* it and therefore reflected, cannot silently affect it. This complements rather than replaces the direct reflection procedure.
+
+Developer/referee inspection:
+
+```text
+ dev mesmer status [name]
+```
+
+### Focused regression coverage
+
+Five deterministic v0.4.160 tests were added:
+
+1. canonical/runtime profile propagation, 1d10 bite, two-per-round counter, Special turning, and save/load normalization;
+2. overhead/240-foot/no-save hypnotic geometry, forced approach, and attacked-victim release;
+3. two 60-foot Charm Monster casts per round, -6 saving throw, 7-HD default caster level, and next-round recharge;
+4. direct Charm Monster reflection to the caster plus a represented creature within 10 feet, with the Mesmer unaffected and reflected persistent effects tagged; and
+5. magical-weapon-only damage plus incidental-spell immunity.
+
+Validation after the reflection-target fix is clean: **914/914 core tests pass**, state isolation is preserved, JavaScript syntax is clean, and **three fresh Chromium processes** each completed the full suite with **0 failures, 0 page/runtime errors, and 0 console errors**.
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.161 — Hephaeston fist-grab / iron-control / heat-object / Wall of Iron closure only**. Source-verify and implement the Hephaeston's printed mind-affecting / 1st-2nd-level spell / fire immunities, its weapon-plus-fist-or-special action structure, the 18-20 fist grab and end-of-round throw, iron/steel levitation, red-hot iron/steel object procedure, and once-per-day three-turn Wall of Iron. Keep this as the next small independently validated checkpoint.
+
+## v0.4.159 — Randara shapechange / spellcasting / ESP / defensive closure
+
+This bounded checkpoint closes the **Randara's explicitly printed transformation, spellcasting, innate-magic, language, and defensive package** while preserving the source gaps rather than importing unrelated polymorph rules. DMR2 describes the Randara as a natural shapechanger whose polymorph ability is specifically **nonmagical** and can assume the form of **any creature**; it also gives the creature **11th-level Cleric spellcasting**, **Charm Person once per day**, **ESP at will**, immunity to **1st-3rd-level spells**, immunity to **normal weapons**, **half damage from magical weapons**, and the ability to **speak all languages**.
+
+### Natural shapechange is persistent, nonmagical, and source-bounded
+
+The canonical/runtime Randara profile now carries a `randaraMagic` record that explicitly identifies its shapechange as an **at-will nonmagical ability**. The runtime can record any referee/AI-supplied creature or individual appearance, including the source-described tactic of murdering a respected person and taking that person's place.
+
+The implementation deliberately does **not** treat this ability as the Magic-User *Polymorph Self*, *Polymorph Other*, or *Shapechange* spell. DMR2 does not say that the Randara inherits the assumed creature's Armor Class, movement, attacks, immunities, special attacks, spellcasting, or other game statistics. Therefore the Randara's own represented combat profile remains operative unless a later governing source explicitly supplies a different rule. Because the change is nonmagical, it has no invented spell duration and is not made dispellable merely by analogy to a spell.
+
+Developer/referee control:
+
+```text
+ dev randara shape <name> | <creature/individual form>
+```
+
+Using `natural`, `true form`, or `original` restores the creature's previously represented appearance without inventing what its unknown natural appearance looks like.
+
+### The normal spellcasting package is an 11th-level Cleric boundary
+
+A represented Randara now enters the spell system as an **11th-level Cleric**. The common Cleric spell tables therefore provide levels **1 through 5** with represented daily slots of:
+
+```text
+Level 1: 4
+Level 2: 4
+Level 3: 3
+Level 4: 3
+Level 5: 2
+```
+
+DMR2 supplies no encounter-specific prepared spell list, so no preparation is generated automatically. The referee/AI layer must explicitly declare the current preparation, and the declaration is atomic: an invalid spell or an overfilled level leaves the prior preparation unchanged. Reversed Cleric spells continue to use the common BECMI reverse-spell machinery and require their corresponding prepared base spell.
+
+Developer/referee controls:
+
+```text
+ dev randara prepare <name> | <spell>; <spell>; ...
+ dev randara cast <name> | <cleric spell> | <target/context>
+```
+
+Successful normal Cleric casting consumes only the applicable prepared spell and uses the common spell procedure at **caster level 11**.
+
+### Charm Person and ESP are separate innate spell abilities
+
+The printed **once-per-day Charm Person** and **at-will ESP** are not taken from the Randara's Cleric preparation. They are represented as separate innate spell abilities.
+
+The Rules Cyclopedia general monster Spell Ability procedure says that, unless a creature description specifies otherwise, a monster uses such magic at a caster level equal to its **Hit Dice**. The Randara has **14 Hit Dice**, so these two otherwise-unspecified innate powers resolve at **caster level 14**. This does not change the source-specified **Cleric 11** level for its normal Cleric spellcasting.
+
+`ESP` requires an explicit represented target/direction and reuses the common ESP procedure. It may be redirected at will and has no daily counter. The engine does not invent the thoughts perceived.
+
+`Charm Person` requires an explicit living represented target, uses the common monster-to-character Charm Person procedure, consumes exactly one daily use on a resolved attempt, and automatically becomes available again on the next campaign day. Its use does not consume, alter, or require any Cleric preparation.
+
+A narrow intrinsic-power exception prevents the Randara's own printed **1st-3rd-level spell immunity** from nonsensically suppressing its own at-will ESP activation. The immunity still applies normally to incoming magic.
+
+Developer/referee controls:
+
+```text
+ dev randara esp <name> | <target>
+ dev randara charm <name> | <target>
+```
+
+### The printed defensive package is active in the common damage/spell pipeline
+
+Incoming attacks now enforce the Randara's DMR2 defenses:
+
+- **1st-, 2nd-, and 3rd-level spells:** no effect when the common spell-immunity gate can identify the spell level;
+- **nonmagical weapon damage:** no damage;
+- **magical weapon damage:** one-half damage, with fractional hit points discarded by the integer damage model;
+- **4th-level and higher spells:** not stopped by this particular immunity unless another independent defense applies.
+
+The weapon immunity is intentionally scoped to represented **weapon attacks**. It does not become an invented blanket immunity to every mundane environmental or natural source of damage. Likewise, half damage is applied specifically to represented magical weapons rather than to all magical attacks.
+
+The `speaksAllLanguages` source fact is also retained in the Randara runtime/status profile. No unrelated universal-language conversation subsystem is invented around it.
+
+Developer/referee status command:
+
+```text
+ dev randara magic status [name]
+```
+
+### Deterministic regression coverage added
+
+Six focused v0.4.159 tests were added:
+
+1. canonical/runtime propagation of the complete Randara magic profile, **Cleric 11** level, `[4,4,3,3,2]` spell slots, **14-HD innate caster level**, all-language flag, and normalization recovery;
+2. immunity to normal weapon damage, exact half damage from magical weapons, immunity to represented **1st-3rd-level spells**, and non-immunity to a represented 4th-level spell;
+3. nonmagical transformation into a specific individual appearance, persistence through normalization, preservation of the Randara's own combat statistics, and restoration to natural form;
+4. at-will common **ESP** resolution at caster level 14 without a daily-use counter;
+5. separate **Charm Person 1/day** resolution at caster level 14, independence from Cleric preparation, and next-day recharge;
+6. explicit/atomic **11th-level Cleric preparation** and normal common spell resolution without importing a source-unspecified prepared list.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.159
+Tests: 909 / 909 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.160 — Mesmer hypnotic-pattern / Charm Monster / spell-reflection closure only**. Source-verify and implement the Mesmer's no-save hypnotic lair pattern when viewed from above within 240 feet, its **two Charm Monster uses per round** at 60 feet with the printed **-6 Save vs. Spells** modifier, the rule that attacked victims cease to be affected by the lair pattern, complete reflection/10-foot expansion of spells cast at the Mesmer, turning as a **special** undead creature, and its magical-weapon-only damage boundary. Keep lair geometry and reflected-spell targeting source-bounded rather than inventing unprinted behavior.
+
+## v0.4.158 — Faedorne illusion / spellcasting / summon closure
+
+This bounded checkpoint closes the **Faedorne's explicitly printed magical package** without inventing a spellbook, memorized list, illusion content, clairvoyant observations, or orders for summoned Silver Warriors. DMR2 states that Faedornae may create **Phantasmal Force-equivalent illusions at will even while performing other actions**, that disbelief attempts against their illusions on a **Shining Isle suffer -5 to the Save vs. Spells**, that they may use **Clairvoyance three times per day** to view the land below the isle, that they have the spellcasting ability of a **12th-level Magic-User**, and that they may **summon 1d6 Silver Warriors at will**.
+
+### The Faedorne source profile is now explicit and persistent
+
+The canonical/runtime Faedorne profile now carries a `faedorneMagic` record containing the exact source boundaries for:
+
+- at-will *Phantasmal Force*-equivalent illusion use;
+- permission to maintain that illusion while performing other voluntary actions;
+- the Shining Isle **-5** disbelief-save modifier;
+- **three** daily *Clairvoyance* uses;
+- **Magic-User level 12** spellcasting;
+- at-will **1d6 Silver Warrior** summoning;
+- and the fact that DMR2 does not supply a fixed Magic-User spellbook, memorized list, or automatic summoned-warrior orders.
+
+Combat creation and normalization restore this profile and its bounded runtime state. Older save-style records therefore recover the source profile without silently acquiring a generated spell list or Shining Isle status.
+
+### At-will Phantasmal Force uses the common spell procedure with the Faedorne exception
+
+The Faedorne illusion ability now routes through the existing BECMI *Phantasmal Force* procedure rather than creating a separate incompatible illusion subsystem. An illusion still requires an **explicit referee/AI-authored description**; the engine does not invent what appears.
+
+When the Faedorne is explicitly marked as being on a Shining Isle, the common illusion save receives the printed **-5 modifier**. Off-isle or undeclared-isle state receives no source penalty. Any additional saving-throw modifier required because the illusion depicts something the caster has not seen remains a separate referee input and combines with the source modifier rather than replacing it.
+
+The common concentration lifecycle now understands a narrowly tagged Faedorne exception: an active Faedorne illusion is **not broken merely because the caster moves, attacks, or casts another spell**, matching DMR2's statement that the illusion can be maintained while performing other actions. Damage and failed saving throws can still break the concentration because those are not voluntary “other actions” and the source does not waive those ordinary interruption cases.
+
+The engine conservatively maintains **one active Faedorne Phantasmal Force-equivalent illusion at a time**. Creating a new one replaces the prior Faedorne illusion instead of inferring an unlimited number of simultaneous concentration effects from the phrase “at will.”
+
+### Shining Isle context is explicit rather than guessed
+
+A dedicated represented context flag records whether the Faedorne is currently on a Shining Isle:
+
+```text
+ dev faedorne isle <name> <on|off>
+```
+
+The source-specific -5 illusion save and land-below *Clairvoyance* are applied only when that context has been deliberately declared. This prevents a generic encounter with a Faedorne from silently being treated as if it were occurring on her home isle.
+
+### Clairvoyance is a three-per-day Shining Isle survey ability
+
+The Faedorne's *Clairvoyance* is implemented as the **source-described special use**, not forced through the ordinary short-range represented-creature target procedure. A use therefore requires:
+
+- explicit Shining Isle context;
+- an explicit land/location/direction below the isle supplied by the referee/AI layer;
+- one of the creature's three remaining daily uses.
+
+A valid use creates an information effect tagged as viewing land below the Shining Isle. The engine deliberately does **not invent what the Faedorne actually sees**. DMR2 gives no distance in feet between a Shining Isle and the land being observed, so the ordinary 60-foot *Clairvoyance* creature-target restriction is not imported into this special ability.
+
+All three uses are tracked independently for the campaign day and automatically refresh when the day changes. A valid magical attempt that is cancelled by represented Anti-Magic still expends the use; missing Shining Isle or destination context does not.
+
+Developer/referee control:
+
+```text
+ dev faedorne clairvoyance <name> | <land/location below isle>
+```
+
+### Normal spellcasting is a real 12th-level Magic-User boundary
+
+A Faedorne now enters runtime combat with **Magic-User level 12** but an empty, undeclared spellbook/preparation state. DMR2 provides the caster level but does not state what spells an individual Faedorne knows or has memorized, so neither list is generated automatically.
+
+Referee-declared spellbooks accept represented Magic-User spells of **levels 1 through 6**, the levels available to the level-12 casting profile. Preparation is atomic, must draw from the declared spellbook, and must fit the common level-12 Magic-User slot table. Reversed spell forms require the corresponding base spell in the declared book.
+
+The normal represented spell procedures are then reused at caster level 12. Existing explicit monster-target procedures cover such cases as *Magic Missile*, *Sleep*, *Charm Person*, *Web*, and offensive eye-targeted *Light/Continual Light*; other supported spells route through the common BECMI spell engine. Invalid or unresolved target/context does not silently spend a prepared spell.
+
+Developer/referee controls are:
+
+```text
+ dev faedorne spellbook <name> | <spell>; <spell>; ...
+ dev faedorne prepare <name> | <spell>; <spell>; ...
+ dev faedorne cast <name> | <spell> | <target/context>
+```
+
+The source-defined at-will illusion remains separate from this prepared-spell inventory and does not consume a level-2 slot.
+
+### At-will 1d6 Silver Warrior summoning is represented without invented orders
+
+`dev faedorne summon <name> | <mission/orders>` now rolls the printed **1d6** and creates that many actual canonical **Silver Warrior** combatants when combat is represented. Each summoned warrior:
+
+- is placed at the Faedorne's represented position;
+- retains its normal canonical Silver Warrior monster profile;
+- records the summoning Faedorne, summon sequence, source, and exact explicit mission/orders;
+- is added to combat geometry/melee refresh normally.
+
+The command refuses to act without explicit mission/orders because DMR2 does not prescribe tactical commands for the summoned creatures. Outside combat the summon event and rolled count are recorded without inventing encounter placement.
+
+No generic dismissal timer is fabricated. DMR2 later says Faedornae helping favored elves will **usually** send 1d6 Silver Warriors for one battle or one quest, but the general at-will summoning sentence does not establish an unconditional duration for every summon. The runtime therefore records that the dismissal timing is source-unspecified rather than automatically despawning the warriors.
+
+Developer/referee controls for the complete package are:
+
+```text
+ dev faedorne magic status [name]
+ dev faedorne isle <name> <on|off>
+ dev faedorne illusion <name> | <target/none> | <description>
+ dev faedorne clairvoyance <name> | <land/location below isle>
+ dev faedorne spellbook <name> | <spell>; <spell>; ...
+ dev faedorne prepare <name> | <spell>; <spell>; ...
+ dev faedorne cast <name> | <spell> | <target/context>
+ dev faedorne summon <name> | <mission/orders>
+```
+
+### Deterministic regression coverage added
+
+Five focused v0.4.158 tests were added:
+
+1. canonical/runtime propagation of the complete Faedorne magic profile, MU12 level, empty source-unspecified spell state, daily Clairvoyance capacity, and normalization recovery;
+2. at-will *Phantasmal Force* with the exact Shining Isle **-5** modifier, preservation through other voluntary spellcasting, and conservative one-active-illusion replacement behavior;
+3. explicit Shining Isle/destination requirements for *Clairvoyance*, exact **3/day** accounting, next-day recharge, and no imported 60-foot target limit or invented observations;
+4. atomic referee-declared MU12 spellbook/preparation bounded to levels 1-6 and common slot capacity, plus represented casting at caster level 12;
+5. explicit-order **1d6 Silver Warrior** summoning, canonical combatant creation at the Faedorne's position, provenance/mission tagging, and preservation of the source-unspecified dismissal boundary.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.158
+Tests: 903 / 903 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.159 — Randara shapechange / spellcasting / ESP / defenses closure only**. DMR2 gives the Randara a natural nonmagical ability to polymorph into any creature, **11th-level Cleric** spellcasting, **Charm Person once per day**, **ESP at will**, immunity to **1st-3rd-level spells**, immunity to normal weapons, **half damage from magical weapons**, and the ability to speak all languages. Source-verify those clauses before implementation and preserve the same explicit-boundary policy for its otherwise-unspecified Cleric spell preparation and assumed-form mechanics.
+
+## v0.4.157 — Brain Collector stored-brain spell closure
+
+This bounded checkpoint closes the **Brain Collector's stored-brain spell procedure** without inventing a starting brain count or an unsupported random spell table. DMR2 states that each collected human/humanoid brain grants **one randomly determined Magic-User spell of 1st-3rd level, usable once per day**, and that a Brain Collector can hold **up to 12 brains**. The Rules Cyclopedia's general monster spell-ability rule supplies the otherwise-unspecified caster-level procedure: a monster casts at a level equal to its Hit Dice unless the creature description says otherwise. The Brain Collector is 10 Hit Dice, so represented stored-brain spells resolve at **caster level 10**.
+
+### Stored brains are independent spell resources
+
+The canonical/runtime Brain Collector profile now carries a `brainCollectorSpells` record and a persistent stored-brain state. Each represented brain has its own identity, spell, source label, and once-per-day use marker. Duplicate spell results are allowed and remain separate resources: two brains that both contain *Magic Missile* provide two independent once-per-day uses rather than collapsing into one shared spell.
+
+The state enforces the printed **12-brain maximum**. A newly created Brain Collector begins with **zero represented stored brains**, because DMR2 does not specify how many brains a random encountered individual already possesses. The engine does not silently generate an initial count.
+
+### Random spell acquisition remains referee-resolved where the source is silent
+
+DMR2 says the 1st-3rd-level Magic-User spell is **determined randomly**, but the supplied entry does not provide a table, weighting, or die procedure. The engine therefore does **not** invent an equal-probability random distribution across the spell list. Instead, brain acquisition accepts the result after the referee/AI layer has performed whatever source-appropriate random determination is being used for the campaign.
+
+Only represented Magic-User spells of levels **1 through 3** are accepted. The stored result is the canonical spell itself; reversed spell forms are not independently added to the random pool unless a governing source explicitly makes them separate random results.
+
+Developer/referee controls are:
+
+```text
+dev brain collector spell status [name]
+dev brain collector add brain <name> | <spell> | [source label]
+dev brain collector harvest <name> | <corpse> | <spell>
+dev brain collector cast <name> | <brain #/spell> | <target/context>
+```
+
+If more than one ready brain contains the same spell, selecting by spell name is intentionally rejected as ambiguous; the caller must choose the specific brain number.
+
+### Harvesting is tied to represented slain human/humanoid victims
+
+The DMR2 acquisition fiction is represented directly. `harvest` requires an actual represented corpse that is both dead and human/humanoid. A living target, non-humanoid target, missing target, or corpse already harvested by that Brain Collector is rejected. Successful harvesting adds exactly one brain/spell record if capacity remains.
+
+The surgical collection procedure itself is not assigned an invented action duration or skill check because the source supplies neither. Those details remain referee-owned outside the deterministic stored-brain state transition.
+
+### Stored spells cast at level 10 and reuse the common BECMI spell engine
+
+When a stored brain is used, the Brain Collector temporarily enters a **10th-level Magic-User casting context** derived from its 10 Hit Dice under the Rules Cyclopedia monster spell-ability rule. Persistent effects therefore receive the correct represented caster level for durations, ranges, dispelling, and other level-dependent procedures. The temporary casting context is removed immediately after resolution so it does not overwrite the monster's ordinary creature profile.
+
+The closure reuses existing deterministic monster-spell procedures where they are already source-bounded, including **Magic Missile, Sleep, Charm Person, Web, and offensive Light/Continual Light eye use**. Other represented level-1-3 Magic-User spells route through the common BECMI spell-effect resolver. The engine still requires explicit targets, areas, illusion descriptions, or other context where the spell itself requires them; it does not autonomously choose tactical inputs.
+
+A stored brain's daily use is spent only once a valid represented casting actually begins. Missing/invalid context does not consume the use. If a valid cast is subsequently cancelled by an represented anti-magic procedure, the attempt still counts as that brain's use for the day. Uses automatically become available again when the campaign day changes.
+
+The Brain Collector's ordinary physical attack remains a separate **1d10 bite**. The catalogue's `1 bite + spells` line is not treated as if every bite automatically casts a stored spell.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.157 tests were added:
+
+1. canonical/runtime propagation of the Brain Collector spell profile, exact 1d10 bite separation, zero invented starting brains, and caster level 10;
+2. acceptance of only represented Magic-User level-1-3 spells, independent duplicate-brain records, exact 12-brain capacity, and ambiguous duplicate-spell selector protection;
+3. represented dead human/humanoid harvesting and prevention of duplicate harvesting from the same corpse;
+4. level-10 **Magic Missile** resolution producing three missiles, spending only the selected brain, and automatic next-day recharge;
+5. invalid/unresolved casting context leaving a brain unspent, plus generic persistent-spell routing at caster level 10.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.157
+Tests: 898 / 898 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.158 — Faedorne illusion / spellcasting / summon closure only**. DMR2 gives Faedornae at-will *Phantasmal Force*-equivalent illusions usable while taking other actions, a **-5 disbelief-save penalty on a Shining Isle**, **Clairvoyance three times per day**, **12th-level Magic-User spellcasting**, and at-will summoning of **1d6 Silver Warriors**. Source-verify each procedure and preserve the same boundary used for Aranea: do not invent a fixed spellbook or memorized list where the creature entry does not provide one, and do not let the AI silently choose illusion content, clairvoyance destination, or summoned-warrior orders.
+
+## v0.4.156 — Aranea poison / 3rd-level Magic-User spellcasting closure
+
+This bounded checkpoint closes the **Aranea's poisonous bite and printed 3rd-level Magic-User spellcasting** without inventing a fixed spellbook, memorized list, extra web attack, or higher-level casting. DMR2 prints a **1d6 + poison** bite, **Magic-User: 3** saving throws, a separate **120' (40') in-web movement rate**, and states that an Aranea can cast spells as a **3rd-level magic-user**; its exact spell selection is not supplied.
+
+### Poison now uses the ordinary BECMI monster-poison procedure
+
+DMR2 calls the Aranea bite poisonous but gives no alternate venom effect, delay, modifier, or damage-only exception. The implementation therefore routes a successful bite through the Rules Cyclopedia's ordinary monster-poison rule:
+
+- the bite first inflicts its printed **1d6** physical damage;
+- the victim then makes **Save vs. Poison**;
+- a successful save leaves the victim unaffected by the poison;
+- a failed save causes immediate poison death;
+- represented poison protection/immunity is checked before the saving throw;
+- the engine does not import a giant-spider paralysis result or invent a milder Aranea-specific toxin.
+
+The poison rider is attached directly to the Aranea's canonical bite and is invoked from the ordinary monster-attack path only after a successful bite hit.
+
+### The Aranea is represented as a 3rd-level Magic-User, not a generic innate-spell battery
+
+The canonical/runtime Aranea profile now carries an explicit `araneaSpellcasting` record with **Magic-User level 3**. This supplies the normal level-3 Magic-User slot capacity of **two 1st-level and one 2nd-level spell**, while preserving the source gap around which spells this individual actually knows or has prepared.
+
+No spellbook or prepared list is generated automatically. A represented Aranea therefore begins with the printed caster level but an intentionally empty, undeclared spellbook/preparation state. This avoids turning the creature into an omniscient caster that can choose any level-1/2 spell on demand.
+
+The referee may explicitly declare a spellbook drawn only from represented Mentzer Magic-User spells available to a 3rd-level caster, then explicitly prepare spells from that spellbook within the normal 2/1 slot limit. Reversed forms are available only where the common BECMI spell engine already represents them and the corresponding base spell is actually in the declared spellbook.
+
+### Spellbook/preparation declarations are atomic and bounded
+
+Two bounded state transitions were added:
+
+```text
+dev aranea spellbook <name> | <spell>; <spell>; ...
+dev aranea prepare <name> | <spell>; <spell>; ...
+```
+
+An invalid declaration does not partially mutate the current spellbook or prepared list. The spellbook rejects spells above 2nd level for this 3rd-level caster. Preparation rejects unknown spells and any declaration that exceeds either the two 1st-level slots or the one 2nd-level slot. Unfilled slots remain unfilled.
+
+The current state can be inspected with:
+
+```text
+dev aranea spell status [name]
+```
+
+### Prepared-spell casting reuses the existing deterministic BECMI spell engine
+
+A ready Aranea spell can be invoked through:
+
+```text
+dev aranea cast <name> | <spell> | <target/context>
+```
+
+The engine never chooses a victim, area, or illusion description on the Aranea's behalf. Explicit target/context is required before deterministic resolution. Prepared slots are consumed only when the represented casting actually begins/resolves according to the common spell procedure.
+
+The closure includes source-compatible handling for represented low-level Magic-User procedures, including **Magic Missile, Sleep, Charm Person, Web, Light/Continual Light offensive eye use**, and other level-1/2 spells already supported by the common spell engine. Magic Missile uses the caster's actual level-3 missile count; Sleep uses the ordinary 2d8 Hit-Dice budget and 4d4-turn duration; persistent spell effects use the shared expiry/dispelling infrastructure instead of a parallel Aranea-only timing model.
+
+### Web movement remains movement, not a fabricated attack
+
+DMR2 lists the Aranea's ordinary movement and a separate **in-web movement of 120' per turn / 40' per encounter round**. That value is now preserved as the runtime `web` movement mode.
+
+The word “webspinner” and the in-web movement line do **not** grant an innate giant-spider web-squirt or trapping attack. An Aranea can create a *Web* effect only if the referee has actually placed the Magic-User **Web** spell in that individual Aranea's declared spellbook and preparation.
+
+Combat-state normalization now also restores canonical movement-mode data when loading an older represented monster record that lacks `moveModes`. This keeps the Aranea's 40-foot in-web rate—and other source movement modes—from disappearing during save/load migration without overwriting an already represented transformed/special movement state.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.156 tests were added:
+
+1. propagation/normalization of the 1d6 poisonous bite, 40-foot in-web encounter movement, Magic-User level 3, 2/1 spell slots, and deliberately undeclared spellbook/preparation state;
+2. ordinary monster-poison Save-vs.-Poison-or-death behavior, including successful-save survival;
+3. atomic referee spellbook/preparation declarations, level-1/2 restriction, normal 2/1 slot limits, and reversed-spell/base-spell ownership boundaries;
+4. level-3 **Magic Missile** resolution with one automatic 1d6+1 missile, explicit targeting, and prepared-slot expenditure;
+5. **Sleep** resolution using an explicit target list, 2d8 Hit-Dice budget, 4d4-turn duration, no saving throw, and shared timed wake-up lifecycle.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.156
+Tests: 893 / 893 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.157 — Brain Collector stored-brain spell closure only**. DMR2 states that each collected brain grants **one randomly determined Magic-User spell of 1st-3rd level, usable once per day**, and that a Brain Collector can hold **up to 12 brains**. Source-verify the random spell-acquisition boundary, represent each stored brain/spell independently, enforce the 12-brain capacity and one-use-per-day cadence, and route any represented spell through the existing BECMI spell engine without granting unearned spell levels or silently assuming a full spellbook.
+
+## v0.4.155 — Homunculus subtype polymorph / attack-rider closure
+
+This small checkpoint closes the **subtype-specific DMR2 mechanics** that were deliberately left out of the common Homunculus work in v0.4.152-v0.4.154. The common master bond, regeneration, defenses, invisibility, detection powers, and limited-use spell-like abilities remain unchanged. This pass handles only **Fylgar, Gretch, and Ulzaq polymorph forms, natural-attack choices/riders, initiative/detection exceptions, and subtype immunities**.
+
+### Fylgar: bounded at-will forms, quick reactions, tail accuracy, and Detect Invisible
+
+Fylgar now carries its exact DMR2 at-will form list: **black cat** and **hawk**, plus return to natural form. The source says a Fylgar may polymorph into those creatures, but unlike the Ulzaq paragraph it does **not** state that the Fylgar moves and attacks as the assumed animal. The implementation therefore records the form without silently importing animal statistics, a generic Polymorph Self spell, or extraordinary powers. Automated movement and attacks are fenced while such a source-underspecified form is active; the referee may adjudicate details that the source leaves unstated.
+
+In natural form the Fylgar may explicitly select its printed **bite (1d4)** or **tail (1d3)** attack. The tail receives the printed **+4 attack bonus**. Its **+1 initiative** is integrated into the side-based initiative engine for a homogeneous Fylgar initiative side; mixed sides do not silently confer the Fylgar's personal quick-reaction bonus on unrelated creatures. The Fylgar's innate **Detect Invisible** is also exposed through the common invisible-target detection predicate.
+
+### Gretch: bounded forms, tail poison, and mind-affecting-spell immunity
+
+Gretch now carries the exact at-will **raven** and **giant rat** form list. As with Fylgar, DMR2 does not say that the Gretch inherits those animals' combat profiles, so no animal movement, attacks, or extraordinary abilities are imported merely from the word “polymorph.” Returning to natural form restores the exact prior natural movement/attack profile.
+
+In natural form the represented attack choice may be **tail** or **bite**, each for the printed 1d4 damage. A successful natural-form tail hit now routes into the source poison rider:
+
+- Save vs. Poison;
+- on failure, lose **1 Dexterity per hit**;
+- each loss has its own **2d4-turn** duration;
+- a victim whose Dexterity is reduced to **3 or less falls unconscious**;
+- the engine records unconsciousness separately from magical Sleep, so Sleep-specific wake/break rules are not imported;
+- each temporary point returns when its own duration expires, by either the combat-round clock or campaign clock.
+
+Gretch **immunity to mind-affecting spells** now routes through the common represented mind-effect gate (including currently represented effects such as Charm, Sleep, ESP, Feeblemind, Confusion, fear, Hold, Quest/Geas, Phantasmal Force, and Dance) instead of being only descriptive text.
+
+### Ulzaq: bat/frog forms, bite Strength drain, and electrical immunity
+
+Ulzaq is different from the other two subtypes because DMR2 explicitly states that in bat or frog form it **moves and attacks as those creatures**. The implementation preserves that distinction rather than applying one generic transformation rule to the entire Homunculus family.
+
+For **normal bat form**, the supplied Rules Cyclopedia profile gives encounter movement of **3 feet ground / 40 feet flying**. A single normal bat has no individual damaging attack; its printed confusion procedure requires at least ten bats around one character. An individual Ulzaq therefore receives the source-backed movement but no invented single-bat attack or one-creature confusion effect.
+
+For **normal frog form**, the supplied project sources do not provide an ordinary frog combat profile. The engine records the form but leaves movement and attacks explicitly **referee-owned/unresolved** rather than borrowing giant-frog statistics or inventing a normal-frog profile.
+
+Ulzaq's natural combat profile is explicitly corrected to **two claws for 1d2/1d2 plus one bite for 1d4**, avoiding a prior generic catalogue-parser mismatch on the bite damage. Any represented Ulzaq bite that actually occurs can apply the source rider:
+
+- Save vs. Poison;
+- on failure, lose **1 Strength per hit**;
+- each loss lasts **2d4 turns**;
+- Strength **3 or less** causes unconsciousness;
+- independent losses restore independently when their durations expire.
+
+The additional Ulzaq **electrical-attack immunity** is now part of the common incoming-damage gate. Explicitly represented lightning/electrical attacks do no damage, without granting immunity to unrelated magic.
+
+### Form state and ability-drain lifecycle
+
+A Homunculus form change now snapshots its natural represented movement, movement modes, attacks, and direct-combat eligibility before the first transformation. Returning to natural form restores that exact snapshot rather than reconstructing or approximating it. This preserves encounter-specific/loadout state and avoids transformation drift.
+
+Temporary Gretch/Ulzaq ability losses are stored as independent effects. They can therefore stack per successful hit as the source says, expire separately, survive ordinary state handling, and restore the correct point without imposing an artificial score-18 cap. Dexterity restoration also re-runs the common AC recalculation. Characters rendered unconscious by a score of 3 or less are prevented from deliberately taking missile, magic, or hand-to-hand actions until the affected score recovers above the threshold.
+
+### Referee/developer controls
+
+The existing Homunculus inspection command now reports subtype/form state and subtype defenses. Two bounded form/attack controls were added:
+
+```text
+dev homunculus traits status [name]
+dev homunculus form <name> | <natural|black cat|hawk|raven|giant rat|bat|frog>
+dev homunculus attack <name> <bite|tail>
+```
+
+These controls expose choices the source permits without having the AI/referee layer silently choose a transformation or natural attack on the creature's behalf.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.155 tests were added:
+
+1. propagation/normalization of every subtype form list, attack rider, special immunity, Fylgar quick-reaction/detection flag, Ulzaq bat profile, and corrected Ulzaq 1d4 bite;
+2. Fylgar form-boundary behavior, exact natural-profile restoration, 1d3/+4 tail handling, Detect Invisible integration, and +1 initiative integration;
+3. Gretch failed-poison-save Dexterity loss, 2d4-turn duration, unconsciousness at Dexterity 3, mind-affecting-spell immunity, and exact score recovery;
+4. Ulzaq electrical immunity plus failed-poison-save Strength loss, unconsciousness at Strength 3, and round-based recovery;
+5. Ulzaq normal-bat movement with the ten-bat confusion boundary, explicit unresolved normal-frog combat profile, and exact restoration of the natural profile.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.155
+Tests: 888 / 888 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.156 — Aranea poison / 3rd-level Magic-User spellcasting closure only**. DMR2 gives the Aranea a poisonous bite and the ability to **cast spells as a 3rd-level magic-user**. Source-verify the governing poison procedure and connect an explicit bounded spell selection/preparation procedure to the existing Magic-User spell engine without inventing a fixed spellbook or memorized spell list that DMR2 does not supply. Preserve its printed web movement as ordinary movement data rather than importing unrelated giant-spider web attacks.
+
+## v0.4.154 — Homunculus master-bond / destruction closure
+
+This bounded checkpoint closes the **shared Homunculus/master relationship and destruction lifecycle** printed in DMR2 for **Fylgar, Gretch, and Ulzaq**. It builds directly on the shared regeneration/intrinsic state from v0.4.153 and the explicit limited-use magical powers from v0.4.152, while deliberately leaving subtype polymorph forms and attack riders for the next small checkpoint.
+
+### The one-mile bond requires an explicitly willing servant
+
+The common Homunculus profile now preserves the source's **one-mile / 5,280-foot** master-bond range and the fact that the link applies while the Homunculus is a **willing servant**. The engine does not infer either the identity of the master or willingness from party membership, proximity, alignment, or prior use of the weekly Commune-equivalent ability.
+
+Once the referee has explicitly declared the relationship and willingness, represented range determines whether the source bond is active:
+
+- at **one mile or less**, the Homunculus and master have the printed telepathic communication link;
+- the master may use the Homunculus's ordinary senses at the same range, explicitly including **infravision**;
+- beyond one mile, neither telepathy nor shared senses is reported as active;
+- subtype magical abilities, *Detect Evil*, *Detect Magic*, and other powers are **not** silently transferred as “senses.”
+
+The declared master, willing-servant state, and bond metadata survive combat normalization/save-load reconstruction.
+
+### Physical contact grants exactly +3 to all master saving throws
+
+The source's physical-contact benefit is now connected to the common player-character saving-throw procedure. While a declared willing Homunculus and its living master are in represented **physical contact**, that master receives **+3 on all saving throws**.
+
+In combat, physical contact is represented by exact zero-distance positioning. Outside represented combat geometry, the referee may explicitly declare or clear physical contact. Mere proximity does not qualify: being several feet away is not converted into touching.
+
+The bonus does not stack above +3 merely because more than one represented Homunculus is touching the same master; the source states the benefit of the relationship, not a cumulative per-creature bonus.
+
+### Reaching 0 hp now destroys the Prime-Plane body and returns the life-force
+
+A Homunculus reduced to **0 hit points** no longer remains as an ordinary dead body eligible for its normal 1-hp-per-round regeneration. Its destruction transaction now records the source-defined result:
+
+- its body on the **Prime Plane is destroyed**;
+- its life-force is marked as having **returned to its plane of origin**;
+- intrinsic invisibility is ended;
+- the destruction transaction is idempotent, so repeated damage/death cleanup cannot apply the master's consequences more than once.
+
+The engine does not invent a method, travel time, or procedure by which the returned life-force reaches that other plane.
+
+### A declared master permanently loses 1d4+1 hp
+
+If the destroyed Homunculus has an explicitly declared represented master, the engine rolls the printed **1d4+1** and permanently reduces that master's **maximum hit points** by the result. Current hit points are clamped to the new maximum, and the permanent loss is retained in the character record through normalization/save-load reconstruction.
+
+DMR2 provides no minimum remaining hit points or immunity for an unusually frail master. The implementation therefore does not manufacture one. If the permanent maximum-HP loss reduces the represented master to 0 maximum/current hp, the ordinary character death state follows.
+
+If no master has been explicitly declared, the Homunculus body is still destroyed and its life-force still returns, but the permanent master consequence is left visibly **unresolved for referee adjudication** rather than being applied to a guessed party member.
+
+### The one-year replacement statement is treated as a minimum, not a guaranteed respawn
+
+The master's record now receives a persistent Homunculus replacement restriction whose earliest permitted point is exactly **365 campaign days** after the destruction transaction. Before that time, the source says a replacement will not be granted.
+
+The wording is **“at least one year,”** so reaching that date does not automatically create or grant a replacement Homunculus. The engine reports only that the source's minimum waiting period has been satisfied; whether, when, and how another Homunculus is granted remains referee/campaign adjudication.
+
+### Referee/developer controls
+
+The completed shared bond can be inspected or explicitly declared through:
+
+```text
+dev homunculus traits status [name]
+dev homunculus bond status [name]
+dev homunculus master <name> | <pc>
+dev homunculus willing <name> <on|off>
+dev homunculus contact <name> <on|off>
+```
+
+These commands expose relationships that the source requires but the engine cannot safely infer. They do not select a master, decide willingness, or manufacture physical contact on the referee's behalf.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.154 tests were added:
+
+1. canonical/runtime propagation of the one-mile bond, +3 contact-save bonus, one-year replacement minimum, and 1d4+1 destruction consequence;
+2. willing-servant telepathy and ordinary shared senses including infravision inside one mile, loss of the link outside one mile, and deliberate non-transfer of magical/detection powers;
+3. exactly +3 to every represented master saving throw during physical contact, with proximity alone insufficient and no cumulative stacking above +3;
+4. 0-hp destruction returning the life-force, permanently reducing the declared master's maximum hp by 1d4+1, establishing the one-year minimum replacement date, remaining idempotent, and preserving the master consequence through normalization;
+5. destruction with no declared master preserving the master consequence as an explicit unresolved referee boundary instead of guessing a victim.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.154
+Tests: 883 / 883 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.155 — Homunculus subtype polymorph / attack-rider closure only**. Source-verify and implement the subtype-specific rules without reopening the completed common bond: **Fylgar** black-cat/hawk forms, +1 initiative, natural-form tail +4, and *Detect Invisible*; **Gretch** at-will raven/giant-rat forms, tail-poison Dexterity loss and resulting unconsciousness, plus mind-affecting-spell immunity; and **Ulzaq** at-will bat/frog forms, bite Strength loss and resulting unconsciousness, plus electrical immunity. Preserve the published animal-form movement/attacks where the source actually supplies them and leave any unstated transformation details visible rather than inventing them.
+
+## v0.4.153 — Homunculus shared intrinsic / defensive closure
+
+This bounded checkpoint implements the **shared intrinsic and defensive abilities** printed for all three DMR2 Homunculus subtypes—**Fylgar, Gretch, and Ulzaq**—without yet folding in their subtype-specific polymorph forms, attack riders, or the larger master-bond/destruction lifecycle. The common entry gives every Homunculus immunity to nonmagical weapons and all cold- and fire-based attacks, invisibility, at-will *Detect Evil* and *Detect Magic*, and **1 hit point of regeneration per round**; that regeneration is also passed to its master while the master is within **10 feet**.
+
+### Shared defensive state is now canonical
+
+Each Homunculus subtype now carries a `homunculusTraits` record through the canonical creature profile, combat-monster creation, and save/load-style combat normalization. The common record preserves the source boundaries independently of the v0.4.152 limited-use spell-like powers.
+
+Incoming damage now checks those defenses before hit points are removed:
+
+- an explicitly represented **nonmagical weapon** does no damage;
+- a represented **fire-based attack** does no damage, whether magical or nonmagical;
+- a represented **cold-based attack** does no damage, whether magical or nonmagical;
+- a non-elemental **magical weapon** still damages the Homunculus normally;
+- unrelated magical attacks do not acquire blanket immunity merely because the creature has these listed defenses.
+
+The engine does not guess that an arbitrary attack is a weapon, fire, or cold from flavor text alone. The appropriate represented damage context must identify that property.
+
+### Invisibility is an intrinsic ability rather than an ordinary spell cast
+
+A Homunculus may now switch its own invisibility on or off without consuming a prepared spell, subtype daily use, or the weekly Commune-equivalent use. While invisible it uses the common unseen-target combat handling.
+
+The state is not routed through the Magic-User *Invisibility* spell. Consequently an attack does **not** automatically break a Homunculus's intrinsic invisibility. The already-represented *Appear* procedure does reveal an invisible Homunculus caught in its 20-foot cube and applies the normal one-turn anti-invisibility lock before the intrinsic ability can be reactivated.
+
+The selected intrinsic visibility state survives combat normalization.
+
+### Detect Evil and Detect Magic are explicit at-will senses
+
+The common detection predicates now recognize a Homunculus whose intrinsic **Detect Evil** or **Detect Magic** ability has been activated. These states are deliberately separate from ordinary spell effects:
+
+- they create no prepared-spell expenditure;
+- they consume no daily or weekly Homunculus power use;
+- they are not assigned an invented duration;
+- turning one off is an explicit state change rather than spell expiration.
+
+This checkpoint does not add *Detect Invisible* to all Homunculi. That ability belongs specifically to the Fylgar and remains subtype-specific work.
+
+### Regeneration restores one hit point per round and can pass to the master
+
+Every living represented Homunculus now regenerates **1 hit point per combat round**, up to its normal maximum. The per-round transaction is idempotent, so repeated calls during the same combat round cannot produce extra healing.
+
+The source also says that this regeneration is passed to the Homunculus's master while the master is within **10 feet**. The engine does not guess the identity of that master. A referee/developer must explicitly associate one represented player character with the Homunculus. Once declared:
+
+- a living wounded master at **10 feet or less** receives the same **1 hp/round** restoration;
+- a master at more than 10 feet receives none;
+- the Homunculus may still regenerate itself when the master is absent or out of range;
+- the declared relationship and regeneration bookkeeping survive combat normalization/save-load reconstruction.
+
+A Homunculus at **0 hp** does not regenerate through this procedure. DMR2 separately says that reaching 0 hp destroys its Prime-Plane body and produces consequences for the master; that lifecycle is deliberately reserved for the next bounded checkpoint rather than approximated here.
+
+### The larger master bond remains deliberately separate
+
+The master identity recorded for regeneration does **not yet** activate the entry's other relationship benefits. This pass does not implement:
+
+- telepathic communication with the willing master out to **one mile**;
+- the master's ability to use all Homunculus senses, including infravision, inside that mile;
+- the **+3 saving-throw bonus** while master and Homunculus are in physical contact;
+- the permanent master hit-point loss and one-year replacement restriction when the Homunculus body is destroyed.
+
+Keeping those rules together in a later lifecycle/bond pass prevents the temporary regeneration association from silently granting unrelated benefits.
+
+### Referee/developer controls
+
+The shared intrinsic state is exposed through:
+
+```text
+dev homunculus traits status [name]
+dev homunculus invisible <name> <on|off>
+dev homunculus detect <name> <evil|magic> <on|off>
+dev homunculus master <name> | <pc>
+```
+
+These controls expose the source mechanics but do not invent a master relationship or autonomously choose when the creature should hide itself or activate a detection ability.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.153 tests were added:
+
+1. Fylgar/Gretch/Ulzaq shared intrinsic-profile propagation and save/load-style normalization;
+2. immunity to nonmagical weapon damage and represented fire/cold attacks while preserving damage from a non-elemental magical weapon and unrelated magic;
+3. intrinsic invisibility using unseen-target defense, surviving an attack, then being revealed and temporarily suppressed by *Appear*;
+4. at-will *Detect Evil* and *Detect Magic* feeding the common detection predicates without creating spell effects or consuming daily power uses;
+5. exactly 1 hp/round regeneration for the Homunculus and an explicitly declared master at 10 feet, no transfer at 11 feet, same-round idempotence, and normalization persistence.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.153
+Tests: 878 / 878 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.154 — Homunculus master-bond / destruction closure only**. Implement the shared **one-mile telepathic link**, the master's one-mile access to all Homunculus senses including infravision, the **+3 saving-throw benefit during physical contact**, and the source-defined consequences when a Homunculus reaches **0 hp**: destruction of its Prime-Plane body, return of its life-force to its plane of origin, **at least one year** before the master can receive a replacement, and the master's permanent **1d4+1 hit-point loss**. Keep Fylgar/Gretch/Ulzaq polymorph forms and subtype attack riders for subsequent bounded work.
+
+## v0.4.152 — Homunculus explicit spell-like-power closure
+
+This bounded checkpoint implements the explicitly limited-use magical powers printed for the DMR2 **Homunculus** family—**Fylgar, Gretch, and Ulzaq**—without folding the creatures' larger intrinsic/defensive subsystem into the same pass. DMR2 explicitly states that Homunculi use their magical abilities **as if 21st level**, so unlike the Baldandar and Lesser Phantom batches, this family has a source-supplied level for common spell procedures that depend on caster level.
+
+### The common 21st-level magical-ability boundary is now canonical
+
+Each of the three canonical/runtime subtype profiles now carries a `homunculusPowers` record with `magicalAbilityLevel: 21`. This is not inferred from the creatures' 3 Hit Dice and is not an engine default: it comes from the Homunculus entry itself.
+
+The same entry separately gives all three subtypes **Magic-User: 21** saving throws. This checkpoint does not turn the creatures into ordinary 21st-level player-character spellcasters, grant spell books or memorized slots, or expose unrelated Magic-User spells. The level is used only where the Homunculus entry directs its magical abilities to function as 21st level.
+
+The profile and use state survive ordinary combat normalization/save-load reconstruction.
+
+### Shared Commune-equivalent guidance is once per week
+
+Every Homunculus may now use the printed **once-per-week** special knowledge/insight ability to help its master make important decisions, with assistance mechanically equivalent to *Commune*.
+
+The deterministic bridge reuses the represented Commune procedure at the source-specified 21st level:
+
+- the referee must explicitly identify the represented **master** rather than allowing the engine to infer that relationship;
+- one to three explicit questions must be supplied;
+- the ordinary **three-question** allowance and **three-turn / 30-minute** information window are retained;
+- the resulting effect is tagged as a Homunculus spell-like/equivalent ability and is directed to the declared master;
+- the next use becomes available exactly **7 campaign days / 10,080 minutes** later.
+
+The Cleric Commune procedure's special once-per-year doubled-question option is **not imported** into this monster ability. DMR2 expressly gives the Homunculus one use per week and says that its assistance is equivalent to Commune; it does not grant the cleric's separate annual exception. The engine also does not manufacture answers. The questions remain flagged for referee/AI adjudication.
+
+### Fylgar receives three daily Protection from Evil 10' Radius uses
+
+A Fylgar now has exactly **three uses per campaign day** of *Protection from Evil 10' Radius*. Each chosen use invokes the existing audited area-protection procedure at magical-ability level 21 rather than an approximate monster-only ward.
+
+The effect therefore retains the represented moving **10-foot radius**, ordinary protection modifiers/contact boundary, and normal duration already supplied by the common spell handler. A fourth use in the same campaign day is refused before resolution; all three uses return on the next campaign day.
+
+This checkpoint does not yet implement the Fylgar's intrinsic detect-invisible ability, polymorph forms, initiative bonus, or natural-form tail attack bonus.
+
+### Gretch receives one daily Slow use
+
+A Gretch may now explicitly use **Slow once per campaign day**. The power routes through the common reversed-*Haste* procedure at level 21, preserving the represented targeting, range/area validation, saving throws, **three-turn duration**, half movement, and half ordinary attack rate without slowing spellcasting or magical-device use.
+
+The engine requires an explicit represented target declaration and does not choose victims or tactics for the Gretch. The use recharges on the next campaign day.
+
+The Gretch's polymorph forms, mind-affecting-spell immunity, poisonous tail Dexterity drain, and associated unconsciousness threshold remain outside this bounded pass.
+
+### Ulzaq receives one daily Confusion use
+
+An Ulzaq may now explicitly cause **Confusion once per campaign day** using the already-audited common Confusion procedure at the printed 21st magical-ability level. The power retains the **120-foot range**, represented **60-foot-diameter** target-area boundary, **3d6 victim cap**, HD-based saving-throw treatment, and **12-round** round-by-round Confusion lifecycle.
+
+The engine does not select victims for the Ulzaq. A valid use consumes only this daily power and returns on the next campaign day.
+
+The Ulzaq's electrical immunity, at-will polymorph forms, bite-based Strength drain, and associated unconsciousness threshold remain later intrinsic/defensive work.
+
+### Limited-use bookkeeping remains independent
+
+The once-per-week shared Commune-equivalent ability and each subtype's daily power have separate bookkeeping. Using a Fylgar's weekly guidance does not consume any of its three daily Protection uses, and using a daily subtype power does not alter the weekly timer.
+
+Daily uses are keyed to the campaign day. Weekly Commune-equivalent availability is keyed to the absolute campaign minute so save/load and long time advances preserve the exact seven-day boundary.
+
+### Referee/developer controls
+
+The bounded powers are exposed through:
+
+```text
+dev homunculus power status [name]
+dev homunculus power commune <name> | <master> | <question 1>; <question 2>; <question 3>
+dev homunculus power protection <name>
+dev homunculus power slow <name> | <targets>
+dev homunculus power confusion <name> | <targets>
+```
+
+These controls expose source-defined powers and availability without inventing a master relationship, questions, targets, tactics, or access to any spell not actually granted by the creature entry.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.152 tests were added:
+
+1. Fylgar/Gretch/Ulzaq canonical/runtime propagation, source-specified 21st magical-ability level, weekly shared use, subtype daily-use counts, and normalization persistence;
+2. Fylgar *Protection from Evil 10' Radius* using the common 10-foot aura at level 21, enforcing three uses per day, and recharging on the next campaign day;
+3. Gretch *Slow* reusing the common three-turn reversed-*Haste* procedure at level 21, enforcing one use per day, and recharging next day;
+4. Ulzaq *Confusion* reusing the common 12-round procedure at level 21, enforcing one use per day, and recharging next day;
+5. the shared Commune-equivalent ability targeting an explicitly declared master, preserving the three-question / three-turn procedure, remaining independent of subtype daily use, refusing a second use inside the same week, and recharging after exactly seven campaign days.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.152
+Tests: 873 / 873 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.153 — Homunculus shared intrinsic/defensive closure only**. Source-verify and implement the abilities common to all three subtypes: immunity to nonmagical weapons and to cold/fire attacks, at-will invisibility, at-will *Detect Evil* / *Detect Magic*, and **1 hp/round regeneration** including the printed transfer of that regeneration to the master while within **10 feet**. Keep the one-mile telepathic/sensory master bond, physical-contact +3 saving-throw benefit, destruction/replacement consequences, subtype polymorph forms, and Gretch/Ulzaq ability-drain attacks for later bounded checkpoints.
+
+## v0.4.151 — Baldandar intrinsic-power closure
+
+This bounded checkpoint closes the remaining **intrinsic** DMR2 procedures for the **Baldandar** without reclassifying them as the four once-per-day named spell-like powers implemented in v0.4.150. The source gives the creature at-will sensory illusions, a one-turn post-concentration persistence rule, a special saving-throw interaction for illusory spell/breath attacks, at-will invisibility and flight, and a poisonous bite that can induce sleep.
+
+### At-will illusions preserve the full printed sensory and range boundary
+
+The canonical/runtime Baldandar profile now carries a separate `baldandarTraits` record. A referee may explicitly start an intrinsic illusion within the source's **240-foot range indoors / 240-yard range outdoors**. The tracked illusion is marked as affecting **all senses**—vision, hearing, smell, touch, and taste—rather than being reduced to a visual-only image.
+
+The engine still does not author the deception for the referee. The illusion description and its represented distance must be supplied explicitly. Because DMR2 does not state how many independent illusions a Baldandar can maintain simultaneously, the deterministic tracker exposes **one explicitly tracked concentration instance at a time** rather than inventing simultaneous-concentration capacity.
+
+### Ending concentration starts the printed one-turn persistence clock
+
+When the Baldandar stops concentrating, the represented illusion does not vanish immediately. It remains real and reacts as if real for exactly **1 turn = 10 minutes = 60 combat rounds**. Both the combat-round countdown and the absolute campaign-minute deadline are recorded so the state remains deterministic across the two time scales.
+
+No extra disbelief checks, touch-to-disbelieve rule, concentration-break triggers, or shortened duration are imported from other illusion spells. The rule here is the Baldandar's own DMR2 intrinsic procedure.
+
+### Illusory spell and breath attacks use Save vs. Spells at -4
+
+A Baldandar-facing resolver now handles the source's specific attack-illusion interaction. The referee must identify the represented victim, declare whether the deception imitates a **spell** or **breath weapon**, and describe the mimicked effect. The victim then makes the printed **Save vs. Spells at -4**:
+
+- on success, the victim recognizes the illusion and the attack has no effect;
+- on failure, the record is explicitly marked **affected as if real**.
+
+DMR2 does not provide a generic damage value, caster level, breath shape, damage type, or named spell for an arbitrary Baldandar illusion. A failed save therefore does **not** cause the engine to manufacture a universal illusion-damage packet. The exact mimicked effect must already be represented or remain referee-owned.
+
+### Invisibility is intrinsic and at will
+
+The Baldandar can now switch its intrinsic invisibility on or off without consuming one of its four daily named spell powers. It uses the engine's existing unseen-target combat handling while active.
+
+This state is not the Magic-User *Invisibility* spell, so the build does **not** import that spell's attack/casting break condition. A Baldandar that attacks while intrinsically invisible therefore remains invisible unless another represented rule reveals it.
+
+The common *Appear* procedure now also recognizes this intrinsic state: a Baldandar caught in the represented 20-foot cube becomes visible and the existing one-turn anti-invisibility lock prevents immediate at-will reactivation.
+
+### Flight is at will, but no separate speed is fabricated
+
+DMR2 says that a Baldandar may **fly at will**, but its entry supplies no separate flying movement rate. The new flight state therefore permits represented elevation changes while retaining the Baldandar's already listed ordinary movement budget. The profile explicitly records `distinctFlightRateSpecified: false` so a future caller cannot silently treat an invented flight speed as source data.
+
+This is deliberately different from creatures such as the Lesser Phantom, whose entry prints a distinct flying movement rate.
+
+### The poison bite uses the printed -4 save and 1d4-turn sleep
+
+A successful represented Baldandar **bite** now automatically invokes its intrinsic poison procedure. The victim makes **Save vs. Poison at -4**. On a failed save, the victim falls asleep for **1d4 turns**.
+
+The rolled duration is stored both as **60 rounds per turn** and as an exact campaign-minute deadline. The sleeping state blocks ordinary voluntary combat actions through the engine's existing sleep/action-lock handling, and the victim wakes when either represented clock reaches the same source-defined endpoint. Poison immunity/protection is checked through the existing common protection gate before the saving throw.
+
+The engine does not decide when a Baldandar is sufficiently "cornered" to abandon deception and use its physical attacks. That tactical choice remains referee/AI-owned; once the bite attack is actually selected and hits, the printed poison consequence is deterministic.
+
+### Referee/developer controls
+
+The intrinsic procedures are exposed through:
+
+```text
+dev baldandar traits status [name]
+dev baldandar invisible <name> <on|off>
+dev baldandar flight <name> <on|off>
+dev baldandar illusion start <name> | <description> | <distance ft>
+dev baldandar illusion stop <name>
+dev baldandar illusion attack <name> | <target> | <spell|breath> | <description>
+```
+
+These controls expose the source mechanics without selecting a deception, deciding Baldandar tactics, choosing a mimicked spell/breath effect, or fabricating missing movement/damage statistics.
+
+### Deterministic regression coverage added
+
+Six focused v0.4.151 tests were added:
+
+1. intrinsic-trait propagation/normalization plus at-will flight enabling elevation while preserving the source-unspecified separate flight-rate boundary;
+2. at-will invisibility using the represented unseen-target defense, surviving an attack, and being revealed/temporarily suppressed by *Appear*;
+3. 240-foot indoor illusion range, all-senses state, and exactly 60 rounds / one turn of persistence after concentration ends;
+4. illusory spell/breath attacks applying the printed -4 Spell save, successful recognition/no effect, and failed-save affected-as-real state without invented generic damage;
+5. direct poison-bite resolution applying the -4 Poison save and 1d4-turn sleep with round-based expiry;
+6. the ordinary successful bite attack path automatically invoking the poison-sleep procedure, with the same duration also expiring correctly on the campaign clock.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.151
+Tests: 868 / 868 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.152 — Homunculus explicit spell-like-power batch only**. Source-verify the shared and subtype-specific DMR2 magical-use entries first, then implement the powers whose use rate is explicit—especially the shared once-per-week *Commune*-equivalent guidance, Fylgar **Protection from Evil 10' Radius** three times per day, Gretch **Slow** once per day, and Ulzaq **Confusion** once per day—using the source's explicit **21st-level magical-ability** statement where a common spell procedure requires level. Keep their at-will invisibility/detection, regeneration, telepathy, polymorph forms, immunities, and ability-drain attacks in later intrinsic/defensive checkpoints rather than combining every Homunculus subsystem at once.
+
+## v0.4.150 — Baldandar named spell-like-power closure
+
+This bounded checkpoint implements the third exceptional-monster **spell-like power** batch with one source-clean DMR2 creature: the **Baldandar**. DMR2 grants the Baldandar four named spells, **Polymorph Self**, **Polymorph Other**, **Magic Jar**, and **Confusion**, each usable **once per day**. The pass deliberately reuses the already-audited BECMI spell procedures instead of writing approximate monster-only substitutes.
+
+It does **not** fold the Baldandar's other unusual traits into this checkpoint. Its at-will sensory illusions, at-will invisibility and flight, and the poison-bite sleep procedure remain separate intrinsic-monster work for the next bounded closure.
+
+### Four independent daily uses are represented
+
+The canonical/runtime Baldandar profile now carries a dedicated `baldandarPowers` record with four independent daily counters:
+
+- **Polymorph Self** — once per day;
+- **Polymorph Other** — once per day;
+- **Magic Jar** — once per day;
+- **Confusion** — once per day.
+
+Using one power does not consume any of the other three. Daily availability is keyed to the campaign day and returns on the next day without inventing a separate rest requirement.
+
+The engine does not decide which power a Baldandar should use or whom it should target. Those tactical and deceptive choices remain referee/AI-directed.
+
+### The source does not state a caster level
+
+DMR2 gives the Baldandar **6 Hit Dice** and a **Fighter: 12** saving-throw line, but neither is stated to be a Magic-User caster level. The build therefore does not convert either value into spellcasting level and does not silently use the common spell handler's minimum level fallback.
+
+For **Confusion**, **Polymorph Other**, and **Magic Jar**, the represented immediate procedures can be resolved without inventing a caster level. Any persistent effect they create is tagged as spell-like with `spellLikeCasterLevelUnresolved` and carries no fabricated `casterLevel`. The existing RAW STRICT **Dispel Magic** boundary therefore remains in force: if a later dispel requires a caster-level comparison that the creature entry does not supply, the outcome stays referee-owned.
+
+**Polymorph Self** is different because its ordinary BECMI procedure directly uses caster level for both the maximum Hit Dice of the assumed form and the **6 turns + 1 turn per level** duration. RAW STRICT now refuses to spend the Baldandar's daily use until the referee supplies a positive integer caster level for that casting. The chosen level is recorded as a referee adjudication, not a source statistic, and is used only to execute those level-dependent spell limits.
+
+### Polymorph Other reuses the permanent transformation procedure
+
+When explicitly chosen, the Baldandar's Polymorph Other routes through the represented **Polymorph Others** spell procedure: one represented living target within the spell's range, an explicit represented creature form, the ordinary form-Hit-Dice boundary, a Save vs. Spells, and a successful transformation that persists until dispelled or death.
+
+The DMR2 spelling is retained in Baldandar-facing status text as **Polymorph Other** while the engine calls the common BECMI procedure named **Polymorph Others**. This is a naming bridge only; no extra capability is added.
+
+### Magic Jar requires a real referee-declared receptacle
+
+The Baldandar's Magic Jar uses the complete represented life-force / receptacle / possession state. The referee must identify the actual receptacle and its represented distance before the once-per-day use can be committed; the engine no longer allows the common handler's generic `magic jar` placeholder to become a silently invented Baldandar object.
+
+An optional explicit target may be supplied for an immediate possession attempt. Otherwise the Baldandar enters the named receptacle and can use the existing Magic Jar lifecycle from there.
+
+### Confusion reuses the full represented fourth-level procedure
+
+The Baldandar's Confusion uses the same audited handler already used by Magic-Users and the Lesser Phantom. An explicit represented target list is required so the engine does not choose victims for the monster. On a valid casting, only the Baldandar's Confusion use is spent; the other three powers remain available that day.
+
+### Referee/developer controls
+
+The bounded spell-like procedure is exposed through:
+
+```text
+dev baldandar spell status [name]
+dev baldandar spell confusion <name> | <targets>
+dev baldandar spell polymorph self <name> | <form> | <caster level>
+dev baldandar spell polymorph other <name> | <target> | <form>
+dev baldandar spell magic jar <name> | <receptacle> | <distance ft> | [target]
+```
+
+The status report explicitly identifies the source-unspecified caster-level boundary and flags Polymorph Self as requiring referee level adjudication.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.150 tests were added:
+
+1. canonical/runtime propagation and normalization of all four independent once-per-day powers, with source caster level remaining unspecified;
+2. Confusion using the common RAW procedure, consuming only its own daily use, preserving unresolved caster level, and recharging on the next campaign day;
+3. Polymorph Other using the represented permanent transformation lifecycle while retaining the unresolved caster-level tag for later dispel comparisons;
+4. Magic Jar refusing an omitted receptacle before resource commitment, then using the common possession lifecycle with unresolved source caster level;
+5. Polymorph Self refusing to invent a caster level, then using an explicit referee-supplied level for its form-HD cap and 6+level-turn duration while marking that the source itself did not provide that level.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.150
+Tests: 862 / 862 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.151 — Baldandar intrinsic-power closure only**: source-verify and implement the creature's **at-will all-senses illusions**, their **one-turn persistence after concentration ends**, the printed **Save vs. Spells at -4** interaction for illusory spell/breath attacks, its **at-will invisibility and flight**, and the **bite Save vs. Poison at -4 or sleep for 1d4 turns**. Keep those intrinsic procedures separate from the named once-per-day spell casts implemented here, and do not invent a generic illusion damage packet where the mimicked effect itself is not represented.
+
+## v0.4.149 — Lesser Phantom intrinsic-power closure
+
+This bounded checkpoint closes the remaining **intrinsic** DMR2 procedures for the **Lesser Phantom** without reclassifying them as ordinary spell casts. DMR2 describes the creature as a magical mist-body that can assume any appearance of human size or smaller, fly, walk on water or quicksand as though each were solid ground, take full damage from magical attacks but only half from other attacks, and become invisible at will. Those rules now remain separate from the once-per-day named spell-like powers implemented in v0.4.148.
+
+### Mist-body disguise is appearance-only and capped at human size
+
+The canonical/runtime Lesser Phantom profile now carries a `lesserPhantomTraits` record. A referee may give the creature a **tiny, small, or human/man-sized appearance**, but a larger form is rejected. The change alters presentation only: Armor Class, Hit Dice, hit points, movement, attacks, damage, and special abilities remain those of the Lesser Phantom.
+
+The engine deliberately requires the referee to supply the actual appearance rather than inventing a deception. The disguise survives combat save/load normalization, and resetting it restores the creature's recorded ordinary appearance.
+
+### Invisibility is intrinsic and at will
+
+The Lesser Phantom can now switch its intrinsic invisibility on or off without consuming a spell slot, daily use, or concentration state. While invisible, it uses the engine's already-represented unseen-target combat handling; opponents able to see invisible creatures ignore that penalty.
+
+This is **not** routed through the Magic-User *Invisibility* spell. DMR2 says only that the Lesser Phantom can become invisible at will, so the build does **not** import the spell's attack/casting break condition. A Lesser Phantom that attacks while intrinsically invisible therefore remains invisible unless another represented rule reveals it.
+
+The existing *Appear* procedure still functions against this state. A successful represented *Appear* effect reveals the Lesser Phantom and its normal one-turn anti-invisibility lock prevents immediate reactivation; once that lock expires, the creature may use its at-will ability again.
+
+### Printed movement boundary is preserved without inventing terrain geometry
+
+The Lesser Phantom retains its canonical **40-foot encounter ground movement** and **80-foot flying movement**. Its intrinsic profile additionally identifies **water** and **quicksand** as solid footing for walking, using the creature's ordinary ground movement rather than a swim rate or an invented sinking check.
+
+The current combat map does not model water/quicksand as dedicated surface polygons. The closure therefore exposes the rule through the common Lesser Phantom surface-traversal predicate/status so any represented surface check treats those two surfaces as solid footing. No new surface map, swim speed, sinking probability, or environmental penalty is fabricated.
+
+### Magical attacks deal full damage; other attacks deal half
+
+Incoming damage to a Lesser Phantom now distinguishes magical from nonmagical attack sources. Spell damage, represented spell-like magic, magical-device/item damage, and attacks carrying a positive magical weapon bonus deal their normal amount. Other attack damage is reduced by one-half before hit points are removed.
+
+The source does not define a separate resistance roll or exception list, so none is added. Because the browser engine stores whole-number hit points, fractional results use the engine's ordinary integer-halving convention rather than creating fractional HP state.
+
+### Referee/developer controls
+
+The intrinsic procedure is exposed through:
+
+```text
+dev lesser phantom traits status [name]
+dev lesser phantom invisible <name> <on|off>
+dev lesser phantom disguise <name> | <tiny|small|human> | <appearance>
+dev lesser phantom disguise <name> | reset
+dev lesser phantom surface <name> <water|quicksand>
+```
+
+These commands expose state and source boundaries but do not choose a disguise, decide when deception has been discovered, or select tactics for the monster.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.149 tests were added:
+
+1. intrinsic-trait propagation plus the printed ground/flying rates and water/quicksand solid-footing boundary;
+2. at-will invisibility, unseen-target defense, see-invisible interaction, and the deliberate absence of the spell's attack-break rule;
+3. human-size-or-smaller appearance changes without borrowed form statistics, including save/load normalization and reset;
+4. half damage from nonmagical attacks versus full damage from magical weapon and spell attacks;
+5. *Appear* revealing intrinsic invisibility and enforcing its normal temporary re-invisibility lock.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.149
+Tests: 857 / 857 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.150 — third exceptional-monster spell-like-power batch**. Source-verify a small mechanically coherent candidate group before implementation, and keep that pass limited to the explicitly printed spell-like powers rather than combining unrelated monster subsystems.
+
+## v0.4.148 — Lesser Phantom named spell-like-power closure
+
+This bounded checkpoint implements the second exceptional-monster **spell-like power** batch with one source-clean DMR2 creature: the **Lesser Phantom**. DMR2 gives the Lesser Phantom three named spells, **Confusion**, **Hallucinatory Terrain**, and **Phantasmal Force**, each usable **once per day**. The pass deliberately reuses the already-audited BECMI spell procedures instead of writing approximate monster-only substitutes.
+
+It does **not** fold the Lesser Phantom's other unusual traits into this checkpoint. Its at-will invisibility, mist-body shapechanging, flying/water/quicksand movement, and half-damage-from-nonmagical-attacks rule remain separate intrinsic-monster work for a later bounded closure.
+
+### Each named spell has its own daily use
+
+The canonical/runtime Lesser Phantom profile now carries a dedicated `lesserPhantomPowers` record with three independent daily counters:
+
+- **Confusion** — once per day;
+- **Hallucinatory Terrain** — once per day;
+- **Phantasmal Force** — once per day.
+
+Using one power does not consume either of the other two. Daily availability is keyed to the campaign day, so the powers return on the next day without inventing a separate rest requirement.
+
+The engine does not decide which spell a Lesser Phantom should use. That tactical choice is not specified by the creature entry, so selection remains referee/AI-directed.
+
+### Confusion reuses the complete represented fourth-level procedure
+
+When explicitly chosen, the Lesser Phantom's Confusion calls the same source-audited BECMI handler used by Magic-Users:
+
+- **120-foot range**;
+- **3d6 affected-creature cap**, maximum 18;
+- victims must fit inside the spell's **60-foot-diameter** area;
+- creatures below **2+1 HD** receive no saving throw;
+- creatures of 2+1 HD or more make a new **Save vs. Spells each round**;
+- the effect lasts **12 rounds**;
+- each failed round resolves the normal 2d6 Confusion behavior table.
+
+An invalid target declaration does not spend the creature's once-per-day use. A valid cast that is cancelled by represented Anti-Magic does spend it, because the magical attempt actually occurred.
+
+### Hallucinatory Terrain retains its touch-or-dispel lifecycle
+
+The Lesser Phantom's Hallucinatory Terrain uses the ordinary fourth-level spell procedure: the referee must describe the terrain feature, it must lie within the spell's **240-foot range**, and the illusion persists until an **intelligent creature touches it** or **Dispel Magic** removes it.
+
+The engine records the referee-authored terrain deception but does not invent what an unrepresented observer believes or which false feature the monster chooses.
+
+### Phantasmal Force remains referee-authored and concentration-bound
+
+The Lesser Phantom's Phantasmal Force uses the existing Basic spell implementation:
+
+- **240-foot range**;
+- one **20-foot cube**;
+- duration **Concentration**;
+- nonattack illusions disappear when touched;
+- an illusory monster is AC 9 and disappears when hit;
+- attack illusions permit the printed Save vs. Spells;
+- the spell never inflicts real hit-point damage;
+- caster movement, damage, or a failed saving throw breaks concentration.
+
+The spell still requires the referee/player to state the actual illusion. If the Phantom creates something it has not seen, the source directs the DM to choose a saving-throw bonus; therefore the engine refuses to commit the once-per-day use until that referee-chosen bonus is supplied rather than inventing a number.
+
+### The source does not provide a caster level, and the engine no longer fabricates one
+
+DMR2 says that the Lesser Phantom can cast the three named spells once per day, but it does **not** state a spellcasting level. The build therefore does not equate the creature's 6 Hit Dice with a Magic-User level and does not silently treat it as a 1st-level caster.
+
+Persistent spell effects created by these powers are tagged `spellLikeCasterLevelUnresolved` and carry no fabricated `casterLevel`. Normal **Dispel Magic** now recognizes that narrow tagged condition: because BECMI's dispel success procedure requires a caster-level comparison that the creature entry does not supply, RAW STRICT reports the boundary for referee resolution instead of automatically destroying or resisting the effect based on an invented level.
+
+This change is deliberately limited to spell-like effects explicitly tagged as having an unresolved source caster level. Ordinary character spells and artifacts with stated/effective caster levels continue to use the normal Dispel Magic calculation.
+
+### Referee/developer controls
+
+The bounded spell-like procedure is exposed through:
+
+```text
+dev lesser phantom spell status [name]
+dev lesser phantom spell confusion <name> | <targets>
+dev lesser phantom spell terrain <name> | <terrain description>
+dev lesser phantom spell phantasm <name> | <illusion description>
+```
+
+The status report shows independent daily availability and explicitly reports that caster-level comparisons are source-unspecified.
+
+### Deterministic regression coverage added
+
+Five focused v0.4.148 tests were added:
+
+1. canonical/runtime propagation and save/load normalization of the three independent once-per-day powers, with caster level remaining unspecified;
+2. Confusion using the common RAW procedure, consuming only its own daily use, tagging the resulting effect correctly, and recharging on the next campaign day;
+3. Hallucinatory Terrain retaining the 240-foot, intelligent-touch-or-dispel lifecycle and unresolved caster-level tag;
+4. Phantasmal Force refusing missing illusion details or an omitted referee bonus for an unseen-before illusion before consuming the daily use, then producing the normal 20-foot-cube/concentration effect when valid;
+5. Dispel Magic preserving the explicit referee boundary instead of silently treating Lesser Phantom Hit Dice as spellcasting level.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.148
+Tests: 852 / 852 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.149 — Lesser Phantom intrinsic-power closure only**: source-verify and implement the creature's **invisibility at will**, mist-body human-size-or-smaller disguise boundary, flying / water / quicksand movement behavior, and the printed **half damage from nonmagical attacks** defense. Keep that pass separate from the next named-spell creature batch so the Lesser Phantom's intrinsic traits are not accidentally treated as ordinary spell casts.
+
+## v0.4.147 — Flitterling spell-song closure
+
+This bounded checkpoint implements the first exceptional-monster **spell-like power** batch with one mechanically coherent DMR2 creature family: **Flitterlings**. The pass intentionally does not guess which song the creatures choose in a particular encounter. Their published song choice remains referee-directed; once a song is explicitly chosen, its printed procedure is executable.
+
+### Fifty singers are required and the source's 60-foot boundary is enforced
+
+The canonical/runtime Flitterling profile now carries a dedicated `flitterlingSongs` record. Both songs require a complete group of **50 living Flitterlings** within the printed **60-foot range** of the chosen opponent. A partial group cannot produce either effect, and an out-of-range singer does not count toward the fifty.
+
+Daily-use bookkeeping is attached to the participating singers rather than inventing permanent artificial subgroups. When a valid group sings, exactly fifty currently unused singers are committed to that song. The same singers can still use the *other* song that day, because DMR2 explicitly grants each song once per day. On the next campaign day, both song uses become available again.
+
+### Charm song uses the represented Charm Monster lifecycle
+
+A valid fifty-Flitterling charm song targets exactly **one opponent**, matching the creature entry rather than importing Charm Monster's normal low-HD multi-target allowance. The target receives the ordinary **Save vs. Spells** and must be a creature eligible for Charm Monster; undead and intrinsic charm immunity remain protected by the common spell rules.
+
+On a failed save, the existing Charm Monster lifecycle supplies Intelligence-based repeat saves and normal charm state. The spell-like effect records the fifty participating singer IDs so that an attack by any member of that group against its charmed target breaks that group's charm, preserving the ordinary charm attack-break rule in a monster-caster context.
+
+DMR2 also says that additional Flitterling groups may try to charm other creatures, but **two groups cannot attempt to charm the same opponent**. The engine therefore records the day's attempted target before the save is resolved: even a resisted first song prevents a second fifty-Flitterling group from retrying that same opponent that day, while another group remains free to choose a different opponent.
+
+### Fear song uses the full Cause Fear effect
+
+A valid fifty-Flitterling fear song gives one target the ordinary **Save vs. Spells** against Cause Fear. Failure creates the full printed **two-turn** forced-flight effect.
+
+During source verification this exposed an older common-spell transcription bug: the normal RAW Cause Fear handler was using `12` combat rounds even though two BECMI turns equal **120 combat rounds / 20 minutes**. The common handler is corrected to 120 rounds, and its active effect now carries the same explicit 20-minute expiration/cleanup state used by the Flitterling song. This correction changes no spell text or house-rule option; it brings the executable duration into line with the already-printed “2 turns” message and the artifact Cause Fear implementation, which was already using 120 rounds.
+
+### Anti-Magic and referee control remain explicit
+
+Because DMR2 describes the songs as working like named spells, represented Anti-Magic can cancel the magical song effect. The fifty singers still expend that day's use once the song has actually been attempted, just as a cancelled cast expends its magical action/resource.
+
+The engine does **not** autonomously decide between Charm Monster and Cause Fear. New developer/referee commands make the source procedure executable without manufacturing tactics:
+
+```text
+dev flitterling song status
+dev flitterling song charm <target>
+dev flitterling song fear <target>
+```
+
+The status command reports living singers and the remaining complete fifty-singer groups available for each song that day.
+
+### Deterministic regression coverage added
+
+Four focused v0.4.147 tests were added:
+
+1. canonical/runtime propagation and normalization of the fifty-singer, 60-foot, once-per-day song record;
+2. Cause Fear rejecting out-of-range/insufficient availability, consuming exactly fifty singers on success, and imposing the corrected 120-round/two-turn effect;
+3. two fifty-singer charm groups targeting two different opponents while a second attempt against the same opponent is refused, including normal Intelligence-based charm resaves and attack-break behavior by a participating singer;
+4. independent daily counters for Charm Monster and Cause Fear on the same singers, followed by next-day recharge.
+
+The pre-existing raw Cause Fear regression was also corrected from the erroneous 12-round expectation to **120 rounds**.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.147
+Tests: 847 / 847 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.148 — second exceptional-monster spell-like-power batch only**. Source-verify the next small mechanically coherent candidate group first. Prefer powers with explicit fixed targeting, range, uses, saving throws, and durations; if a creature's spell-like entry depends on an unstated caster level or open-ended referee choice, preserve that boundary instead of fabricating one.
+
+## v0.4.146 — Phantom shared charm / cold-spell defensive closure
+
+This bounded checkpoint closes the remaining **shared defensive immunities** printed for the Companion Phantom family. It does not broaden the Phantom into generic spell immunity or generic elemental immunity.
+
+### All three Phantom subtypes now carry the same source defense state
+
+**Apparition, Shade, and Vision** now preserve two explicit intrinsic defenses through the canonical monster profile, combat-monster creation, and save/load-style combat normalization:
+
+- `immuneCharm`: immunity to the source's **all charms** language;
+- `immuneColdSpell`: immunity to **cold spells**.
+
+The existing non-material/material state, AC 0 transition, and magical-weapon-only damage rule from v0.4.141 remain separate. The new cold field is deliberately named as a **spell** immunity rather than ordinary cold immunity.
+
+### Charm immunity is bridged into represented charm-effect checks
+
+The common recipient-immunity layer now recognizes the represented charm family—**Charm Person, Charm Monster, Mass Charm, Charm Plant, and Snake Charm**—as charm effects for creatures carrying intrinsic charm immunity. Existing spell-specific eligibility remains authoritative: for example, a Phantom is already undead and therefore is not made into a living Charm Monster target merely to exercise the immunity flag.
+
+Where a represented charm path can reach a charm-immune creature, the immunity prevents the charm state rather than asking for a saving throw or creating a continuing charm record. Artifact charm procedures continue to honor the same intrinsic `immuneCharm` state.
+
+This does **not** classify every control, fear, geas, domination-like, or mental effect as a “charm.” Only the represented effects that are actually charms are included in this closure.
+
+### Cold-spell immunity is explicit and intentionally narrower than generic cold immunity
+
+A Phantom now rejects represented cold **spell** damage before ordinary damage is applied. The current live path is **Ice Storm** (including the spell-like artifact Ice Storm implementation). The generic damage gate also recognizes a cold packet as protected only when its context is actually a spell/spell-like cold effect.
+
+The implementation intentionally does **not** convert this into blanket immunity to the cold element. A materialized Phantom can still take cold damage delivered by an otherwise valid **magical weapon**, because the printed defense says *cold spells*, not “all cold.” Natural cold breath likewise is not reclassified as a cold spell.
+
+Likewise, **Wall of Ice remains an external terrain spell**. Phantom recipient immunity does not delete, shrink, or dispel the wall, and this pass does not invent a rule allowing a materialized Phantom to walk through it. Any separate ethereal wall-passing state remains governed by the non-material Phantom rules rather than by cold immunity.
+
+### Deterministic regression coverage added
+
+Three focused v0.4.146 tests were added:
+
+1. all three Phantom subtypes receive and preserve the shared charm/cold-spell defense flags through runtime normalization, recognize represented charm/cold spell immunity, and do not gain general spell immunity;
+2. a materialized Phantom ignores cold spell damage but can still be damaged by cold delivered through an otherwise valid magical weapon;
+3. ordinary Ice Storm and artifact Ice Storm honor the shared cold-spell defense while Wall of Ice remains a full external 1,200-square-foot terrain spell.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.146
+Tests: 843 / 843 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.147 — first exceptional-monster spell-like-power batch only**. Source-verify a small mechanically coherent group before coding, implement only powers whose printed targeting, timing, saves, and consequences are explicit, and keep open-ended or referee-dependent spell-like behavior visible rather than inventing missing procedures. Do not combine multiple unrelated monster families merely to increase coverage.
+
+## v0.4.145 — Phantom Vision wailing / sorrow / confinement closure
+
+This bounded checkpoint closes the Companion **Phantom, Vision** combat lifecycle without importing unrelated undead procedures. It builds on the v0.4.141 non-material/material transition and v0.4.142 shared Phantom fear/Turning resistance.
+
+### The 90-foot wail now remains active round by round
+
+A represented Vision now carries its printed **90-foot hearing radius**. On first encounter, and again at the start of each later combat round, every living character who is within that radius and can actually hear the Vision is checked against **Save vs. Spells**. The common hearing gate respects represented Silence and deafness effects; geometry/obstacles continue to use the existing spatial-interaction layer.
+
+A character is checked at most once against a given Vision in the same combat round. A failed save creates the printed hopeless-grief state for **11–20 rounds** (`1d10+10`): the victim believes action is hopeless and sits crying. While that source-timed state remains active, voluntary movement, attacks, spellcasting, Turning, magic-item use, and other deliberate combat actions are blocked through the common helpless/action-lock layer. No additional penalty, repeated shortening save, or invented recovery check is added.
+
+When the rolled sorrow duration expires, the action lock ends. If the recovered character remains within 90 feet and can still hear the continuing wail on a later round, the source's continuing once-per-round save procedure applies again.
+
+### The Vision is now one collective 12-HD creature made of 2–8 souls
+
+The Vision rolls and records **2d4 individual phantoms (2–8 souls)** when its encounter state is created. Those figures do not receive independent hit-point pools. The encounter monster remains one shared **12-HD body**, and all damage to any represented member is therefore damage to that one collective total.
+
+After the existing printed **1d3 rounds of crying** elapse, the Vision materializes and attacks while continuing its wail. It receives **one attack per soul** each round; the default source weapon is a normal sword for **1d8 damage**. If an earlier soul attack drops the current victim, later soul attacks can select another living victim in represented melee reach rather than silently disappearing. No magical weapons or separate magic-item loadout is generated for the souls.
+
+### Fixed-site confinement is explicit without inventing its shape
+
+The source confines a Vision to a specific area **no greater than 500 square feet**, but does not provide the area's shape or dimensions. The engine therefore records a fixed area/site key and the 500-square-foot maximum without manufacturing a circular or square boundary. Within that represented site:
+
+- the collective Vision is limited to the printed **40 feet of movement per round**, including multiple movement calls in one round;
+- the movement budget resets on the next combat round;
+- the Vision carries explicit `cannotPursue` and `cannotEvade` source state;
+- it cannot be relocated by ordinary Vision movement into another site/location.
+
+Exact walls/edges of the <=500-square-foot haunting remain map/referee data because the source does not state their geometry.
+
+### Successful Turning now has the printed 1d6-hour absence and return
+
+The shared Phantom resistance from v0.4.142 still applies first to an automatic `T` result. If the Vision actually suffers a successful non-destroy Turning result, it disappears instead of being treated as permanently fled. The engine rolls **1d6 hours**, stores the due campaign minute and the fixed site, and the campaign clock returns the Vision to that same site when the absence expires.
+
+On return, the Vision again begins in its printed non-material opening state, resumes its wail, and receives a fresh 1d3-round materialization delay. A destroy result remains destruction and does not schedule a return.
+
+`dev phantom status [name]` now exposes the Vision's soul count, collective body, wail/save state, fixed-site metadata, 40-foot movement limit, and any pending Turned-away return time.
+
+### Deterministic regression coverage added
+
+Four focused v0.4.145 tests were added:
+
+1. first-encounter and later-round 90-foot hearing saves, same-round de-duplication, 11–20-round sorrow/action lock, normalization persistence, expiry, and later renewed exposure;
+2. 2–8 souls sharing one 12-HD body, one 1d8 attack per soul, and retargeting of remaining soul attacks after a victim falls;
+3. fixed <=500-square-foot site metadata, no pursuit/evasion state, and a cumulative 40-foot-per-round movement cap that resets next round;
+4. successful Turning causing a 1d6-hour disappearance followed by return to the same fixed area in fresh non-material opening state.
+
+The integrated browser harness is regression-clean:
+
+```text
+Build: 0.4.145
+Tests: 840 / 840 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.146 — Phantom shared cold/charm defensive closure only**. Source-verify the family's printed immunity to all charms and cold spells against the engine's live spell/damage paths, add only the missing common defense hooks and focused regressions, and leave unrelated undead powers or a broader spell-like-monster batch for later.
+
+## v0.4.144 — Apparition death / one-week transformation lifecycle
+
+This bounded checkpoint closes the **Apparition's post-death human/demihuman conversion** and the exact `dispel evil` → `raise dead` prevention sequence printed in the Companion monster entry. It does not merge these rules with the Vision's wailing/sorrow/confinement subsystem.
+
+### Death by an Apparition now creates a one-week campaign clock
+
+When a human or demihuman player character is actually killed by a represented Apparition claw attack, the engine now records a persistent Apparition-fate record tied to the killer and time of death. The source's one-week statement is treated literally:
+
+- the corpse-conversion deadline is exactly **7 campaign days / 10,080 minutes** after death;
+- the record survives character normalization/save-load reconstruction;
+- the common `pendingMonsterTransformation` bridge also records `phantom_apparition` so the outcome remains visible to the broader monster-conversion layer;
+- if the character is still dead when the exact deadline is crossed, the character record is marked as having **become an Apparition** and is no longer accepted by the ordinary human/demihuman `Raise Dead` branch.
+
+The original player-character record is retained rather than deleted or silently replaced with an encounter monster. It is flagged as a completed `phantom_apparition` conversion so later world/NPC placement can use the result without destroying campaign history.
+
+### `Dispel Evil` must be cast on the body before `Raise Dead`
+
+The printed prevention sequence is now enforced as an ordered transaction rather than treating either spell as a generic cure:
+
+- `Dispel Evil` may target the dead Apparition victim's body while the one-week window remains open;
+- this marks the body as purified but **does not by itself cancel** the pending transformation;
+- `Raise Dead` must then be completed after that `Dispel Evil` and before the same one-week corpse deadline;
+- only when both steps occur in that order and within the printed week is the Apparition fate permanently prevented.
+
+A `Dispel Evil` attempted after the corpse has already completed its one-week conversion is too late for this special prevention procedure. Likewise, a successful `Dispel Evil` on the body followed by no resurrection does not invent a permanent cure: if the week expires while the victim remains dead, the source-defined conversion still occurs.
+
+### Raising the victim without the prior `Dispel Evil` preserves the source's delayed doom
+
+If ordinary `Raise Dead` restores the victim before the corpse-conversion deadline **without** the required prior `Dispel Evil`, the resurrection works normally, but a new exact one-week clock begins at the moment of resurrection. When that week expires, the engine records that the character **begins to fade toward Apparition form**.
+
+The source says the revived victim begins to fade a week later and is turning into an Apparition, but it gives no duration for that fading and no numerical penalties while it occurs. The implementation therefore does **not** invent a final conversion interval, ability loss, transparency penalty, combat modifier, or repeat saving throw. The state becomes a persistent in-progress transformation and the common pending-transformation record is left without an invented completion deadline.
+
+### Deliberate boundaries
+
+This pass implements the source's named `Raise Dead` interaction literally. It does not silently assume that later resurrection effects such as **Raise Dead Fully**, Wish, or another nonstandard revival method are interchangeable with that exact sequence. If a character is alive at the original corpse deadline through an unrepresented/non-source-defined revival path, the engine records a referee boundary rather than inventing how that other magic interacts with the Apparition fate.
+
+The pass also does not automatically instantiate the converted former PC as a roaming encounter. The campaign record now knows that the conversion happened; where the new Apparition appears and what it does belongs to encounter/world placement, not to the one-week timing rule itself.
+
+### Deterministic regression coverage added
+
+Four focused v0.4.144 tests were added:
+
+1. a lethal Apparition claw hit creates the exact seven-day corpse deadline, the common pending-transformation record, and normalization persistence;
+2. `Dispel Evil` on the body followed by `Raise Dead` inside the week prevents the transformation, while `Dispel Evil` alone does not;
+3. `Raise Dead` without the prior purification starts the new one-week fade clock and begins fading at expiry without inventing a completion duration or penalties;
+4. advancing the real campaign clock through seven days converts an unraised corpse and prevents the ordinary `Raise Dead` human/demihuman branch from resurrecting the already-converted record.
+
+The integrated browser harness remains regression-clean:
+
+```text
+Build: 0.4.144
+Tests: 836 / 836 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.145 — Phantom Vision wailing / sorrow / confinement closure only**. Keep that pass limited to the Vision's 90-foot wail saving throws, 11–20-round hopeless grief state, 1d3-round materialization timing already bridged from v0.4.141, collective 12-HD body, per-soul attacks, 500-square-foot confinement, 40-foot-per-round movement inside that area, and the printed 1d6-hour return after successful Turning. Do not fold unrelated undead or apparition rules into that pass.
+
+## v0.4.143 — Apparition mist entrancement lifecycle
+
+This bounded checkpoint closes the **Apparition's 20-foot-radius, 10-foot-high entrancing mist** as a persistent combat effect. It does not yet implement the separate one-week transformation of slain human/demihuman victims into Apparitions.
+
+### The opening mist is now a twelve-round moving effect
+
+The first Apparition attack now establishes a dedicated mist state instead of treating the opening saving throw as a one-time trigger:
+
+- the mist begins on the round the Apparition first creates it;
+- it lasts through **12 complete combat rounds** unless the Apparition is destroyed or successfully Turned first;
+- the mist's represented center follows the Apparition's current combat position;
+- a character is checked only while inside the current **20-foot radius** and while an ordinary represented spatial barrier does not block interaction;
+- movement by either the Apparition or a character can therefore move a target into or out of the active mist boundary;
+- a given character receives no more than **one mist saving throw per combat round**, even if movement changes the boundary several times during that round.
+
+This preserves the source's statement that the mist moves with the creature without turning mere proximity into repeated same-round saves.
+
+### Remaining in the mist now repeats the printed Save vs. Spells
+
+A character who successfully saves is not permanently immune merely for succeeding once. If still within the mist on a later round, the character receives the printed **Save vs. Spells again**. A failure records an entranced state and, if this is the first victim entranced, immediately triggers the Apparition's already-implemented materialization transition and +4 claw-attack basis.
+
+An entranced victim is now fully action-locked by the common combat engine: the character cannot voluntarily move, make missile or melee attacks, cast spells, turn undead, use magic items, or take another deliberate combat action. Direct movement helpers also reject voluntary movement instead of allowing a lower-level path to bypass the source's “unable to do anything but watch the mist” wording.
+
+The entrancement state survives member/save-style normalization while the combat is active.
+
+### Entrancement ends only when the mist itself ends
+
+The implementation does **not** invent a repeat escape save for an already entranced victim. Once entranced, the victim remains so until the mist ends, matching the printed duration language.
+
+The mist now terminates immediately when any printed termination condition is represented:
+
+- the **12-round duration** expires at the end of the twelfth round;
+- the Apparition is **destroyed**;
+- a cleric successfully **Turns** the Apparition.
+
+A Phantom that successfully uses its special resistance to an automatic `T` result does **not** lose the mist, because it was not actually Turned. If an Apparition leaves the represented encounter by ordinary flight, its moving mist leaves with it and the local entrancement state is cleared rather than inventing an off-map lingering volume.
+
+When entrancement ends, the character records the source's “need not make any further Saving Throws against the mist” state for that Apparition. In normal play the same mist has ended at that point, so this is principally a persistence/consistency guard rather than permission for an Apparition to create a second mist.
+
+### Deterministic regression coverage added
+
+Four focused v0.4.143 tests were added:
+
+1. a successful opening save followed by a failed next-round save, proving repeated round-by-round checks, materialization on the first entranced victim, full action lock, and normalization persistence;
+2. mist movement with the Apparition, newly-covered victim checks, the one-save-per-character-per-round boundary, and voluntary movement blocking after entrancement;
+3. survival through round 11 followed by exact round-12 expiry, release, and the no-further-save marker;
+4. immediate mist termination on destruction or a successful Turn, paired with a regression proving a Phantom that resists/reflects `T` keeps its mist.
+
+The integrated browser harness remains regression-clean:
+
+```text
+Build: 0.4.143
+Tests: 832 / 832 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Deliberate boundary
+
+This pass does **not** automate the source's separate rule that a human or demihuman slain by an Apparition becomes one a week later, nor the special `dispel evil` / `raise dead` sequencing that can prevent or postpone that fate. Those rules require campaign-time death/revival state rather than the mist's combat-time state and remain isolated for the next pass.
+
+### Next bounded checkpoint
+
+**v0.4.144 — Apparition death / one-week transformation lifecycle only**: implement the delayed post-death Apparition conversion and the printed `dispel evil` + `raise dead` interaction without combining it with the Vision's sorrow/confinement subsystem.
+
+## v0.4.142 — Phantom fear / Turning-resistance closure
+
+This bounded checkpoint closes the two **shared Phantom rules** that sit above the Apparition, Shade, and Vision subtype procedures: the 120-foot sight-fear effect and the family's special resistance to a cleric's automatic **T** Turning result. It deliberately leaves the Apparition mist lifecycle, delayed apparition-creation after death, and the Vision's sorrow/confinement procedure for later, separately testable passes.
+
+### The shared 120-foot sight fear is now an encounter state rather than flavor text
+
+Every represented Companion Phantom now exposes the shared **120-foot sight-fear** rule. A character who can actually see a Phantom within that distance is checked once against that particular Phantom:
+
+- characters above the source's automatic threshold make a **Save vs. Spells**;
+- failure records an active fear state and forces the character to use the next movement opportunity to run away from the Phantom and leave the represented fight;
+- success is remembered for that Phantom, so simply remaining in sight does not create invented repeat saves;
+- moving into the printed 120-foot visible range later in the fight can trigger the first check, rather than limiting the rule to encounter initialization;
+- walls/other represented spatial barriers that block the engine's ordinary interaction line also block this sight trigger.
+
+The source supplies no numerical duration or recovery roll for ordinary successful-save-eligible fear. The engine therefore does **not** invent one: the failed character flees the represented encounter, and that transient fear state is cleared when the combat ends.
+
+### The 3-HD-or-less result persists as an area refusal
+
+The source is stronger for creatures of **3 Hit Dice or less**: they receive no saving throw and "utterly refuse" to return to the area where the Phantom was seen. For player characters, this implementation uses **character level as the BECMI player-character counterpart to Hit Dice** for that threshold. A level-3-or-less character is therefore automatically driven away, and the engine records a persistent refusal keyed to the current wilderness hex or site/location.
+
+That refusal survives member normalization/save-style reconstruction. If a later represented combat is started in the same area, the affected character remains outside it rather than silently re-entering. The engine does not invent a duration, morale recovery check, remove-fear procedure, or geographic radius beyond the source's phrase "the area in which the phantom was seen."
+
+### Phantom resistance applies literally to the source's automatic `T` result
+
+The shared Turning rule is now inserted directly into the existing BECMI Turn Undead resolver:
+
+- ordinary numeric turning-table results continue to resolve normally;
+- a literal automatic **`T`** result gives each affected Phantom its printed **Save vs. Spells**;
+- a failed Phantom save allows the `T` result to turn it normally;
+- a successful Phantom save resists that Turn and reflects the effect onto the cleric;
+- the cleric then makes the printed **Save vs. Spells**;
+- failure applies **2d6 rounds of paralysis with fear** through the existing timed-paralysis machinery;
+- **D**, **D+**, and **DN** results are not intercepted, because the source explicitly says `D` results are handled normally.
+
+The Turn-resolution record now distinguishes Phantoms that actually suffered the Turning result from those that resisted/reflected it, so the combat log no longer reports a resistant Phantom as having been turned merely because it consumed part of the affected-HD roll.
+
+### Deterministic regression coverage added
+
+Three focused v0.4.142 tests were added:
+
+1. automatic level-3-or-less fear, forced flight, persistent same-area refusal, and save-style normalization;
+2. the above-threshold Save vs. Spells branch plus the 120-foot range boundary;
+3. literal `T` resistance/reflection with deterministic 2d6-round fear paralysis, paired with a `D` regression proving destroy results still bypass the special `T` resistance.
+
+The full browser harness remains regression-clean after the implementation:
+
+```text
+Build: 0.4.142
+Tests: 828 / 828 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+**v0.4.143 — Apparition mist entrancement lifecycle only**: close the per-round mist saving throws, immunity to further mist saves after the entrancement wears off, and mist termination/movement boundaries without yet combining them with the separate one-week Apparition transformation rule.
+
+## v0.4.141 — Phantom ethereal / materialization closure
+
+This bounded checkpoint implements the shared non-material/material combat state for the Mentzer Companion **Phantom** family—**Apparition, Shade, and Vision**—without folding the family's separate common fear, reflected-Turning, delayed undead-creation, or other downstream control rules into the same pass.
+
+### Shared Phantom state is now mechanically distinct from ordinary invisibility or incorporeal flavor
+
+All three Phantom profiles now begin an encounter in their printed **non-material form**. While non-material on the Prime Plane they do not project ordinary physical Influence-Sphere contact and cannot be selected by normal Prime-Plane weapon/touch attack exchanges. Direct Prime-Plane damage is rejected rather than silently reducing hit points. This is not represented as ordinary invisibility: the creature remains a valid undead target for procedures such as Turning, which the source explicitly permits while it is non-material.
+
+Once a subtype reaches its printed transition, the engine records an explicit materialization event, restores ordinary physical contact, and enforces **AC 0**. A materialized Phantom remains subject to the family's printed defensive boundary that it can be damaged **only by magical weapons**; ordinary weapons and damaging spells do not bypass that restriction merely because the creature has become material.
+
+The state is persistent across combat normalization/save-style reconstruction and is exposed with `dev phantom status [name]`.
+
+### Apparition materializes only after its mist actually entrances a victim
+
+The Apparition's opening attack now creates the printed **20-foot-radius, 10-foot-high mist** for up to **12 rounds**. Represented characters inside the mist make the required **Save vs. Spells** while they remain in it. A successful save only resists that round; it does not create an unsupported permanent immunity to the still-active mist.
+
+When at least one victim fails and becomes entranced, the Apparition immediately crosses its source-defined boundary into material form. Its materialized claw profile is normalized to **two 1d6+2 claws**, and its printed **+4 bonus to Hit rolls** is activated. The engine records the entrancement/mist state needed for later control handling, but this checkpoint does not broaden into a general action-lock/control-effects rewrite.
+
+### Shade keeps its own 90% wall-entry surprise and Death Ray opening
+
+The Shade now records its printed **90% surprise** opening and its characteristic first appearance through a **wall or door**. Its opening threat uses the victim's **Save vs. Death Ray**; failure produces the printed immediate death from horror. After that initial attack resolves—whether the victim saves or dies—the Shade materializes and subsequent physical attacks use its dagger profile.
+
+The source also says a Shade dematerializes and flees if Morale fails or if it becomes seriously endangered. Failed-Morale flight is now automatic. Because the book supplies no numerical definition of "seriously endangered," the engine deliberately does not invent an HP threshold; `dev phantom flee <name>` gives the referee a deterministic way to apply that source-defined judgment when appropriate.
+
+### Vision materialization is now tied to its printed 1–3-round wailing interval
+
+A Vision begins non-material and records a **1d3-round** opening wail interval. It remains non-material during that interval and materializes when the delay expires, after which ordinary physical combat can proceed within the already-represented encounter. The Vision's broader 90-foot sorrow/hopelessness saving-throw loop, collective-body attack-count details, restricted-area pursuit behavior, and Turning disappearance are intentionally left outside this state-transition pass.
+
+### Regression validation
+
+Four focused regression groups raise the deterministic integrated suite from **821 to 825 tests**. They verify the Prime-Plane non-material damage boundary plus magical-weapon-only material defense; Shade surprise/Death-Ray/materialization and Morale dematerialization; Apparition mist-triggered materialization with the +4 attack bonus; and Vision's persistent 1d3-round wail/materialization clock.
+
+```text
+Build: 0.4.141
+Tests: 825 / 825 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.142 — Phantom fear / Turning-resistance closure only**. Implement the shared 120-foot sight fear, the automatic 3-HD-or-less result, the Phantom family's resistant/reflected clerical Turning procedure, and only the minimum persistent fear state needed to enforce those source rules. Keep Apparition transformation-after-death, Vision grief/control, and other unrelated monster powers in later checkpoints.
+
+## v0.4.140 — subterranean ambush / burrow targetability closure
+
+This bounded checkpoint implements the source-verifiable **tunneling cohort** identified for the exceptional-movement pass: the Mentzer Expert **Purple Worm**, DMR2 **Red Worm**, and DMR2 **Giant Sand Spider**. The pass is deliberately limited to subterranean approach, source surprise, emergence, movement/contact consequences, targetability while below the surface, and the Purple Worm's printed delayed tail emergence. Phantom ethereal/materialization states were source-reviewed but remain a separate checkpoint because their materialization boundaries are coupled directly to each Phantom subtype's special opening attack.
+
+### Source-specific subterranean surprise now replaces the generic visible opening
+
+Campaign encounters with these creatures can now begin from their printed below-surface approach rather than pretending that the monster is standing visibly at the ordinary encounter distance.
+
+- **Purple Worm:** if using its source-defined tunneling approach, the engine rolls the printed **1-in-4** surprise chance directly on **1d4**.
+- **Red Worm:** its printed **50%** surprise chance is represented as **1–3 on 1d6**. When a normal encounter d6 has already been rolled, that same roll is reused rather than introducing an unrelated second die.
+- **Giant Sand Spider:** its printed **1–4 on 1d6** surprise chance is used exactly, again reusing the encounter d6 when available.
+
+A subterranean opening moves the represented monster to the prey position beneath the surface and sets the effective visible encounter distance to zero. A successful source surprise result can therefore produce the foe's free surprise round through the ordinary combat engine. A failed result means the party detects the impending emergence before the attack; the creature remains below the surface until it acts.
+
+### Buried creatures no longer create impossible above-ground melee contact
+
+A creature in represented burrow state does not project an above-ground hostile Influence Sphere. Characters may therefore occupy/pass the surface position without being stopped by a creature still separated from them by earth or rock, and a burrowing Red Worm or Purple Worm can pass beneath ordinary hostile Influence Spheres while using the movement explicitly supported by its entry.
+
+While below the surface, the monster is unavailable to **ordinary weapon and touch attack rolls**. The implementation intentionally does **not** create blanket immunity to every area spell, terrain-changing effect, or exotic effect that might interact with the ground; those remain governed by their own spell/environment procedure rather than by a fabricated universal underground-immunity rule.
+
+The DMR2 Sand Spider is handled more conservatively. Its entry says that it lies just below the surface and bursts out when prey passes overhead, but supplies no separate combat-rate underground movement. The engine therefore gives it the concealed ambush position and emergence state, but does not invent free underground relocation at its normal above-ground movement rate.
+
+### Emergence restores normal targetability; Purple Worm tail emergence is delayed
+
+When one of these creatures makes its first attack from below, it explicitly emerges before the attack exchange and becomes a normal represented combatant again. Existing melee contact can then be established normally.
+
+The Purple Worm has one additional source boundary: after tunneling into an encounter, **2–5 rounds pass before its tail is dragged free of the burrow**. On emergence the engine rolls **1d4+1**, records the future round in which the tail becomes available, and suppresses the sting attack until that round. The bite remains available immediately, including the already-implemented swallow-whole procedure.
+
+The burrow state, opening surprise record, emergence round, and Purple Worm tail-availability round survive ordinary combat-state normalization. `dev burrow status [name]` exposes the current state and governing source without changing it.
+
+### Regression validation
+
+Four focused regression groups raise the integrated deterministic suite from **817 to 821 tests**. They verify Purple Worm below-ground targetability plus the 2–5-round tail delay; Red Worm through-rock movement plus the exact 50% surprise threshold; Giant Sand Spider 1–4/d6 ambush behavior without invented combat-rate subsurface travel; and full campaign-encounter integration where the source burrow opening replaces generic visible encounter distance/surprise and a successful ambush resolves through the normal foe surprise round.
+
+```text
+Build: 0.4.140
+Tests: 821 / 821 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.141 — Phantom ethereal/materialization closure only**. Source-verify Apparition, Shade, and Vision together, then implement only their shared non-material Prime-Plane targetability/pass-through state and each printed materialization/re-entry boundary. Where a subtype's transition depends on its special opening attack, implement only the minimum tightly coupled attack procedure required to make that state transition deterministic; do not expand into the later general monster spell-like-power batch.
+
+## v0.4.139 — aerial Swoop / carry-off movement closure
+
+This bounded checkpoint implements the mechanically coherent **aerial carry-off** family only: the general BECMI/Rules Cyclopedia **Swoop** procedure as used by the three Roc profiles, plus the DMR2 **Thunderhead** entry's own claw-snatch rule. Feywing and other creatures whose carry-off language is coupled to a different attack-selection problem remain outside this pass rather than being forced through the same handler.
+
+### The general Swoop procedure now exists as represented 3D combat state
+
+The live engine now recognizes a source-valid Swoop only when the represented tactical state actually establishes its prerequisites. The flying monster must have moved **more than 10 feet** during the current round from a higher altitude toward a lower target, the target side must be surprised, and the encounter terrain cannot be represented as jungle or dense forest. A qualifying Swoop uses one attack opportunity and doubles that attack's ordinary damage.
+
+For monsters with talons or another source-supported grabbing attack, a qualifying Swoop whose **Hit roll totals 18 or more** may seize the victim and try to fly away. The shared lift boundary uses the published Hit-Dice ladder instead of an invented Strength contest: **3 HD → halfling, 6 HD → man, 12 HD → horse, 24 HD → elephant**. A target above the creature's capacity is released immediately. Small, Large, and Giant Roc profiles now inherit this general procedure through their actual Hit Dice.
+
+The implementation does not infer that every ordinary flying attack is a Swoop. If surprise, altitude, approach distance, terrain, or the current-round movement record is absent, the attack resolves normally without the Swoop multiplier or carry-off trigger.
+
+### Thunderhead keeps its own printed 16+ snatch threshold
+
+DMR2 gives the Thunderhead a more specific behavior after its lightning attack: it attempts to snatch prey in its claws, and an **attack roll of 16 or better** means that it has grabbed the victim. The entry also explicitly says that a Thunderhead can carry prey as large as a **war horse** and takes captured creatures up into the storm.
+
+That entry-specific rule overrides the generic Swoop 18+ threshold for this creature. A successful qualifying claw hit now establishes the same persistent carry state, with a source-marked destination intent of **storm**. The engine deliberately does not invent a number of rounds before the captured creature is eaten, automatic bite damage while in transit, or a universal rescue clock because DMR2 supplies none of those timings.
+
+### Carried victims now follow the carrier instead of remaining at their old coordinates
+
+A carried character has a dedicated `carriedBy` record rather than being forced into the older one-appendage `grabbedBy` structure. While the carrier remains represented in combat:
+
+- the victim's **x/y/elevation coordinates follow the carrier** whenever it moves;
+- the victim cannot move independently away from the carrier;
+- the victim no longer blocks the carrier's own movement through opposing-sphere contact;
+- the engine adds **no generic attack-roll, spellcasting, Armor Class, or saving-throw penalty**, because neither the general Swoop rule nor the Thunderhead entry supplies one.
+
+The carry relationship survives ordinary combat-state normalization. `dev carry status [name]` reports active carriers, victims, source trigger, destination intent, and off-map carry records.
+
+### Killing or losing the carrier has an explicit release boundary
+
+If an aerial carrier is killed while holding a victim, the victim is released at the carrier's represented altitude. A victim with represented flight/levitation capability remains aloft. Otherwise the victim falls to the represented ground and uses the existing BECMI falling rule of **1d6 per complete 10 feet**.
+
+If instead a live carrier successfully leaves the represented encounter while still holding a victim, the engine does not silently return that victim to the party. The temporary `carriedBy` record becomes a persistent `carriedAway` campaign record with the carrier identity, destination intent when printed, last represented position, and time/round of departure. Such a character is excluded from the immediately available adventuring party until the fiction establishes rescue, escape, or return. The exact off-map travel and rescue timing remains referee-owned because the governing entries do not provide a universal schedule.
+
+### Regression validation
+
+Three focused regression groups raise the integrated deterministic suite from **814 to 817 tests**. They verify the Thunderhead's 16+ claw snatch and war-horse capacity, carried-victim 3D position synchronization and blocked independent movement; the Roc's surprise/descending/>10-foot Swoop prerequisites, deterministic doubled claw damage, and printed 18+ carry threshold; and death-release falling plus persistent off-map carry-away state when a carrier flees.
+
+```text
+Build: 0.4.139
+Tests: 817 / 817 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.140 — exceptional-monster tunneling / phasing movement closure only**. First source-verify a small coherent group whose entries explicitly move through earth, stone, solid obstacles, or an alternate state that changes ordinary targetability. Keep that pass to movement, emergence/re-entry, surprise, and targetability consequences only; do not combine it with the later broad monster spell-like-power batch.
+
+## v0.4.138 — Lava Ooze timed coating-damage closure
+
+This checkpoint implements **Lava Ooze only**. The governing entry is the Mentzer Master Dungeon Master rules (printed page 37; PDF page 368 in the consolidated BECM project copy). The creature's lingering lava is deliberately not routed through the ordinary continuous-attachment subsystem: the ooze does not remain physically attached after the successful pseudopod strike, while the deposited coating continues to damage the victim for its own printed duration.
+
+### The printed three-pseudopod attack packet is now explicit
+
+The live profile now preserves the Master entry's **AC 5**, **9 Hit Dice**, **Morale 12**, and mindless **Intelligence 0** identity and exposes exactly **three pseudopods per round**. Each pseudopod has the printed **15-foot reach** and inflicts **4d6 direct damage** on a successful hit.
+
+The special-reach bridge now recognizes the ooze's 15-foot pseudopods without treating them as generic grappling appendages. A successful pseudopod hit therefore uses the normal attack-roll and direct-damage route and then deposits the separate lava coating on a surviving victim.
+
+### The lava coating is a timed victim state, not a second attack
+
+Every successful pseudopod hit rolls the printed **1d4-round coating duration**. The coating then inflicts one automatic **3d6 heat-damage packet per later combat round** until the accumulated duration expires.
+
+Repeated pseudopod hits on the same victim follow the source's unusual stacking rule exactly: they **do not increase the 3d6 heat damage per round**, but each new 1d4 duration is added to the remaining coating clock. The engine therefore keeps one coating record per victim rather than creating parallel damage-over-time effects.
+
+The Master entry gives no scrape-off action, saving throw, extinguishing roll, or early-removal procedure. None is invented. Once deposited, the timed coating continues even if the originating Lava Ooze is killed or otherwise removed from the fight. Combat remains open while a living party member is still taking this represented timed damage so the remaining rounds cannot disappear during encounter cleanup.
+
+The coating survives ordinary member normalization/save-load reconstruction. Its stored state includes the remaining rounds, damage expression, application/damage rounds, number of contributing hits, and originating ooze identities. The bounded inspection command is:
+
+```text
+dev lava ooze status [name]
+```
+
+### Fire immunity, cold vulnerability, and mindlessness are now live
+
+The Lava Ooze now applies its printed elemental defenses before ordinary hit-point loss:
+
+- **normal and magical fire/heat inflict no damage**;
+- **cold attacks inflict double damage** after any already-represented general spell/resistance adjustment;
+- its mindless state carries explicit immunity to represented **mind attacks**, including the existing charm/sleep gates and the targeted mental-spell gate used by effects such as ESP and Feeblemind.
+
+These are creature-specific defenses. They do not create a general elemental-vulnerability rule for unrelated monsters.
+
+### Regression validation
+
+Three focused regression groups raise the integrated deterministic suite from **811 to 814 tests**. They verify the 3×4d6/15-foot pseudopod profile and cumulative-duration/nonstacking-damage rule; one 3d6 coating packet per later round, persistence after ooze death and save-style normalization, and encounter closure only after the timed hazard expires; and complete fire immunity, ×2 cold damage, plus represented mind-attack immunity.
+
+```text
+Build: 0.4.138
+Tests: 814 / 814 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.139 — exceptional-monster unusual-movement / carry-off handler batch only**. First source-verify a small mechanically coherent group whose published combat behavior depends on snatching, carrying, forced aerial/vertical movement, tunneling, phasing, or another nonstandard movement procedure. Keep the batch to those explicit movement consequences and their release/drop boundaries; do not combine it with the later broad monster spell-like-power pass.
+
+## v0.4.137 — Vampire Rose hypnosis / blood-drain closure
+
+This checkpoint implements **Vampire Rose only**. The governing entry is DMR2 *Creature Catalog* (PDF page 109 in the project copy), cross-checked against the equivalent AC9 entry. It remains separate from the ordinary continuous-attachment family because the rose combines a persistent hollow-thorn blood drain with a one-time hypnotic anaesthetic saving throw and a source-defined loss of willpower.
+
+### The catalog row now preserves the printed creature identity
+
+The imported Vampire Rose row contained two metadata defects that would have distorted runtime behavior: its movement fields were blank and its type had been mislabeled **Undead** even though the governing entry calls it **Lowlife (Rare)**. This checkpoint corrects the runtime profile to the printed **AC 7**, **4 Hit Dice**, **30' (10') movement**, **Intelligence 0**, and Lowlife classification. The correction matters mechanically because the engine must not grant undead classification merely because the creature drains blood.
+
+The ordinary thorn remains a normal attack for **1d8 initial damage**. No unsupported reach is invented; absent a printed special reach, the existing hand-to-hand contact boundary governs the attack.
+
+### A successful thorn hit now starts the printed automatic blood drain
+
+Once the thorn hits, the hollow stalk remains represented as a persistent attachment. Beginning on the rose's later attack opportunities, that attachment inflicts **1d8 blood drain automatically each round without another attack roll**. The common attachment lifecycle still releases the victim when the rose dies or when the victim dies.
+
+The source gives no Strength check, pull-free percentage, severance threshold, repeat attack roll, or generic self-detach action for the thorn. None is manufactured. A victim who resists the anaesthetic therefore retains the ability to act, but the already-established hollow thorn continues draining until a source-supported release condition occurs.
+
+### The hypnotic anaesthetic receives one Save vs. Spells on the hit
+
+The same successful thorn hit now injects the printed hypnotic anaesthetic and immediately calls for **one Saving Throw vs. Spells**. A failed save records the source result that the victim **loses all willpower**. While that same thorn remains attached, the deterministic combat engine blocks the victim's voluntary movement, melee attacks, missile attacks, spellcasting, turning, and other deliberate combat actions.
+
+A successful save leaves the victim's willpower intact. It does **not** cancel the thorn attachment or its 1d8-per-round drain, because the save is against the anaesthetic rather than against the physical hollow thorn.
+
+DMR2 gives no repeat saving throw, recovery interval, separate hypnosis duration, or independent anaesthetic cure procedure. The attachment therefore stores the original save result and does not roll again each round. The effect is also not silently converted into generic poison or charm: the entry itself specifies a Save vs. Spells and gives its own consequence.
+
+### Complete draining now changes the blooms from white to red
+
+If the automatic blood-drain damage itself kills the attached victim, the rose records that victim as **completely drained** and changes its represented bloom color from white to **red**, preserving the entry's explicit aftermath. A victim killed by the initial thorn strike is not falsely counted as completely drained, and killing the rose before it finishes draining a living victim does not turn the flowers red.
+
+Killing the Vampire Rose releases the hollow thorn and ends any associated loss-of-willpower lock through the normal monster-death cleanup path. Killing the victim likewise clears the live attachment after the final drain packet has been resolved.
+
+### State, inspection, and source boundaries survive normalization
+
+The Vampire Rose packet, hollow-thorn attachment, original anaesthetic save result, hypnotized/willpower state, bloom color, and list of completely drained victims survive combat-state normalization and ordinary save/load serialization. The bounded inspection command is:
+
+```text
+dev vampire rose status [name]
+```
+
+It reports bloom color, the attached victim, whether the victim failed or passed the original hypnotic save, the active automatic drain, and any victims that have been completely drained.
+
+### Regression validation
+
+Three focused regression groups raise the integrated deterministic suite from **808 to 811 tests**. They verify the corrected AC/HD/movement/Lowlife/Intelligence profile; 1d8 thorn damage; one Save vs. Spells on attachment; failed-save loss of willpower and voluntary-action blocking; successful-save retention of willpower without cancelling the physical drain; automatic 1d8 later-round damage without a new hit roll; no repeat anaesthetic save; save/load-style persistence; red blooms only after a victim is completely drained by the ongoing blood drain; and release when the rose is destroyed.
+
+```text
+Build: 0.4.137
+Tests: 811 / 811 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.138 — Lava Ooze timed coating-damage closure only**. Keep that pass limited to its source-defined pseudopod coating, automatic lingering heat damage and duration/extension rules, plus its explicitly printed fire immunity and cold vulnerability where those are not already live. Do not combine it with another unrelated exceptional-monster family.
+
+## v0.4.136 — Strangleweed opposed-roll subsystem
+
+This checkpoint implements **Strangleweed only**. The governing entry is DMR2 *Creature Catalog*, printed page 103 (PDF pages 104–105 in the project copy), cross-checked against the equivalent AC9 procedure. It remains separate from Strangle Vine because Strangleweed does not use a normal attack roll, a save-to-escape procedure, or generic continuous damage; its combat is an opposed-roll loop with damage feeding back into later contests.
+
+### The normal attack roll is replaced by the printed 4d6+4 contest
+
+When a living creature comes within the printed **10-foot reach**, or when the Strangleweed receives its normal attack opportunity against a creature already within reach, the engine resolves the entry's special contest rather than rolling to hit Armor Class. The victim rolls **4d6+4** and adds the ordinary BECMI Strength adjustment; the weed rolls **4d6+4**.
+
+The outcome bands are now deterministic:
+
+- if the victim's adjusted total reaches at least **twice the weed total**, the victim escapes or avoids the grab;
+- if the victim beats or ties the weed but does not double it, the victim is **held tight but takes no damage**;
+- if the weed beats the victim, the **difference is damage** and the hold remains.
+
+DMR2 says “exceeds” for the middle band and “beats” for the damaging band but does not separately define an exact tie. A tie is therefore treated conservatively as held with no damage: the weed has not beaten the victim, while the victim has not doubled the weed. The same victim is resolved at most once per combat round, so entering reach and then reaching the monster's attack phase cannot create an unsupported duplicate contest in one round.
+
+### Damage now weakens later escape attempts exactly as printed
+
+Every point of hit-point damage actually inflicted by the Strangleweed is accumulated on that victim and subtracted from subsequent opposed totals against that same plant. Damage prevented by another rule does not become an artificial penalty, because the source says **damage inflicted** is what weakens later rolls.
+
+The source also caps the damage the Strangleweed can inflict at **the total of its 4d6 roll plus 4**. The runtime therefore caps one damaging result at the weed's already-adjusted **4d6+4 total**; it does not add a second +4. This matters once cumulative victim penalties become large enough that the raw difference would otherwise exceed the weed's roll.
+
+### A held victim is positionally restrained without importing an unprinted action penalty
+
+A held victim cannot move away until an opposed result produces escape or the plant is defeated. However, unlike Whipweed, the Strangleweed entry does not say that the victim cannot attack, cast spells, or otherwise act while held. The runtime therefore does **not** invent a generic attack penalty, spell prohibition, Armor Class change, or Strength-check escape substitute.
+
+Allies also cannot use the project's generic pull-free/cut-free restraint shortcut. DMR2 explicitly says that other characters **cannot pull a victim free**; the victim's release remains governed by the opposed procedure or by destroying the plant.
+
+### Ally attacks now carry the printed 25% collateral-hit risk
+
+When another character successfully hits the Strangleweed while it is holding a represented victim, the engine rolls the printed **25% chance that the hit also strikes the victim**. If collateral does not occur, the full hit damages the plant. If it does occur with one held victim, the attack's damage is divided equally between plant and victim.
+
+The source does not say how to divide an odd integer point. The deterministic convention gives the victim `floor(damage / 2)` and leaves the odd point on the intended target, the Strangleweed. This avoids manufacturing an extra point of collateral damage against the victim.
+
+A single Strangleweed may have more than one represented held victim, but DMR2 gives no rule for deciding **which** held victim is struck when the 25% collateral result occurs. In that case the engine records a referee-visible pending collateral event and applies no guessed split until the fiction identifies the target. The inspection command is:
+
+```text
+dev strangleweed status [name]
+```
+
+It reports active holds, each victim's cumulative opposed-roll penalty, the last opposed result, source-described digestion records, and unresolved multi-victim collateral events.
+
+### Death, digestion, and persistence remain source-bounded
+
+Destroying the Strangleweed releases every living represented captive through the normal monster-death cleanup path. If the weed itself kills a held victim through the opposed procedure, the runtime records that the plant begins the entry's described leaf digestion, but **no digestion duration is invented** because DMR2 supplies no clock.
+
+The Strangleweed rule packet, per-victim cumulative damage penalty, active holds, digestion records, last-round guards, and unresolved collateral records survive combat-state normalization and ordinary save/load serialization. The plant is therefore not reduced to a stateless one-round special attack.
+
+### Regression validation
+
+Three focused regression groups raise the integrated deterministic suite from **805 to 808 tests**. They verify the 4d6+4 opposed totals and BECMI Strength adjustment; held/no-damage and damaging outcomes; cumulative inflicted-damage penalties; the adjusted-weed-total damage cap; 10-foot movement-triggered contact and movement restraint; later opposed escape at twice the weed total; hold-state persistence; rejection of the generic pull-free shortcut; the 25% ally collateral check and equal damage split; the conservative odd-point convention; unresolved multi-victim collateral targeting; and release of all captives when the plant is destroyed.
+
+```text
+Build: 0.4.136
+Tests: 808 / 808 passed
+Failures: 0
+State isolation: preserved
+Fresh Chromium processes: 3 / 3 clean
+Runtime exceptions/page errors: 0
+Console/log errors: 0
+JavaScript syntax: clean
+```
+
+### Next bounded checkpoint
+
+Proceed with **v0.4.137 — Vampire Rose hypnosis / blood-drain closure only**. Keep that pass limited to the rose's source-defined anaesthetic/hypnotic control, blood-drain lifecycle, saving throws, release/death conditions, and any explicitly printed range or duration. Leave timed environmental/coating damage and unrelated exceptional-monster powers for later passes.
 
 ## v0.4.135c — Strangle Vine entanglement / strangulation closure (small-piece split)
 
