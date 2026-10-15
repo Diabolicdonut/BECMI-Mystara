@@ -3,6 +3,13 @@
 Current accepted build: **v0.4.333**. Newly accepted checkpoints in the one-time migration: **0**.
 Current candidate: **v0.4.334 — NOT ACCEPTED**. No v0.4.335 work has begun.
 
+This is candidate branch `work/v0.4.334`, based on synchronized accepted main
+`9f1b4832def3e3cabf923b702d8117b445201ce8`. This branch's `index.html` is the
+already-produced v0.4.334 candidate, byte-identical to `_working/` and its original
+SHA-256. Accepted production is only `main:index.html` v0.4.333. Original status,
+archive and extracted evidence are preserved; fresh Actions evidence is separate.
+See `_working/github-status-v0.4.334.md`. No candidate acceptance is recorded.
+
 ## Authoritative ledger
 
 GitHub repository: `Diabolicdonut/BECMI-Mystara`.
@@ -11,7 +18,7 @@ The newest fully accepted commit on `main`, its `index.html`, newest/topmost acc
 copies are recovery/reference material. Historical start-build numbers in the
 long-term direction and continuous-work documents do not override these files.
 
-Accepted production `index.html` remains the exact v0.4.333 game recovered from
+Accepted production `main:index.html` remains the exact v0.4.333 game recovered from
 `/Known World/index(20261013-050340).html` (retained production version 104).
 SHA-256: `0ebadf15242055ae394bf921fda68ca9203a2536b4cd75f33385cc1652ede2d7`.
 The recovered audit was `/Known World/audit(20261013-185054).md` (retained version

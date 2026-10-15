@@ -1,0 +1,65 @@
+{
+  "suite": "LOCAL NODE VM REPRODUCE",
+  "appVersion": "0.4.333",
+  "specVersion": "1.0",
+  "timestamp": "2026-10-13T18:33:27.314Z",
+  "durationMs": 1119,
+  "total": 8,
+  "passed": 3,
+  "failed": 5,
+  "isolationPreserved": true,
+  "results": [
+    {
+      "name": "v0.4.334 ordinary sole-condition Cureall discovers actual Baldandar source poison without a generic flag",
+      "pass": false,
+      "ms": 165.1,
+      "error": "Ordinary sole-condition Cureall missed source-only venom or changed HP, death, clock or RNG",
+      "stack": "Error: Ordinary sole-condition Cureall missed source-only venom or changed HP, death, clock or RNG\n    at harnessAssert (Known-World/index.html:31168:26)\n    at Object.run (eval at execute (Known-World/index.html:40382:92), <anonymous>:2:436)\n    at Object.runHarnessTests [as run] (Known-World/index.html:40064:28)\n    at /workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:21:30\n    at Object.<anonymous> (/workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:22:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)"
+    },
+    {
+      "name": "v0.4.334 missing null false zero and empty Baldandar originals do not fabricate ordinary poison availability",
+      "pass": true,
+      "ms": 102.6
+    },
+    {
+      "name": "v0.4.334 ordinary poison discovery retains literal truthy originals at the existing one-condition choice boundary",
+      "pass": false,
+      "ms": 10.2,
+      "error": "Truthy source discovery omitted poison or rewrote literal originals at the existing multi-ailment boundary",
+      "stack": "Error: Truthy source discovery omitted poison or rewrote literal originals at the existing multi-ailment boundary\n    at harnessAssert (Known-World/index.html:31168:26)\n    at Object.run (eval at execute (Known-World/index.html:40382:92), <anonymous>:8:440)\n    at Object.runHarnessTests [as run] (Known-World/index.html:40064:28)\n    at /workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:21:30\n    at Object.<anonymous> (/workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:22:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)"
+    },
+    {
+      "name": "v0.4.334 explicit ordinary poison choices preserve bite and later wounds and independent blindness history",
+      "pass": true,
+      "ms": 44.6
+    },
+    {
+      "name": "v0.4.334 ordinary sole-poison Cureall preserves independent knockout artifact and actual Symbol sleep",
+      "pass": false,
+      "ms": 17.4,
+      "error": "Sole-poison Cureall retained venom or erased an independent sleep cause",
+      "stack": "Error: Sole-poison Cureall retained venom or erased an independent sleep cause\n    at harnessAssert (Known-World/index.html:31168:26)\n    at Object.run (eval at execute (Known-World/index.html:40382:92), <anonymous>:14:565)\n    at Object.runHarnessTests [as run] (Known-World/index.html:40064:28)\n    at /workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:21:30\n    at Object.<anonymous> (/workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:22:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)"
+    },
+    {
+      "name": "v0.4.334 ordinary source-only Cureall retains touch refusal and prepared utility slot and minute boundaries",
+      "pass": false,
+      "ms": 44,
+      "error": "Actual prepared utility Cureall missed sole poison or changed its exact slot/minute cost",
+      "stack": "Error: Actual prepared utility Cureall missed sole poison or changed its exact slot/minute cost\n    at harnessAssert (Known-World/index.html:31168:26)\n    at Object.run (eval at execute (Known-World/index.html:40382:92), <anonymous>:17:1075)\n    at Object.runHarnessTests [as run] (Known-World/index.html:40064:28)\n    at /workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:21:30\n    at Object.<anonymous> (/workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:22:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)"
+    },
+    {
+      "name": "v0.4.334 ordinary explicit wounds choice and existing generic poison truthiness remain independent of source discovery",
+      "pass": true,
+      "ms": 31.1
+    },
+    {
+      "name": "v0.4.334 source-only ordinary Cureall discovery and cured absence survive literal reload with rules and ship plans",
+      "pass": false,
+      "ms": 652.7,
+      "error": "Reloaded ordinary sole-poison Cureall failed",
+      "stack": "Error: Reloaded ordinary sole-poison Cureall failed\n    at harnessAssert (Known-World/index.html:31168:26)\n    at Object.run (eval at execute (Known-World/index.html:40382:92), <anonymous>:23:762)\n    at Object.runHarnessTests [as run] (Known-World/index.html:40064:28)\n    at /workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:21:30\n    at Object.<anonymous> (/workspace/scratch/6cb200625cac/Known-World/.validation/local-run.cjs:22:3)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)"
+    }
+  ],
+  "environment": "Node VM with inert DOM stubs; this is not Chromium or native browser acceptance",
+  "runtimeErrors": []
+}

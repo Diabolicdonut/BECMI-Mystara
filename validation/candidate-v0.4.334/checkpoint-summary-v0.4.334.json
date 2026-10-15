@@ -1,0 +1,39 @@
+{
+  "acceptedVersion": "0.4.333",
+  "candidateVersion": "0.4.334",
+  "status": "unaccepted_browser_validation_blocked",
+  "newlyAcceptedCheckpoints": 0,
+  "sessionCap": 3,
+  "reproduction": {
+    "cases": 8,
+    "expectedFailures": 5,
+    "passingControls": 3
+  },
+  "localNodeVm": {
+    "core": {
+      "passed": 2316,
+      "total": 2316,
+      "isolationPreserved": true
+    },
+    "focused": {
+      "passed": 1232,
+      "total": 1232,
+      "isolationPreserved": true
+    },
+    "targeted": {
+      "passed": 8,
+      "total": 8
+    },
+    "runtimeErrors": 0,
+    "orderedNamesUnique": true,
+    "focusedOrderedSubsetPreserved": true,
+    "inertDomStubs": true
+  },
+  "chromiumFreshSlices": "not run",
+  "nativeBrowserChecks": "not run",
+  "productionBrowserBootSaveReload": "not run",
+  "acceptedProductionSha256": "0ebadf15242055ae394bf921fda68ca9203a2536b4cd75f33385cc1652ede2d7",
+  "candidateSha256": "25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6",
+  "nextCheckpoint": "v0.4.334 \u2014 Ordinary Cureall Baldandar poison discovery only",
+  "blocker": "Required browser validation: no local Chromium and cloud-browser action rejected by automatic approval review."
+}

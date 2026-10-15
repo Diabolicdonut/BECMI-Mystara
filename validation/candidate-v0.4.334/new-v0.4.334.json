@@ -1,0 +1,55 @@
+{
+  "suite": "LOCAL NODE VM NEW",
+  "appVersion": "0.4.334",
+  "specVersion": "1.0",
+  "timestamp": "2026-10-13T18:33:36.216Z",
+  "durationMs": 1010,
+  "total": 8,
+  "passed": 8,
+  "failed": 0,
+  "isolationPreserved": true,
+  "results": [
+    {
+      "name": "v0.4.334 ordinary sole-condition Cureall discovers actual Baldandar source poison without a generic flag",
+      "pass": true,
+      "ms": 118.3
+    },
+    {
+      "name": "v0.4.334 missing null false zero and empty Baldandar originals do not fabricate ordinary poison availability",
+      "pass": true,
+      "ms": 84.1
+    },
+    {
+      "name": "v0.4.334 ordinary poison discovery retains literal truthy originals at the existing one-condition choice boundary",
+      "pass": true,
+      "ms": 34.8
+    },
+    {
+      "name": "v0.4.334 explicit ordinary poison choices preserve bite and later wounds and independent blindness history",
+      "pass": true,
+      "ms": 27.9
+    },
+    {
+      "name": "v0.4.334 ordinary sole-poison Cureall preserves independent knockout artifact and actual Symbol sleep",
+      "pass": true,
+      "ms": 39.9
+    },
+    {
+      "name": "v0.4.334 ordinary source-only Cureall retains touch refusal and prepared utility slot and minute boundaries",
+      "pass": true,
+      "ms": 103.8
+    },
+    {
+      "name": "v0.4.334 ordinary explicit wounds choice and existing generic poison truthiness remain independent of source discovery",
+      "pass": true,
+      "ms": 17.8
+    },
+    {
+      "name": "v0.4.334 source-only ordinary Cureall discovery and cured absence survive literal reload with rules and ship plans",
+      "pass": true,
+      "ms": 574.9
+    }
+  ],
+  "environment": "Node VM with inert DOM stubs; this is not Chromium or native browser acceptance",
+  "runtimeErrors": []
+}
