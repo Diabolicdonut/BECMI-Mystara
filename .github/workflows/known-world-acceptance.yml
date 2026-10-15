@@ -1,0 +1,134 @@
+name: Known World acceptance
+
+on:
+  push:
+    branches: [main, 'work/**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: known-world-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deterministic:
+    name: Deterministic ${{ matrix.suite }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [core, focused]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npm run validate:syntax
+      - run: node validation/run-local.mjs ${{ matrix.suite }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deterministic-${{ matrix.suite }}
+          path: validation/results/
+          if-no-files-found: error
+
+  chromium:
+    name: Fresh Chromium slice ${{ matrix.slice }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        slice: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node validation/browser-run.mjs slice ${{ matrix.slice }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: chromium-${{ matrix.slice }}
+          path: validation/results/
+          if-no-files-found: error
+
+  native-smoke:
+    name: Exact production boot and supplemental native save/reload
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run validate:native-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-smoke
+          path: validation/results/
+          if-no-files-found: error
+
+  established-native:
+    name: Required established native acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: npm run validate:native-established
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: established-native
+          path: validation/results/
+          if-no-files-found: error
+
+  ordered-coverage:
+    name: Ordered once-only coverage and isolation
+    needs: [deterministic, chromium, native-smoke]
+    if: always()
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          path: validation/results/
+          merge-multiple: true
+      - run: npm run validate:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ordered-coverage
+          path: validation/results/coverage.json
+          if-no-files-found: error
+
+  required-acceptance:
+    name: Required acceptance gate
+    needs: [deterministic, chromium, native-smoke, established-native, ordered-coverage]
+    if: always()
+    runs-on: ubuntu-24.04
+    env:
+      JOB_RESULTS: ${{ toJSON(needs) }}
+    steps:
+      - name: Every required procedure must pass
+        run: |
+          node -e 'const jobs=JSON.parse(process.env.JOB_RESULTS); const failed=Object.entries(jobs).filter(([,j])=>j.result!=="success"); if(failed.length){console.error("Acceptance blocked:",failed.map(([name,j])=>`${name}: ${j.result}`).join(", "));process.exit(1);} console.log("All required procedures passed; acceptance audit/pipeline update and reviewed merge are still required.");'

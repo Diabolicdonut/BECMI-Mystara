@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-15",
+  "repository": "Diabolicdonut/BECMI-Mystara",
+  "previousMain": "15184e3396ff4aa82b3f04b672d5d05804a3a373",
+  "acceptedVersion": "0.4.333",
+  "acceptedGameSha256": "0ebadf15242055ae394bf921fda68ca9203a2536b4cd75f33385cc1652ede2d7",
+  "candidateBranch": "work/v0.4.334",
+  "candidateVersion": "0.4.334",
+  "candidateStatus": "NOT ACCEPTED",
+  "candidateSha256": "25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6",
+  "nativeProcedure": "unrecovered; required gate blocked",
+  "newlyAcceptedCheckpoints": 0,
+  "nextCheckpoint": "v0.4.334 \u2014 Ordinary Cureall Baldandar poison discovery only",
+  "sourceFiles": {
+    "index(20261013-050340).html": "0ebadf15242055ae394bf921fda68ca9203a2536b4cd75f33385cc1652ede2d7",
+    "audit(20261013-185054).md": "f4e9719ed819cfeba392f8a6f053dadf7e69e3cd0027159e535fd792f1c55d52",
+    "pipeline-state.md": "dc44d29a362bb2240b9889394ecb92567b7280af03c16ee4c08eb7550fcfce06",
+    "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md": "37324983841005d57eef2d6eeba5170ccd9cb196f494109137c309020473924b",
+    "BECMI-Text-RPG-Continuous-Work-Instruction-v0.4.278.md": "a3262a59db41d0e3fda0b9aff76f381ad64dbf7a306e055d6547151d44ffdb8a"
+  }
+}
