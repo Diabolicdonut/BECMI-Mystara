@@ -81,11 +81,12 @@ try {
       if(new URL(route.request().url()).origin===origin)return route.continue();
       errors.blockedNetwork.push(route.request().url());return route.abort();
     });
-    await native.addInitScript(({saveKey,state})=>{
+    await native.addInitScript(({saveKey,state,expectedOrigin})=>{
+      if(location.origin!==expectedOrigin)return;
       if(!sessionStorage.getItem('kwNativeFixtureSeeded')){
         localStorage.setItem(saveKey,JSON.stringify(state));sessionStorage.setItem('kwNativeFixtureSeeded','yes');
       }
-    },fixture);
+    },{...fixture,expectedOrigin:origin});
     const p=await native.newPage();p.setDefaultTimeout(60000);
     const snapshot=async()=> (await p.evaluate(()=>window.KnownWorldTestHarness.getDebugPayload())).campaign;
     const checks=[];
