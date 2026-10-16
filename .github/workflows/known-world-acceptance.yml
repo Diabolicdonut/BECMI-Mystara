@@ -104,7 +104,7 @@ jobs:
 
   ordered-coverage:
     name: Ordered once-only coverage and isolation
-    needs: [deterministic, chromium, native-smoke]
+    needs: [deterministic, chromium, native-smoke, established-native]
     if: always()
     runs-on: ubuntu-24.04
     steps:
