@@ -37,7 +37,7 @@ node validation/browser-run.mjs slice 2
 node validation/browser-run.mjs slice 3
 node validation/browser-run.mjs slice 4
 npm run validate:native-smoke
-npm run validate:native-established
+npm run validate:native-v2
 npm run validate:coverage
 ```
 
@@ -59,37 +59,46 @@ rule toggles and planning-only contracts. v0.4.333 uses its accepted Neutralize
 Poison path; v0.4.334 uses its candidate sole-condition Cureall path. These
 checks are new CI transport verification, not a reconstruction of 523 checks.
 
-## Mandatory native procedure blocker
+## Native Acceptance v2 — prospective GitHub-era baseline
 
-The independent **523 native check definitions and runner** cited in the latest
-accepted audit are absent from the recovered Known World inventory and saved
-validation archive. The archive contains only `local-run.cjs`, eight new test
-definitions, reports, summary and README. GitHub's old v0.4.183 tree contains only
-the HTML and audit. Therefore the original native sequence, fixtures and exact
-assertions cannot be rerun from these files. No incompatibility between those
-procedures and GitHub Actions has been established; their executable definitions
-were not preserved.
+The user authorized a bounded recovery attempt and, if unsuccessful, a documented
+prospective baseline. On 2026-10-16 the attempt inspected all repository history
+paths, migration records, the candidate ZIP and extracted archive, the accepted
+audit and the entire scoped `/Known World/` inventory including `_working/`.
+No historical 523-check runner was recovered. The only relevant ZIP contains
+local VM definitions/reports, not an independent native runner. The earlier
+catalogue handoff ZIPs predate this suite. The inherited **523/523** result remains
+historical evidence; **it was not rerun**, imitated, or silently relabeled.
+`established-native.mjs` is retained as the old blocked recovery adapter.
 
-`Required established native acceptance` deliberately reports **blocked** and
-exits nonzero while `establishedNativeScript` is null. The final `Required
-acceptance gate` must fail even when every available regression and supplemental
-browser check passes. Missing procedure evidence is not a pass or a skipped
-required test. Recover the actual runner from authorized Known World material,
-preserve its checks, review its interface and wire it into this gate before
-claiming full acceptance. The adapter expects a complete named report, at least
-the established 523 checks, no failures, isolation, actual save/reload and zero
-page/console errors. Review the recovered assertions as well as their counts.
+`native-v2.mjs` is an explicitly new suite reconstructed from the accepted audit
+entries v0.4.294–333, their recoverable fixture procedures, and the current exact
+production/browser command and save procedures. It runs 33 named scenarios:
+ordinary source-only poison cures (wounded/full and three independent sleep
+causes), unprepared and Immunity refusals; recent/expired/unknown/missing onset,
+wound death and zero/null former HP; missing/null/false/zero/empty/truthy source
+originals; artifact Neutralize Poison/Heal sole/explicit/independent choice,
+multi-condition/range/dead/PP/unknown/unsupported/absent-condition refusals;
+actual Wood Spider and Medusa source cures. Each scenario checks native public
+commands, literal active and cured/refused save/reload, exact spell slots or PP,
+RNG/time, wound/death/former-HP integrity, rule toggles, planning-only ship records,
+read-only inspection and full original storage/campaign restoration between
+cases. No test bridge is shipped or used to invoke measured native commands.
+Failures, missing scenarios, duplicate names, console/page errors and external
+network attempts fail the new gate. Actual totals are recorded in CI reports and
+acceptance records; there is no claim of historical-suite equivalence.
 
-The workflow uploads JSON evidence on success and failure. Inspect workflow
-jobs and artifacts for the exact tested commit. Never accept from a partial run,
-a historical report or a result for different game bytes.
+Actions runs this same new suite against byte-exact accepted v0.4.333
+(`9f1b4832def3e3cabf923b702d8117b445201ce8`) and the current candidate. Once both
+pass and v0.4.334 is accepted, Native Acceptance v2 becomes the prospective
+GitHub-era native acceptance baseline. Historical evidence stays separate.
 
 ## Acceptance and recovery
 
 After all required validation is green, update the audit, pipeline and current
 manifest's accepted version in a clear acceptance commit, rerun checks on that
-recorded commit, then merge only the bounded checkpoint. Do not merge this
-preserved candidate during the migration. Next checkpoint remains
+recorded commit, then merge only the bounded checkpoint. The migration is complete; the current continuation is authorized to accept
+and merge the resolved candidate. Next checkpoint remains
 **v0.4.334 — Ordinary Cureall Baldandar poison discovery only**. The following
 multi-condition fallback is a separate future dependency; no v0.4.335 work is
 included here.

@@ -36,10 +36,18 @@ skip failures, or substitute supplemental smoke checks for an unrecovered native
 suite. No temporary validation bridge belongs in production HTML. Record new
 evidence separately from inherited historical acceptance results.
 
-## Current migration boundary
+## Current continuation authorization
 
-Accepted main is v0.4.333. v0.4.334 is an unaccepted preserved candidate. The exact
-next checkpoint is **v0.4.334 — Ordinary Cureall Baldandar poison discovery only**:
-complete its required validation and acceptance record first. No v0.4.335 work is
-authorized during the one-time migration session. Cartography, contextual weapon
-rules, and unrelated Phase 1 work remain deferred.
+The one-time migration is complete. The 2026-10-16 user instruction explicitly
+authorizes a documented prospective Native Acceptance v2 baseline if the bounded
+attempt cannot recover the historical 523-runner. Historical totals must never
+be relabeled as reruns. Run the new suite on accepted v0.4.333 and v0.4.334, then
+accept and merge v0.4.334 only after every required check is green.
+
+After that, implement Context Matrix in separate checkpoints: v0.4.335 data/mode
+only; v0.4.336 pure calculator only; v0.4.337 live damage integration. The workbook
+is primary design authority, Atlas v0.4 supports it, v0.1 is exploratory only.
+RAW remains the default; RAW and AAE stay isolated. No more than three newly
+accepted checkpoints per session, including v0.4.334 if accepted here. The next
+checkpoint is always governed by the current pipeline and newest accepted audit.
+Hidden-world cartography is preserved but no graphical map work is authorized.

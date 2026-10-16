@@ -63,7 +63,7 @@ actual save/reload checks, syntax, page/console errors, campaign isolation and
 exact ordered once-only coverage. Consult Actions and artifacts for fresh results
 for the exact commit; this pipeline does not claim a pending run has passed.
 
-**Required acceptance remains blocked:** the independent **523 native-check
+**Historical native-runner recovery outcome (2026-10-16):** the independent **523 native-check
 executable definitions/runner** cited by accepted v0.4.333 were not preserved in
 the recovered project inventory or candidate archive. The required native job
 fails explicitly rather than skipping or replacing that procedure with smoke
@@ -96,3 +96,18 @@ poisoning onset/death/former-HP chronology, independent sleep, artifact PP/RNG,
 clocks, native commands, rule toggles, Special and planning-only ships. Hidden
 8-mile/world-coordinate cartography, navigation belief/knowledge/perception,
 contextual weapon rules and graphics remain deferred.
+
+## Authorized continuation — native baseline transition in progress
+
+The bounded recovery attempt did not recover the historical 523-runner. Its
+523/523 historical result is not claimed as rerun. Native Acceptance v2 is a new
+prospective suite covering 33 documented native command/persistence/refusal/
+restoration/isolation scenarios; see `validation/README.md`. Actions must run it
+against accepted v0.4.333 and candidate v0.4.334. The candidate remains NOT
+ACCEPTED until those reports and all existing required validation pass.
+
+The current user instruction supersedes the completed migration-only limits.
+After v0.4.334 acceptance, v0.4.335 is Context Matrix data/mode only, v0.4.336 is
+pure calculator only, and v0.4.337 is live damage integration. RAW remains the
+default. No more than three checkpoints may be accepted in this session.
+Ordinary Cureall multi-condition fallback remains a separate BECM dependency.

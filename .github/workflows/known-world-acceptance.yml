@@ -81,7 +81,7 @@ jobs:
           if-no-files-found: error
 
   established-native:
-    name: Required established native acceptance
+    name: Required Native Acceptance v2
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -91,7 +91,10 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
-      - run: npm run validate:native-established
+      - run: git fetch origin 9f1b4832def3e3cabf923b702d8117b445201ce8
+      - run: git show 9f1b4832def3e3cabf923b702d8117b445201ce8:index.html > /tmp/known-world-accepted-v0.4.333.html
+      - run: node validation/native-v2.mjs /tmp/known-world-accepted-v0.4.333.html native-v2-v0.4.333
+      - run: npm run validate:native-v2
       - uses: actions/upload-artifact@v4
         if: always()
         with:
