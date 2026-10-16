@@ -61,7 +61,7 @@ const fixtureSource=`window.__kwNativeFixtures=()=>{
    if(option==='wounds'){query+=': wounds';expected.sourceCleared=false;expected.sleeping=true;}
    expected.refused=['multi','range','dead','pp','none','unknown_target','unsupported'].includes(option);
    if(expected.refused){expected.pp=0;expected.sourceCleared=false;expected.sleeping=subject.sleeping;}
-   if(!expected.refused){const seed=state.seed;if(option==='wounds')expected.hp=subject.maxHp-rng(6);artifactPreparePenalty(rec,artifactPowerRecord(rec,power));expected.seed=state.seed;state.seed=seed;}
+   if(!expected.refused){const seed=state.seed;if(option==='wounds')expected.hp=Math.max(subject.hp,subject.maxHp-rng(6));artifactPreparePenalty(rec,artifactPowerRecord(rec,power));expected.seed=state.seed;state.seed=seed;}
    spell=power;
   }else{
    if(option==='unprepared')caster.preparedSpells=caster.preparedSpells.filter(p=>p.spell!==spell),syncLegacySpellFields(caster),expected.refused=true,expected.sourceCleared=false,expected.sleeping=subject.sleeping;

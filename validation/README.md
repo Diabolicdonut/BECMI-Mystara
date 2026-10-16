@@ -125,3 +125,22 @@ and excludes only the generated empty homunculusAbilityDrainEffects runtime
 cache, which the accepted normalizer does not serialize as a member field. A
 nonempty value is never ignored. Poison/source/history fields retain literal
 missing/null/false/zero distinctions throughout all comparisons.
+
+## Native v2 fixture repairs — 2026-10-16
+
+Actions run 38841703587 reached the first restoration check after 17 passing
+assertions. The original campaign had been saved before its first real reload;
+accepted migrateSave initializes daily weather, vessel capacity/condition and
+RNG at that boundary. The suite now performs the native save/reload/save sequence
+before capturing the original campaign and storage. All exact restoration and
+RNG checks remain in force; no production initialization is bypassed or ignored.
+
+Run 38929428071 then passed 23 scenarios and 358 assertions before the explicit
+artifact wounds expectation failed. Accepted artifactApplyCureall uses
+Math.max(priorHp, maxHp - remainingDie), also asserted by the v0.4.333 sole-wounds
+core control. The fixture had incorrectly expected maxHp - remainingDie even
+when that would reduce existing HP. Its exact expected HP now includes the
+accepted non-harming floor. The wound die still precedes the penalty draw;
+printed 100 PP, source/sleep isolation and exact resulting seed stay asserted.
+Neither repair changes a production byte or removes an assertion. These are new
+prospective tests of the accepted baseline, not reruns of the missing 523 suite.
