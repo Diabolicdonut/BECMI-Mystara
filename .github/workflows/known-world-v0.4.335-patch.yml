@@ -1,0 +1,28 @@
+name: One-time Context Matrix candidate builder
+on:
+  push:
+    branches: [work/v0.4.335]
+permissions:
+  contents: write
+jobs:
+  build-candidate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply bounded one-time v0.4.335 production patch
+        run: |
+          if grep -q "const APP_VERSION='0.4.335'" index.html; then
+            echo "Already patched."
+          else
+            node tools/patch-context-matrix-v0.4.335.mjs
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add index.html
+            git commit -m "v0.4.335 candidate — isolated Context Matrix mode in production"
+            git push origin HEAD:work/v0.4.335
+          fi

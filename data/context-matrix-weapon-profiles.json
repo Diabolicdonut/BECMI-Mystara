@@ -135,9 +135,9 @@
     },
     "rangeProfiles": {
       "Size-Based": {
-        "close": null,
+        "close": "-Size",
         "normal": 0,
-        "far": null,
+        "far": "+Size",
         "origin": "AAE v3.2 Size-based"
       },
       "Flat": {
