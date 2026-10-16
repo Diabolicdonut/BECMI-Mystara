@@ -100,9 +100,8 @@ After all required validation is green, update the audit, pipeline and current
 manifest's accepted version in a clear acceptance commit, rerun checks on that
 recorded commit, then merge only the bounded checkpoint. The migration is complete; the current continuation is authorized to accept
 and merge the resolved candidate. Next checkpoint remains
-**v0.4.334 — Ordinary Cureall Baldandar poison discovery only**. The following
-multi-condition fallback is a separate future dependency; no v0.4.335 work is
-included here.
+**v0.4.335 — Context Matrix data/mode only**, after the v0.4.334 acceptance commit is confirmed and merged. The following
+multi-condition fallback is a separate future dependency; Context Matrix work remains separate from that Cureall dependency.
 
 After interruption inspect accepted GitHub main, pipeline, the active candidate
 branch and its Actions results. Project Library copies are recovery/reference
@@ -144,3 +143,7 @@ accepted non-harming floor. The wound die still precedes the penalty draw;
 printed 100 PP, source/sleep isolation and exact resulting seed stay asserted.
 Neither repair changes a production byte or removes an assertion. These are new
 prospective tests of the accepted baseline, not reruns of the missing 523 suite.
+
+Native Acceptance v2 was established prospectively by Actions run 38929949995:
+33 scenarios and 508/508 assertions on each exact v0.4.333 and v0.4.334 game.
+The acceptance metadata commit reruns every required procedure before promotion.

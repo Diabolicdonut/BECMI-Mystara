@@ -1,29 +1,18 @@
-# GitHub candidate preservation — v0.4.334 NOT ACCEPTED
+# GitHub acceptance record — v0.4.334
 
-Accepted main baseline: **v0.4.333**, synchronized at
-`9f1b4832def3e3cabf923b702d8117b445201ce8`.
-Candidate branch: `work/v0.4.334`, created directly from that accepted main.
-Candidate game SHA-256:
-`25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6`.
+The original candidate is now accepted by the topmost audit entry and pipeline.
+Qualifying candidate: `522752b7e3ac0c86be0fefc5ca022ae2e5e9e1da`;
+[green required Actions](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38929949995).
+Game SHA-256: `25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6`.
 
-Both branch `index.html` and `_working/index-v0.4.334-CANDIDATE.html` retain the
-original candidate bytes. The original candidate status and ZIP are unchanged.
-Extracted local evidence is in `validation/candidate-v0.4.334/`; historical VM
-reports are not fresh Chromium acceptance. No game or regression definition was
-broadened during migration. No v0.4.335 implementation exists.
+Core 2316/2316, focused 1232/1232, Chromium 579/579 ×4, exact boot,
+supplemental native save/reload, ordered coverage and isolation all passed.
+Native Acceptance v2: 33 scenarios / 508 assertions passed on each of exact
+v0.4.333 and v0.4.334. This is a prospective new baseline. The historical
+523-runner was unavailable and was not rerun.
 
-GitHub Actions is configured to run recovered complete core/focused procedures,
-four independent fresh Chromium slices, exact production boot, supplemental native
-public commands and actual save/reload, syntax, errors, isolation and exact
-ordered once-only coverage. Read Actions for the exact candidate commit and its
-current result; a configured/pending job is not a passed check.
-
-**Still blocked:** the actual independent 523 native-check definitions/runner
-cited by the accepted audit were not saved in the recovered project files.
-`Required established native acceptance` deliberately fails until the real
-procedure is recovered and wired. Supplemental command/reload verification does
-not replace those checks. Do not accept or merge from partial CI evidence.
-
-Exact next checkpoint: **v0.4.334 — Ordinary Cureall Baldandar poison discovery
-only**. Finish required validation and record its acceptance before a later merge.
-The one-time migration does not promote the candidate or begin v0.4.335.
+The acceptance metadata commit must pass required CI before main promotion.
+Original candidate HTML, ZIP and local-only status remain historical provenance;
+their earlier NOT ACCEPTED labels describe the preservation stage.
+Next checkpoint: v0.4.335 Context Matrix data/mode only. No such game work is
+included in this acceptance.

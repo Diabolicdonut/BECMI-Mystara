@@ -1,113 +1,74 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.333**. Newly accepted checkpoints in the one-time migration: **0**.
-Current candidate: **v0.4.334 — NOT ACCEPTED**. No v0.4.335 work has begun.
-
-This is candidate branch `work/v0.4.334`, based on synchronized accepted main
-`9f1b4832def3e3cabf923b702d8117b445201ce8`. This branch's `index.html` is the
-already-produced v0.4.334 candidate, byte-identical to `_working/` and its original
-SHA-256. Accepted production is only `main:index.html` v0.4.333. Original status,
-archive and extracted evidence are preserved; fresh Actions evidence is separate.
-See `_working/github-status-v0.4.334.md`. No candidate acceptance is recorded.
+Current accepted build: **v0.4.334**. Newly accepted checkpoints in this continuation session: **1 of at most 3**.
+Current candidate: **none**. Context Matrix status: **not started**.
+Exact next checkpoint: **v0.4.335 — Context Matrix data/mode only**.
 
 ## Authoritative ledger
 
-GitHub repository: `Diabolicdonut/BECMI-Mystara`.
-The newest fully accepted commit on `main`, its `index.html`, newest/topmost accepted
-`audit.md` entry and this `pipeline-state.md` are authoritative. Project Library
-copies are recovery/reference material. Historical start-build numbers in the
-long-term direction and continuous-work documents do not override these files.
+Repository: `Diabolicdonut/BECMI-Mystara`. GitHub main, its exact index.html,
+this pipeline and the newest/topmost accepted audit entry govern recovery.
+Known World Library files are recovery/reference material only. Never overwrite
+newer accepted work with an older prompt or source snapshot. Main contains only
+accepted checkpoints; an acceptance metadata commit must pass required CI before
+promotion. Inspect main, active work branches, commits and Actions after a freeze.
 
-Accepted production `main:index.html` remains the exact v0.4.333 game recovered from
-`/Known World/index(20261013-050340).html` (retained production version 104).
-SHA-256: `0ebadf15242055ae394bf921fda68ca9203a2536b4cd75f33385cc1652ede2d7`.
-The recovered audit was `/Known World/audit(20261013-185054).md` (retained version
-105). Its accepted history and clearly unaccepted attempt are preserved. The
-pre-migration pipeline record is retained in `migration/` as provenance.
-GitHub's prior main was v0.4.183 at
-`15184e3396ff4aa82b3f04b672d5d05804a3a373`; migration preserves its Git ancestry.
+## Accepted game and validation
 
-Phase: **1 — BECM source completion and validation**; source closure is incomplete.
-Authority: Mentzer Basic/Expert/Companion/Master primary; compatible Rules
-Cyclopedia secondary; source-specific modules govern their content; Immortals
-excluded. Runtime: **628 = 600 canonical + 21 supplemental + 7 module profiles**;
-**4 live + 1 planning-only nonnumeric routes**.
-
-## Acceptance evidence
-
-Inherited accepted v0.4.333 evidence: **2308/2308 core**, **1224/1224 focused**,
-Chromium **577/577 × 4**, **523/523 native**, zero page/console errors, production
-boot/save-reload verified. Migration does not relabel those results as reruns.
-
-The saved v0.4.334 candidate has local Node VM evidence only: **2316/2316 core**,
-**1232/1232 focused**, **8/8 new cases**, exact unique ordered coverage and campaign
-isolation. Five expected failures and three controls were reproduced on accepted
-v0.4.333. Node VM results with inert DOM stubs are not browser acceptance.
-Candidate SHA-256:
+v0.4.334 is the original preserved ordinary Cureall Baldandar poison-discovery
+candidate, unchanged by native fixture repairs.
+Production SHA-256:
 `25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6`.
+The only game changes from v0.4.333 are its marker, one poison availability
+clause and eight bounded regression definitions; prior bodies are preserved.
 
-Candidate preservation branch: `work/v0.4.334`, created from synchronized accepted
-main. Its `index.html` and `_working/` material are candidate-only. Do not merge
-it during the migration. Inspect that branch and Actions for its exact commit.
-Only the ordinary Cureall poison availability clause, version marker and eight
-bounded regression definitions differ in game source. Implementation is frozen.
+Qualifying candidate: `522752b7e3ac0c86be0fefc5ca022ae2e5e9e1da`.
+[Actions run 38929949995](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38929949995):
+all required jobs passed. Fresh totals: **2316/2316 core**, **1232/1232 focused**,
+**579/579 × 4** fresh Chromium slices, ordered once-only coverage, campaign
+isolation, syntax/exact production boot and supplemental public-command/native
+save-reload. Zero page/runtime or console errors and no external network attempts.
+Consult Actions for the exact acceptance commit and subsequent main results;
+the qualifying candidate's pass is not a claim that a pending later run passed.
 
-## GitHub validation
+**Native Acceptance v2: prospective baseline established**, **33 scenarios and
+508/508 assertions on each of byte-exact v0.4.333 and v0.4.334**. It exercises
+exact production commands, active/cured/refused saves and real reloads,
+restoration/isolation, exact RNG/time and spell/PP, death/former-HP, rule toggles
+and planning-only ship contracts. The historical independent 523-runner could
+not be recovered and **was not rerun**. Its inherited 523/523 result stays
+historical. See validation/README.md and native-v2-recovery.md for provenance
+and the two documented fixture-assumption repairs.
 
-Workflow: `.github/workflows/known-world-acceptance.yml`.
-Procedures and limitations: `validation/README.md`. The workflow runs on main,
-work branches and pull requests, installs locked Node/Playwright dependencies and
-Chromium, executes full recovered core/focused procedures, four independent
-fresh Chromium slices, exact-production boot, supplemental public-command and
-actual save/reload checks, syntax, page/console errors, campaign isolation and
-exact ordered once-only coverage. Consult Actions and artifacts for fresh results
-for the exact commit; this pipeline does not claim a pending run has passed.
+## Governing boundaries
 
-**Historical native-runner recovery outcome (2026-10-16):** the independent **523 native-check
-executable definitions/runner** cited by accepted v0.4.333 were not preserved in
-the recovered project inventory or candidate archive. The required native job
-fails explicitly rather than skipping or replacing that procedure with smoke
-checks. No inherent GitHub Actions incompatibility has been established. Recover
-and wire the actual authorized Known World native procedure, then run it along
-with all other required checks before claiming full candidate validation.
+Mentzer Basic/Expert/Companion/Master primary; compatible Rules Cyclopedia
+secondary; source-specific modules govern their own content; Immortals excluded.
+Deterministic state is authoritative. Preserve missing/null/zero/false/supplied
+distinctions, save/migration integrity, existing toggles, nonnumeric Special,
+planning-only ships, poison/death/former-HP chronology and RNG/time/resources.
 
-A candidate may merge only after required validation is green and audit/pipeline
-record acceptance for the tested game bytes. Each accepted checkpoint has one
-clear acceptance commit. CI never auto-accepts, auto-merges or begins a future
-checkpoint.
+Phase 1 source closure remains incomplete. Runtime: **628 = 600 canonical +
+21 supplemental + 7 module profiles**; **4 live + 1 planning-only nonnumeric routes**.
+The hidden 8-mile/world-coordinate knowledge/belief/perception cartography
+architecture remains deferred. No graphical work is authorized in this run.
 
-## Recovery and exact next checkpoint
+## Exact next sequence
 
-After a freeze inspect GitHub main, this pipeline, active `work/...` branch,
-workflow results/artifacts and the newest accepted audit entry before changes.
-Never redo an accepted commit or use old Library/GitHub files to overwrite newer
-accepted state. If validation was interrupted, rerun the required procedure.
+1. From accepted main, create `work/v0.4.335`: Context Matrix data/mode only.
+   Primary design: BECMI_Weapon_Context_Matrix.xlsx. Atlas v0.4 is supporting
+   rationale; contextual rules v0.1 is exploratory only. Preserve the sources in
+   the repository. Runtime uses canonical machine-readable data, not XLSX parsing.
+   Establish RAW / CONTEXT_MATRIX / AAE; RAW is the default. Preserve RAW and AAE
+   outcomes and isolate them. Do not calculate or apply contextual damage yet.
+2. After v0.4.335 acceptance, `work/v0.4.336`: pure deterministic calculator only,
+   exact workbook conversion/rounding/calibration and −3…+3 clamp; unknown facts
+   fail neutral. Validate workbook reference cases and the complete condition
+   matrix. No live damage integration.
+3. Stop after v0.4.336 if three checkpoints have been accepted in this session.
+   v0.4.337 is live damage integration and must not begin after that cap.
 
-Exact next checkpoint: **v0.4.334 — Ordinary Cureall Baldandar poison discovery only**.
-Finish required candidate validation, resolve the missing established native
-procedure, repair only bounded failures if necessary, then record acceptance and
-merge in a later authorized checkpoint session. **Do not begin v0.4.335 during
-this migration.** The ordinary multi-condition wounds-default fallback and parser
-work remain separate future dependencies.
-
-Preserve deterministic authority, missing/null/zero/false/supplied distinctions,
-save/migration integrity, explicit choices, preparation/touch/Immunity gates,
-poisoning onset/death/former-HP chronology, independent sleep, artifact PP/RNG,
-clocks, native commands, rule toggles, Special and planning-only ships. Hidden
-8-mile/world-coordinate cartography, navigation belief/knowledge/perception,
-contextual weapon rules and graphics remain deferred.
-
-## Authorized continuation — native baseline transition in progress
-
-The bounded recovery attempt did not recover the historical 523-runner. Its
-523/523 historical result is not claimed as rerun. Native Acceptance v2 is a new
-prospective suite covering 33 documented native command/persistence/refusal/
-restoration/isolation scenarios; see `validation/README.md`. Actions must run it
-against accepted v0.4.333 and candidate v0.4.334. The candidate remains NOT
-ACCEPTED until those reports and all existing required validation pass.
-
-The current user instruction supersedes the completed migration-only limits.
-After v0.4.334 acceptance, v0.4.335 is Context Matrix data/mode only, v0.4.336 is
-pure calculator only, and v0.4.337 is live damage integration. RAW remains the
-default. No more than three checkpoints may be accepted in this session.
-Ordinary Cureall multi-condition fallback remains a separate BECM dependency.
+The ordinary multi-condition Cureall wounds-default fallback and parser closure
+remain separate BECM dependencies. Each checkpoint follows accepted main →
+bounded work branch → candidate commit → required CI → audit/pipeline acceptance
+commit → required CI confirmation → merge to main. No automatic acceptance or merge.

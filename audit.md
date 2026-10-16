@@ -1,10 +1,24 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.333**  
+Build: **0.4.334**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
-Audit date: 2026-10-13
+Audit date: 2026-10-16
 
+
+## v0.4.334 — Ordinary Cureall Baldandar poison discovery only
+
+The preserved candidate is accepted after the required GitHub-era acceptance gate passed. The ordinary RAW Cureall availability clause now recognizes an actual Baldandar poison-sleep original through the existing clear-helper truthy-row criterion. Missing, null, false, zero and empty originals do not create poison availability. Sole source poison reaches the existing selection and rawNeutralizePoison helper without healing wounds, adding generic poison flags or erasing independent sleep. Explicit choices, preparation/touch/Immunity, actual source production, wound/death/former-HP and poisoning chronology, artifact discovery/choice/clearing, sparse persistence, RNG/time, rule toggles and planning-only ship/Special contracts remain unchanged. The multi-condition wounds-default fallback and ordinary parser remain separate dependencies.
+
+A byte reconstruction against accepted v0.4.333 confirms that the only game changes are the version marker, one ordinary availability clause and eight new regression definitions (with their insertion whitespace); every prior implementation and regression body is preserved. index.html is still byte-identical to the original preserved v0.4.334 candidate. Production SHA-256: `25e5e5ecbb2dc3b859c541e3f4865dbdbe14f460ec0790787a86c0809f5f6ff6`.
+
+Fresh candidate evidence: commit `522752b7e3ac0c86be0fefc5ca022ae2e5e9e1da`, [Actions run 38929949995](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38929949995), all ten required jobs green. Acceptance: **2316/2316 core**, **1232/1232 focused**, four fresh Chromium slices **579/579 × 4**, exact ordered once-only coverage, campaign isolation, production syntax/boot and supplemental native save/reload; zero page/runtime exceptions, console errors or external network attempts.
+
+**Native Acceptance v2 is the new prospective GitHub-era baseline: 33 scenarios, 508/508 assertions on byte-exact accepted v0.4.333 and 508/508 on v0.4.334.** It preserves literal active/cured/refused save/reload, spell/PP, RNG/time, refusal, restoration, death/former-HP, rule-toggle, planning-only ship and campaign-isolation checks. The historical independent 523-runner could not be recovered; its inherited 523/523 result was **not rerun** and does not describe this new suite. Two fixture assumptions were corrected without changing production or removing assertions: capture original storage/campaign after native first-load initialization, and honor the accepted artifact wound-healing floor at prior HP while retaining the wound-before-penalty draw order. Exact failing runs and rationale are documented in validation/README.md.
+
+This acceptance metadata commit must itself pass all required CI before merging. Runtime remains 628 = 600 canonical + 21 supplemental + 7 module profiles, with 4 live and 1 planning-only nonnumeric routes. Mentzer BECM remains primary, compatible RC secondary, module sources govern their content, and Immortals remains excluded. Phase 1 source closure is incomplete. Hidden 8-mile/world-coordinate knowledge/belief/perception cartography and graphical work remain deferred.
+
+Next authorized checkpoint: **v0.4.335 — Context Matrix data/mode only**, from accepted main on `work/v0.4.335`. Preserve the named source documents, derive canonical machine-readable Size/Power/Handling/Range Profile data and calibration from BECMI_Weapon_Context_Matrix.xlsx, and expose RAW / CONTEXT_MATRIX / AAE with RAW as the default. Workbook authority supersedes the exploratory replacement-die proposal. No contextual damage calculation or live damage integration belongs in v0.4.335. v0.4.336 is pure deterministic calculator only; v0.4.337 live integration is outside this session after the three-checkpoint cap. The independent ordinary Cureall fallback/parser dependencies remain queued.
 
 ## v0.4.333 — Artifact Cureall named-target empty-choice fallback only
 
