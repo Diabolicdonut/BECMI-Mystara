@@ -88,6 +88,11 @@ try{
  const context=await browser.newContext();
  await context.route('**/*',route=>{if(new URL(route.request().url()).origin===origin)return route.continue();report.blockedNetwork.push(route.request().url());return route.abort();});
  context.on('page',p=>{p.on('pageerror',e=>report.pageErrors.push(String(e.stack||e)));p.on('console',m=>{if(m.type()==='error')report.consoleErrors.push(m.text());});});
+ await context.addInitScript(expectedOrigin=>{
+  if(location.origin!==expectedOrigin)return;
+  const raw=sessionStorage.getItem('kwNativeV2PendingStorage');
+  if(raw){const values=JSON.parse(raw);localStorage.clear();for(const [k,v] of Object.entries(values))localStorage.setItem(k,v);sessionStorage.removeItem('kwNativeV2PendingStorage');}
+ },origin);
  const p=await context.newPage();p.setDefaultTimeout(30000);
  const load=async route=>{await p.goto(origin+route,{waitUntil:'load'});await p.waitForFunction(()=>Boolean(window.KnownWorldTestHarness));};
  const snapshot=async()=>(await p.evaluate(()=>window.KnownWorldTestHarness.getDebugPayload())).campaign;
@@ -103,12 +108,13 @@ try{
  const restoreStorage=async values=>p.evaluate(values=>{localStorage.clear();for(const [k,v] of Object.entries(values))localStorage.setItem(k,v);},values);
  for(const f of fixtures.cases){
   const c=(name,ok)=>check(f.id+': '+name,ok);
-  await restoreStorage({...originalStorage,[fixtures.saveKey]:JSON.stringify(f.state)});
+  await p.evaluate(values=>sessionStorage.setItem('kwNativeV2PendingStorage',JSON.stringify(values)),{...originalStorage,[fixtures.saveKey]:JSON.stringify(f.state)});
   await load('/index.html');c('commands use exact production bytes',!await p.evaluate(()=>Object.hasOwn(window,'__kwNativeFixtures')));
   const subject=s=>s.party.find(x=>x.name===f.subject),caster=s=>s.party.find(x=>x.name===f.caster);
   const ready=s=>caster(s).preparedSpells.filter(x=>x.spell===f.spell&&x.ready).length;
   const artifact=s=>s.artifacts?.records?.find?.(x=>x.id===f.artifactId)||s.artifacts?.records?.[f.artifactId];
   const active=(await snapshot()).fullState;
+  if(!same(subject(active).baldandarPoisonSleep,subject(f.state).baldandarPoisonSleep))console.log(JSON.stringify({diagnostic:f.id,actual:subject(active).baldandarPoisonSleep,expected:subject(f.state).baldandarPoisonSleep}));
   c('active source and sparse original survive boot',same(subject(active).baldandarPoisonSleep,subject(f.state).baldandarPoisonSleep)&&Object.hasOwn(subject(active),'baldandarPoisonSleep')===Object.hasOwn(subject(f.state),'baldandarPoisonSleep'));
   await command('status');const read=(await snapshot()).fullState;
   c('read-only status preserves authoritative state',same(select(read),select(active)));
@@ -140,6 +146,7 @@ try{
   await command('save');const saved=await snapshot();c('native save records measured subject literally',same(subject(JSON.parse(saved.persistedSaveRaw)),a));
   await p.reload({waitUntil:'load'});const final=(await snapshot()).fullState;c('cured or refused state survives real save/reload',same(select(final),select(after)));
   await restoreStorage(originalStorage);c('original storage restored exactly',same(await p.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)]))),originalStorage));
+  await p.evaluate(values=>sessionStorage.setItem('kwNativeV2PendingStorage',JSON.stringify(values)),originalStorage);
   await p.reload({waitUntil:'load'});c('original campaign restored between cases',same(select((await snapshot()).fullState),select(original)));
   report.scenarios.push(f.id);console.log('Native v2 '+version+' '+f.id+' passed');
  }
