@@ -119,3 +119,9 @@ persisted independent Symbol sleep and separate disease choice are used for
 native isolation. These unrelated persistence closures remain future work.
 Immunity's binary half-effect boundary retains poison but spends the prepared
 spell and minute, exactly as the accepted implementation specifies.
+
+Reload comparison uses structural equality (object insertion order is irrelevant)
+and excludes only the generated empty homunculusAbilityDrainEffects runtime
+cache, which the accepted normalizer does not serialize as a member field. A
+nonempty value is never ignored. Poison/source/history fields retain literal
+missing/null/false/zero distinctions throughout all comparisons.

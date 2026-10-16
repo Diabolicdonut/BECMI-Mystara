@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import http from 'node:http';
 import assert from 'node:assert/strict';
+import {isDeepStrictEqual} from 'node:util';
 import {createHash} from 'node:crypto';
 import {chromium} from 'playwright';
 
@@ -11,7 +12,7 @@ const report={baseline:'Native Acceptance v2',historical523Rerun:false,appVersio
   commit:process.env.GITHUB_SHA||null,productionSha256:createHash('sha256').update(html).digest('hex'),
   results:[],pageErrors:[],consoleErrors:[],blockedNetwork:[],scenarios:[]};
 const check=(name,condition)=>{report.results.push({name,pass:Boolean(condition)});assert(condition,name);};
-const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+const same=isDeepStrictEqual;
 const anchor='  boot();\n})();';assert.equal(html.split(anchor).length,2);
 // Only the fixture route exposes internals. All measured commands use exact HTML.
 const fixtureSource=`window.__kwNativeFixtures=()=>{
@@ -104,7 +105,7 @@ try{
  const originalStorage=await p.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)])));
  await load('/__fixtures.html');const fixtures=await p.evaluate(()=>window.__kwNativeFixtures());
  check('fixture catalogue contains all 33 documented scenarios',fixtures.cases.length===33);
- const select=s=>({party:s.party,rules:s.rules,seed:s.seed,day:s.day,minutes:s.minutes,combat:s.combat,plans:s.dmr2ShipRosterContracts,vessels:s.vessels});
+ const select=s=>({party:s.party.map(pc=>{const row={...pc};if(Array.isArray(row.homunculusAbilityDrainEffects)&&row.homunculusAbilityDrainEffects.length===0)delete row.homunculusAbilityDrainEffects;return row;}),rules:s.rules,seed:s.seed,day:s.day,minutes:s.minutes,combat:s.combat,plans:s.dmr2ShipRosterContracts,vessels:s.vessels});
  const restoreStorage=async values=>p.evaluate(values=>{localStorage.clear();for(const [k,v] of Object.entries(values))localStorage.setItem(k,v);},values);
  for(const f of fixtures.cases){
   const c=(name,ok)=>check(f.id+': '+name,ok);
@@ -145,7 +146,9 @@ try{
   }
   if(!f.expected.revived)c('unrelated death and former-HP chronology retained',a.diedAtAbsoluteMinute===b.diedAtAbsoluteMinute&&a.hpBeforePoisonDeath===b.hpBeforePoisonDeath&&a.deathCause===b.deathCause);
   await command('save');const saved=await snapshot();c('native save records measured subject literally',same(subject(JSON.parse(saved.persistedSaveRaw)),a));
-  await p.reload({waitUntil:'load'});const final=(await snapshot()).fullState;c('cured or refused state survives real save/reload',same(select(final),select(after)));
+  await p.reload({waitUntil:'load'});const final=(await snapshot()).fullState;
+  if(!same(select(final),select(after)))console.log(JSON.stringify({reloadDifference:f.id,after:select(after),loaded:select(final)}));
+  c('cured or refused state survives real save/reload',same(select(final),select(after)));
   await restoreStorage(originalStorage);c('original storage restored exactly',same(await p.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)]))),originalStorage));
   await p.evaluate(values=>sessionStorage.setItem('kwNativeV2PendingStorage',JSON.stringify(values)),originalStorage);
   await p.reload({waitUntil:'load'});c('original campaign restored between cases',same(select((await snapshot()).fullState),select(original)));
