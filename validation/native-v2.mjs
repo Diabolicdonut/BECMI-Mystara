@@ -100,7 +100,9 @@ try{
  const command=async text=>{const n=await p.locator('#terminal').evaluate(e=>e.children.length);await p.locator('#command').fill(text);await p.locator('#command').press('Enter');await p.waitForFunction(n=>document.querySelector('#terminal').children.length>n,n);};
  const clock=s=>(s.day-1)*1440+s.minutes;
  await load('/index.html');check('exact production has no fixture bridge',!await p.evaluate(()=>Object.hasOwn(window,'__kwNativeFixtures')));
- await command('save');const original=(await snapshot()).fullState;
+ // Establish the original through the accepted first-load migration before measuring restoration.
+ await command('save');await p.reload({waitUntil:'load'});await command('save');
+ const original=(await snapshot()).fullState;
  await p.evaluate(()=>localStorage.setItem('kw-native-v2-sentinel','original isolated campaign'));
  const originalStorage=await p.evaluate(()=>Object.fromEntries(Object.keys(localStorage).map(k=>[k,localStorage.getItem(k)])));
  await load('/__fixtures.html');const fixtures=await p.evaluate(()=>window.__kwNativeFixtures());
