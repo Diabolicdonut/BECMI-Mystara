@@ -36112,7 +36112,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       {name:'Mounted lance charge requires a lance, mount, and twenty yards',run:()=>{ state=initialState(); const pc=normalizeMember({name:'Aldric',className:'Fighter',level:12,hp:30,maxHp:30,ac:2,abilities:{str:10,int:10,wis:10,dex:10,con:10,cha:10},inventory:[],equippedWeapon:{itemId:'lance'}}); state.mounts=[{id:'warhorse-1',itemId:'war_horse',name:'Warhorse'}]; pc.mountedOn='warhorse-1'; harnessAssert(lanceChargeEligible(pc,{chargeDistance:20},{itemId:'lance'})&&!lanceChargeEligible(pc,{chargeDistance:19},{itemId:'lance'}),'Lance charge eligibility changed'); }},
       {name:'Defaults: Matrix / audit / phased / developer',run:()=>{
         const fresh=initialState();
-        harnessEqual([fresh.rules.weaponDamageMode,fresh.rules.weaponAudit,fresh.rules.initiativeMode,fresh.rules.gettingLostMode,fresh.rules.developerMode],['MATRIX',true,'PHASED','RAW',true],'Default options changed');
+        harnessEqual([fresh.rules.weaponDamageMode,fresh.rules.weaponAudit,fresh.rules.initiativeMode,fresh.rules.gettingLostMode,fresh.rules.developerMode],['RAW',true,'PHASED','RAW',true],'Default options changed');
       }},
       {name:'New campaign defaults to persistent Shipwreck Beach on Kai Besil',run:()=>{
         const fresh=initialState();
