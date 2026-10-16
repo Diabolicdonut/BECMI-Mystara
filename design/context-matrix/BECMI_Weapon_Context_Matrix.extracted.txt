@@ -1,0 +1,179 @@
+# Authorized workbook text extraction
+
+This is a four-sheet read-only text extraction of `/Known World/BECMI_Weapon_Context_Matrix.xlsx` provided by the project file index. The original workbook bytes are not accessible for repository upload through this session's project-file interface; the original remains in Known World. This extraction preserves the roster, settings, and worked table without replacing the XLSX as design authority.
+
+<PARSED TEXT FOR SHEET: 1 / 4 TABS
+TAB NAME: Weapon Matrix>
+index,ARMS ACROSS ERAS  |  BECMI CONTEXT MATRIX,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8,Unnamed: 9,Unnamed: 10,Unnamed: 11,Unnamed: 12,Unnamed: 13,Unnamed: 14,Unnamed: 15
+0,,,,,,,,,,,,,,,,
+1,Select any RC weapon; read 36 modifiers as signed adjustments to its unchanged published damage dice.,,,,,,,,,,,,,,,
+2,,,,,,,,,,,,,,,,
+3,SELECT WEAPON,Spear,,,RC die,1d6,Size,2,Power,-2,Handling,1,Range,Size-Based,Type,Melee
+4,,,,,,,,,,,,,,,,
+5,HEAT MAP  |  Each cell = contextual damage modifier (−3 to +3). Rows = target size; columns = fighting distance.,,,,,,,,,,,,,,,
+6,OPEN: unrestricted weapon employment.   RESTRICTED: environment curtails the weapon’s normal range of attacks.,,,,,,,,,,,,,,,
+7,,,,,,,,,,,,,,,,
+8,OPEN / SOFT,,,,,,OPEN / HARD,,,,,SELECTED WEAPON NOTES,,,,
+9,TARGET,Close,Normal,Far,,,TARGET,Close,Normal,Far,,Linear thrust benefits from a narrow approach when aligned,,,,
+10,Small,-2,-1,0,,,Small,-3,-3,-2,,,,,,
+11,Medium,-1,0,1,,,Medium,-3,-2,-1,,,,,,
+12,Large,0,1,2,,,Large,-2,-1,0,,,,,,
+13,,,,,,,,,,,,,,,,
+14,,,,,,,,,,,,,,,,
+15,,,,,,,,,,,,RATING PROVENANCE,,,,
+16,,,,,,,,,,,,AAE Size/Power,,,,
+17,RESTRICTED / SOFT,,,,,,RESTRICTED / HARD,,,,,,,,,
+18,TARGET,Close,Normal,Far,,,TARGET,Close,Normal,Far,,,,,,
+19,Small,-1,0,1,,,Small,-3,-2,-1,,CALIBRATION,,,,
+20,Medium,0,1,2,,,Medium,-2,-1,0,,"Default anchor: Medium target, Soft, Normal distance, Open. Edit Reference Protection / step divisor / clamp on Rating Guide.",,,,
+21,Large,1,2,3,,,Large,-1,0,1,,,,,,
+22,,,,,,,,,,,,,,,,
+23,,,,,,,,,,,,,,,,
+24,,,,,,,,,,,,,,,,
+25,"INTERPRETATION: Add the displayed modifier to the published RC damage roll; calculate attacks, mastery, charging, and special effects separately under their governing rules.",,,,,,,,,,,,,,,
+26,,,,,,,,,,,,,,,,
+27,"For the full audited 36-condition list, open All Conditions. Change weapon profiles in Weapon Roster. See Rating Guide for definitions and source notes.",,,,,,,,,,,,,,,
+<PARSED TEXT FOR SHEET: 2 / 4 TABS
+TAB NAME: Weapon Roster>
+index,BECMI WEAPON ROSTER  |  EDIT THE PROPOSED RATINGS,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8,Unnamed: 9
+0,,,,,,,,,,
+1,Blue columns = editable Size / Power / Handling / Range Profile. Source-backed AAE ratings are distinguished from proposed calibrations.,,,,,,,,,
+2,Weapon,Category,RC damage,Size (−3..+3),Power (−3..+3),Handling (−3..+3),Range Profile,Rating provenance,Handling rationale / caveats,Source documents
+3,"Axe, Battle",Melee,1d8,1,0,-2,Size-Based,AAE Size/Power,Committed 2H chopping; suffers in confined swings,RC p.62; AAE v3.2
+4,"Axe, Hand",Melee,1d6,-1,0,-1,Size-Based,AAE Size/Power,Compact chopping; cannot readily substitute a point thrust,RC p.62; AAE v3.2
+5,Blackjack,Melee,1d2,-3,-2,1,Size-Based,Proposed,Compact close striking; special nonlethal use depends on RAW,RC p.62; AAE v3.2
+6,Club,Melee,1d4,-1,0,-1,Size-Based,Proposed,"Blunt swing, useful but slightly inhibited when crowded",RC p.62; AAE v3.2
+7,"Hammer, Throwing",Melee,1d4,-1,1,-1,Size-Based,Proposed,Compact impact head; throwing mode can differ,RC p.62; AAE v3.2
+8,"Hammer, War",Melee,1d6,0,2,-1,Size-Based,Proposed,Compact armor-focused impact; needs some arc,RC p.62; AAE v3.2
+9,Mace,Melee,1d6,0,2,-1,Size-Based,Proposed,Impact delivery needs room but little blade alignment,RC p.62; AAE v3.2
+10,Staff,Melee,1d6,1,0,-1,Size-Based,Proposed,"Can thrust, but loses sweeps and staff rotations",RC p.62; AAE v3.2
+11,Torch,Melee,1d4,-2,-2,0,Size-Based,Proposed,Improvised flame/club; burning secondary effects distinct,RC p.62; AAE v3.2
+12,Dagger,Melee,1d4,-2,-2,1,Size-Based,AAE Size/Power,Compact thrust and cut; close/restricted specialist,RC p.62; AAE v3.2
+13,"Dagger, Silver",Melee,1d4,-2,-2,1,Size-Based,AAE analog,Same geometry as dagger; silver special applicability,RC p.62; AAE v3.2
+14,Halberd,Melee,1d10,2,1,-1,Size-Based,AAE Size/Power,Thrust retained; chop/hook repertoire curtailed,RC p.62; AAE v3.2
+15,Lance,Melee,1d10,2,-1,0,Size-Based,Proposed,Mounted charge/brace rules take precedence,RC p.62; AAE v3.2
+16,Pike,Melee,1d10,3,-2,0,Size-Based,AAE Size/Power,Linear thrust works in formation; alignment/turning assessed outside numeric Space,RC p.62; AAE v3.2
+17,"Polearm, Generic",Melee,1d10,2,0,-2,Size-Based,AAE Size/Power,Generic polearm presumed more swing-dependent than spear,RC p.62; AAE v3.2
+18,Poleaxe,Melee,1d10,2,1,-1,Size-Based,AAE Size/Power,"Thrust and armor spike retained, swings inhibited",RC p.62; AAE v3.2
+19,Spear,Melee,1d6,2,-2,1,Size-Based,AAE Size/Power,Linear thrust benefits from a narrow approach when aligned,RC p.62; AAE v3.2
+20,Trident,Melee,1d6,1,-1,1,Size-Based,Proposed,Forward prongs favor thrust; special mastery effects separate,RC p.62; AAE v3.2
+21,"Shield, Horned",Melee,1d2,-3,0,1,Size-Based,Proposed,Compact close attack with a shield; defense separate,RC p.62; AAE v3.2
+22,"Shield, Knife",Melee,1d4+1,-2,-1,1,Size-Based,Proposed,Short edge on shield; special defensive properties separate,RC p.62; AAE v3.2
+23,"Shield, Sword",Melee,1d4+2,-1,-1,0,Size-Based,Proposed,Sword-like shield protrusion; may be awkward in confined movement,RC p.62; AAE v3.2
+24,"Shield, Tusked",Melee,1d4+1,0,0,-1,Size-Based,Proposed,Bulky two-hand defensive/offensive shield,RC p.62; AAE v3.2
+25,"Sword, Short",Melee,1d6,-1,-1,1,Size-Based,AAE Size/Power,Gladius/xiphos-like compact cut and thrust,RC p.62; AAE v3.2
+26,"Sword, Normal",Melee,1d8,0,-1,-1,Size-Based,AAE Size/Power,Arming sword loses some cutting/angle versatility,RC p.62; AAE v3.2
+27,"Sword, Bastard (1H)",Melee,1d6+1,1,-1,-1,Size-Based,Proposed / AAE interpolation,RC 1d6+1 one-handed; rating proposed,RC p.62; AAE v3.2
+28,"Sword, Bastard (2H)",Melee,1d8+1,1,-1,-1,Size-Based,Proposed / AAE interpolation,RC 1d8+1 two-handed; rating proposed,RC p.62; AAE v3.2
+29,"Sword, Two-Handed",Melee,1d10,1,-1,-2,Size-Based,AAE Size/Power,Normal full cut/thrust repertoire significantly curtailed,RC p.62; AAE v3.2
+30,Cestus,Melee,1d3,-3,0,1,Size-Based,Proposed,"Compact punching, can be employed at body-contact measure",RC p.62; AAE v3.2
+31,Whip,Melee,1d2,1,-2,-2,Size-Based,Proposed,Whip deployment and recovery strongly depend on clearance,RC p.62; AAE v3.2
+32,"Bow, Short",Missile,1d6,0,-2,0,Size-Based,AAE Size/Power,Restricted conditions may prevent a draw; adjudicate feasibility,RC p.62; AAE v3.2
+33,"Bow, Long",Missile,1d6,2,-2,-1,Size-Based,AAE Size/Power,Long bow requires room for draw and presentation,RC p.62; AAE v3.2
+34,"Crossbow, Light",Missile,1d6,1,1,0,Size-Based,AAE Size/Power,Can aim confined; loading/action penalties separate,RC p.62; AAE v3.2
+35,"Crossbow, Heavy",Missile,2d4,2,2,-1,Size-Based,AAE Size/Power,Bulky presentation/reload; RC loading remains separate,RC p.62; AAE v3.2
+36,"Blowgun, Short",Special / Nil,Nil,-2,-1,0,Flat,Proposed,No direct damage in RC; poison delivery not included in heatmap,RC p.62; AAE v3.2
+37,"Blowgun, Long",Special / Nil,Nil,-1,-1,0,Flat,Proposed,No direct damage in RC; poison delivery not included in heatmap,RC p.62; AAE v3.2
+38,Bola,Thrown,1d2,0,0,0,Flat,Proposed,"Trip/entangle effects are special, not represented by damage modifier",RC p.62; AAE v3.2
+39,Holy Water,Special,1d8,-2,-2,0,Flat,Proposed,Damage only against applicable targets; exclude ordinary mismatch interpretation,RC p.62; AAE v3.2
+40,Net,Special / Nil,Nil,0,0,0,Flat,Proposed,No direct damage; entangle effects are separate,RC p.62; AAE v3.2
+41,"Oil, Burning",Special,1d8,-2,-2,0,Flat,Proposed,Burning oil duration/area/target interactions are RAW-specific,RC p.62; AAE v3.2
+42,"Rock, Thrown",Thrown,1d3,-2,0,0,Flat,Proposed,Ordinary thrown rock; short/medium/long to-hit applies,RC p.62; AAE v3.2
+43,Sling,Missile,1d4,-2,0,-1,Long-Slight,AAE Size/Power/Range,Requires swinging room; broad sling motion can be inhibited,RC p.62; AAE v3.2
+44,Javelin,Thrown,1d6,1,-1,0,Flat,AAE Size/Power/Range,"Purpose-built projectile, thrown mode, not held spear",RC p.62; AAE v3.2
+45,"Spear, Thrown",Thrown,1d6,2,-1,0,Flat,AAE thrown profile,Thrown spear has Flat damage-distance curve,RC p.62; AAE v3.2
+46,"Dagger, Thrown",Thrown,1d4,-2,-1,0,Flat,AAE thrown profile,Thrown dagger power/range differs from melee dagger,RC p.62; AAE v3.2
+47,"Axe, Hand (Thrown)",Thrown,1d6,-1,0,0,Flat,AAE thrown profile,Thrown axe uses flat delivery range curve,RC p.62; AAE v3.2
+48,"Trident, Thrown",Thrown,1d6,1,-1,0,Flat,Proposed,"Thrown trident, RC 10/20/30",RC p.62; AAE v3.2
+<PARSED TEXT FOR SHEET: 3 / 4 TABS
+TAB NAME: All Conditions>
+index,ALL 36 CONDITIONS  |  LIVE CALCULATION AUDIT,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8,Unnamed: 9,Unnamed: 10,Unnamed: 11,Unnamed: 12,Unnamed: 13,Unnamed: 14
+0,,,,,,,,,,,,,,,
+1,Traceable Size + Power + Distance + Handling calculations; change the dropdown on Weapon Matrix or edit profiles.,,,,,,,,,,,,,,
+2,Space,Protection,Target Size,Distance,Size step,Power step,Range step,Handling pts,Reference power,Net source steps,Converted pts,Uncapped total,Modifier,Signed modifier,Final damage string
+3,Open,Soft,Small,Close,-2,2,-2,0,2,-4,-2,-2,-2,-2,1d6 - 2
+4,Open,Soft,Small,Normal,-2,2,0,0,2,-2,-1,-1,-1,-1,1d6 - 1
+5,Open,Soft,Small,Far,-2,2,2,0,2,0,0,0,0,0,1d6
+6,Open,Soft,Medium,Close,0,2,-2,0,2,-2,-1,-1,-1,-1,1d6 - 1
+7,Open,Soft,Medium,Normal,0,2,0,0,2,0,0,0,0,0,1d6
+8,Open,Soft,Medium,Far,0,2,2,0,2,2,1,1,1,+1,1d6 + 1
+9,Open,Soft,Large,Close,2,2,-2,0,2,0,0,0,0,0,1d6
+10,Open,Soft,Large,Normal,2,2,0,0,2,2,1,1,1,+1,1d6 + 1
+11,Open,Soft,Large,Far,2,2,2,0,2,4,2,2,2,+2,1d6 + 2
+12,Open,Hard,Small,Close,-2,-2,-2,0,2,-8,-4,-4,-3,-3,1d6 - 3
+13,Open,Hard,Small,Normal,-2,-2,0,0,2,-6,-3,-3,-3,-3,1d6 - 3
+14,Open,Hard,Small,Far,-2,-2,2,0,2,-4,-2,-2,-2,-2,1d6 - 2
+15,Open,Hard,Medium,Close,0,-2,-2,0,2,-6,-3,-3,-3,-3,1d6 - 3
+16,Open,Hard,Medium,Normal,0,-2,0,0,2,-4,-2,-2,-2,-2,1d6 - 2
+17,Open,Hard,Medium,Far,0,-2,2,0,2,-2,-1,-1,-1,-1,1d6 - 1
+18,Open,Hard,Large,Close,2,-2,-2,0,2,-4,-2,-2,-2,-2,1d6 - 2
+19,Open,Hard,Large,Normal,2,-2,0,0,2,-2,-1,-1,-1,-1,1d6 - 1
+20,Open,Hard,Large,Far,2,-2,2,0,2,0,0,0,0,0,1d6
+21,Restricted,Soft,Small,Close,-2,2,-2,1,2,-4,-2,-1,-1,-1,1d6 - 1
+22,Restricted,Soft,Small,Normal,-2,2,0,1,2,-2,-1,0,0,0,1d6
+23,Restricted,Soft,Small,Far,-2,2,2,1,2,0,0,1,1,+1,1d6 + 1
+24,Restricted,Soft,Medium,Close,0,2,-2,1,2,-2,-1,0,0,0,1d6
+25,Restricted,Soft,Medium,Normal,0,2,0,1,2,0,0,1,1,+1,1d6 + 1
+26,Restricted,Soft,Medium,Far,0,2,2,1,2,2,1,2,2,+2,1d6 + 2
+27,Restricted,Soft,Large,Close,2,2,-2,1,2,0,0,1,1,+1,1d6 + 1
+28,Restricted,Soft,Large,Normal,2,2,0,1,2,2,1,2,2,+2,1d6 + 2
+29,Restricted,Soft,Large,Far,2,2,2,1,2,4,2,3,3,+3,1d6 + 3
+30,Restricted,Hard,Small,Close,-2,-2,-2,1,2,-8,-4,-3,-3,-3,1d6 - 3
+31,Restricted,Hard,Small,Normal,-2,-2,0,1,2,-6,-3,-2,-2,-2,1d6 - 2
+32,Restricted,Hard,Small,Far,-2,-2,2,1,2,-4,-2,-1,-1,-1,1d6 - 1
+33,Restricted,Hard,Medium,Close,0,-2,-2,1,2,-6,-3,-2,-2,-2,1d6 - 2
+34,Restricted,Hard,Medium,Normal,0,-2,0,1,2,-4,-2,-1,-1,-1,1d6 - 1
+35,Restricted,Hard,Medium,Far,0,-2,2,1,2,-2,-1,0,0,0,1d6
+36,Restricted,Hard,Large,Close,2,-2,-2,1,2,-4,-2,-1,-1,-1,1d6 - 1
+37,Restricted,Hard,Large,Normal,2,-2,0,1,2,-2,-1,0,0,0,1d6
+38,Restricted,Hard,Large,Far,2,-2,2,1,2,0,0,1,1,+1,1d6 + 1
+<PARSED TEXT FOR SHEET: 4 / 4 TABS
+TAB NAME: Rating Guide>
+index,RATING GUIDE  |  MODEL CONTROLS,Unnamed: 1,Unnamed: 2,Unnamed: 3,Unnamed: 4,Unnamed: 5,Unnamed: 6,Unnamed: 7,Unnamed: 8,Unnamed: 9,Unnamed: 10,Unnamed: 11
+0,,,,,,,,,,,,
+1,,,,,,,,,,,,
+2,Editable setting,Value,Purpose,Design status,,,,,,,,
+3,Reference protection,Soft,Anchor for original RC damage in an otherwise ordinary Medium/Normal/Open encounter,Proposed calibration,,,,,,,,
+4,Size/Power/Range steps per damage point,2,Original AAE steps are half-points at BECMI-scale; rounding to integer points,Derived from AAE v3.2,,,,,,,,
+5,Minimum context modifier,-3,Universal floor for signed modifier,Proposed calibration,,,,,,,,
+6,Maximum context modifier,3,Universal ceiling for signed modifier,Proposed calibration,,,,,,,,
+7,,,,,,,,,,,,
+8,,,,,,,,,,,,
+9,Tier,Size rating,vs Small,vs Medium,vs Large,Size meaning,,Tier,Power rating,vs Soft,vs Hard,Power meaning
+10,Extra Small,-3,3,0,-3,Targets Small; range favors Close,,Ultra Light,-3,3,-3,Very soft-favoring
+11,Small,-2,2,0,-2,Strong Small/Close bias,,Light,-2,2,-2,Soft-favoring
+12,Medium-Small,-1,1,0,-1,Mild Small/Close bias,,Normal-Light,-1,1,-1,Mild soft preference
+13,Medium,0,0,0,0,Target-neutral; range neutral,,Normal,0,0,0,No protection bias
+14,Medium-Large,1,-1,0,1,Mild Large/Far bias,,Normal-Heavy,1,-1,1,Mild hard preference
+15,Large,2,-2,0,2,Strong Large/Far bias,,Heavy,2,-2,2,Hard-favoring
+16,Extra Large,3,-3,0,3,Extreme Large/Far bias,,Ultra Heavy,3,-3,3,Very hard-favoring
+17,,,,,,,,,,,,
+18,,,,,,,,,,,,
+19,Tier,Handling value,Restricted effect,Meaning,,,,Range profile,Close/Short,Normal,Far/Long,Origin
+20,Strongly restricted,-3,-3,Heavy dependence on freedom of movement,,,,Size-Based,−Size,0,+Size,AAE v3.2 Size-based
+21,Restricted,-2,-2,Substantial repertoire curtailed,,,,Flat,0,0,0,AAE v3.2
+22,Somewhat restricted,-1,-1,Loses useful attacking methods,,,,Long-Slight,-1,0,1,AAE v3.2 (sling)
+23,Neutral,0,0,Ordinary offensive capability retained,,,,Short-Favored,2,0,-2,AAE v3.2 profile family
+24,Slightly favored,1,1,Compact or aligned action benefits from restriction,,,,Short-Slight,1,0,-1,Proposed / not in current RC sample
+25,Favored,2,2,Important positional/handling advantage,,,,Long-Favored,-2,0,2,Proposed / not in current RC sample
+26,Strongly favored,3,3,Exceptional restricted-space specialization,,,,,,,,
+27,,,,,,,,,,,,
+28,,,,,,,,,,,,
+29,HOW TO READ THE OPTIONAL MODIFIERS,,,,,,,,,,,
+30,,,,,,,,,,,,
+31,Default game mode remains BECMI RAW with referee adjudication. This workbook models OPTIONAL contextual DAMAGE adjustments only.,,,,,,,,,,,
+32,"The original RC damage die/expression remains unchanged. Every heatmap cell returns an integer modifier, not new damage dice.",,,,,,,,,,,
+33,Size and Power step directions reproduce Arms Across Eras v3.2. Range is Size-Based or an explicit profile override.,,,,,,,,,,,
+34,Handling is NEW and PROVISIONAL. It is a whole damage-point adjustment only when Space = Restricted; Open always uses zero.,,,,,,,,,,,
+35,Restricted = physical environment materially prevents normal attack repertoire. Mere ally adjacency does NOT imply restricted.,,,,,,,,,,,
+36,"Distance = fighting measure, not room to swing; do not punish a pike twice for an opponent getting inside its point.",,,,,,,,,,,
+37,Reference calibration: by default Medium target + Soft protection + Normal distance + Open space = modifier 0 for every weapon.,,,,,,,,,,,
+38,"Signed points = ROUND((Size + Power + Range − Reference-power) / conversion factor, 0) + Handling; then clamp to chosen min/max.",,,,,,,,,,,
+39,The reference-protection setting in B5 can be switched to Hard to test a different assumed baseline for canonical dice.,,,,,,,,,,,
+40,Changing ratings on Weapon Roster automatically updates dashboard + all 36 condition formulas for the selected weapon.,,,,,,,,,,,
+41,Nil-damage weapons remain listed but intentionally have NO numerical contextual damage adjustment.,,,,,,,,,,,
+42,"Magic, Strength, Weapon Mastery, charging, cover, ranged to-hit, poison, backstab and non-damage specials stay governed by RAW.",,,,,,,,,,,
+43,"This is a PROPOSAL, not a source-verified historic effectiveness measurement; review ratings before use in gameplay.",,,,,,,,,,,
+44,"SOURCE: D&D Rules Cyclopedia (1991), Equipment/Weapons Table, printed p.62 and notes on p.63.",,,,,,,,,,,
+45,"SOURCE: Arms Across Eras: Universal Weapon System, canonical v3.2.0, Size / Power / Range tables on printed pp.2–3.",,,,,,,,,,,
+46,"SOURCE: Arms Across Eras v3.2.0, Classic Melee Weapons pp.9–12 and Thrown/Missile Weapons pp.13–16.",,,,,,,,,,,

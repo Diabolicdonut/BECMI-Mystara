@@ -1,0 +1,821 @@
+{
+  "schema": "known-world-context-matrix-v1",
+  "authority": "BECMI_Weapon_Context_Matrix.xlsx (Weapon Roster and Rating Guide)",
+  "status": "v0.4.335 data and mode only, no calculation or live contextual damage",
+  "unchangedDamagePolicy": "Apply future integer adjustment to original RC expression; Nil remains nonnumeric; RAW/AAE untouched",
+  "calibration": {
+    "referenceProtection": "Soft",
+    "stepsPerDamagePoint": 2,
+    "minimumModifier": -3,
+    "maximumModifier": 3,
+    "referenceContext": {
+      "targetSize": "Medium",
+      "protection": "Soft",
+      "distance": "Normal",
+      "space": "Open"
+    },
+    "rounding": "Excel ROUND(net source steps / stepsPerDamagePoint, 0); ties away from zero; future calculator only",
+    "sizeResponseByRating": {
+      "0": {
+        "small": 0,
+        "medium": 0,
+        "large": 0,
+        "label": "Medium"
+      },
+      "1": {
+        "small": -1,
+        "medium": 0,
+        "large": 1,
+        "label": "Medium-Large"
+      },
+      "2": {
+        "small": -2,
+        "medium": 0,
+        "large": 2,
+        "label": "Large"
+      },
+      "3": {
+        "small": -3,
+        "medium": 0,
+        "large": 3,
+        "label": "Extra Large"
+      },
+      "-3": {
+        "small": 3,
+        "medium": 0,
+        "large": -3,
+        "label": "Extra Small"
+      },
+      "-2": {
+        "small": 2,
+        "medium": 0,
+        "large": -2,
+        "label": "Small"
+      },
+      "-1": {
+        "small": 1,
+        "medium": 0,
+        "large": -1,
+        "label": "Medium-Small"
+      }
+    },
+    "powerResponseByRating": {
+      "0": {
+        "soft": 0,
+        "hard": 0,
+        "label": "Normal"
+      },
+      "1": {
+        "soft": -1,
+        "hard": 1,
+        "label": "Normal-Heavy"
+      },
+      "2": {
+        "soft": -2,
+        "hard": 2,
+        "label": "Heavy"
+      },
+      "3": {
+        "soft": -3,
+        "hard": 3,
+        "label": "Ultra Heavy"
+      },
+      "-3": {
+        "soft": 3,
+        "hard": -3,
+        "label": "Ultra Light"
+      },
+      "-2": {
+        "soft": 2,
+        "hard": -2,
+        "label": "Light"
+      },
+      "-1": {
+        "soft": 1,
+        "hard": -1,
+        "label": "Normal-Light"
+      }
+    },
+    "handlingRestrictedByRating": {
+      "0": {
+        "restricted": 0,
+        "label": "Neutral",
+        "meaning": "Ordinary offensive capability retained"
+      },
+      "1": {
+        "restricted": 1,
+        "label": "Slightly favored",
+        "meaning": "Compact or aligned action benefits from restriction"
+      },
+      "2": {
+        "restricted": 2,
+        "label": "Favored",
+        "meaning": "Important positional/handling advantage"
+      },
+      "3": {
+        "restricted": 3,
+        "label": "Strongly favored",
+        "meaning": "Exceptional restricted-space specialization"
+      },
+      "-3": {
+        "restricted": -3,
+        "label": "Strongly restricted",
+        "meaning": "Heavy dependence on freedom of movement"
+      },
+      "-2": {
+        "restricted": -2,
+        "label": "Restricted",
+        "meaning": "Substantial repertoire curtailed"
+      },
+      "-1": {
+        "restricted": -1,
+        "label": "Somewhat restricted",
+        "meaning": "Loses useful attacking methods"
+      }
+    },
+    "rangeProfiles": {
+      "Size-Based": {
+        "close": null,
+        "normal": 0,
+        "far": null,
+        "origin": "AAE v3.2 Size-based"
+      },
+      "Flat": {
+        "close": 0,
+        "normal": 0,
+        "far": 0,
+        "origin": "AAE v3.2"
+      },
+      "Long-Slight": {
+        "close": -1,
+        "normal": 0,
+        "far": 1,
+        "origin": "AAE v3.2 (sling)"
+      },
+      "Short-Favored": {
+        "close": 2,
+        "normal": 0,
+        "far": -2,
+        "origin": "AAE v3.2 profile family"
+      },
+      "Short-Slight": {
+        "close": 1,
+        "normal": 0,
+        "far": -1,
+        "origin": "Proposed / not in current RC sample"
+      },
+      "Long-Favored": {
+        "close": -2,
+        "normal": 0,
+        "far": 2,
+        "origin": "Proposed / not in current RC sample"
+      }
+    }
+  },
+  "weapons": [
+    {
+      "id": "axe-battle",
+      "name": "Axe, Battle",
+      "category": "Melee",
+      "rcDamage": "1d8",
+      "sizeRating": 1,
+      "powerRating": 0,
+      "handlingRating": -2,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Committed 2H chopping; suffers in confined swings",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 3
+    },
+    {
+      "id": "axe-hand",
+      "name": "Axe, Hand",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": -1,
+      "powerRating": 0,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Compact chopping; cannot readily substitute a point thrust",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 4
+    },
+    {
+      "id": "blackjack",
+      "name": "Blackjack",
+      "category": "Melee",
+      "rcDamage": "1d2",
+      "sizeRating": -3,
+      "powerRating": -2,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Compact close striking; special nonlethal use depends on RAW",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 5
+    },
+    {
+      "id": "club",
+      "name": "Club",
+      "category": "Melee",
+      "rcDamage": "1d4",
+      "sizeRating": -1,
+      "powerRating": 0,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Blunt swing, useful but slightly inhibited when crowded",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 6
+    },
+    {
+      "id": "hammer-throwing",
+      "name": "Hammer, Throwing",
+      "category": "Melee",
+      "rcDamage": "1d4",
+      "sizeRating": -1,
+      "powerRating": 1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Compact impact head; throwing mode can differ",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 7
+    },
+    {
+      "id": "hammer-war",
+      "name": "Hammer, War",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": 0,
+      "powerRating": 2,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Compact armor-focused impact; needs some arc",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 8
+    },
+    {
+      "id": "mace",
+      "name": "Mace",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": 0,
+      "powerRating": 2,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Impact delivery needs room but little blade alignment",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 9
+    },
+    {
+      "id": "staff",
+      "name": "Staff",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": 1,
+      "powerRating": 0,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Can thrust, but loses sweeps and staff rotations",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 10
+    },
+    {
+      "id": "torch",
+      "name": "Torch",
+      "category": "Melee",
+      "rcDamage": "1d4",
+      "sizeRating": -2,
+      "powerRating": -2,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Improvised flame/club; burning secondary effects distinct",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 11
+    },
+    {
+      "id": "dagger",
+      "name": "Dagger",
+      "category": "Melee",
+      "rcDamage": "1d4",
+      "sizeRating": -2,
+      "powerRating": -2,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Compact thrust and cut; close/restricted specialist",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 12
+    },
+    {
+      "id": "dagger-silver",
+      "name": "Dagger, Silver",
+      "category": "Melee",
+      "rcDamage": "1d4",
+      "sizeRating": -2,
+      "powerRating": -2,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE analog",
+      "handlingRationale": "Same geometry as dagger; silver special applicability",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 13
+    },
+    {
+      "id": "halberd",
+      "name": "Halberd",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 2,
+      "powerRating": 1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Thrust retained; chop/hook repertoire curtailed",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 14
+    },
+    {
+      "id": "lance",
+      "name": "Lance",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 2,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Mounted charge/brace rules take precedence",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 15
+    },
+    {
+      "id": "pike",
+      "name": "Pike",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 3,
+      "powerRating": -2,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Linear thrust works in formation; alignment/turning assessed outside numeric Space",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 16
+    },
+    {
+      "id": "polearm-generic",
+      "name": "Polearm, Generic",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 2,
+      "powerRating": 0,
+      "handlingRating": -2,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Generic polearm presumed more swing-dependent than spear",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 17
+    },
+    {
+      "id": "poleaxe",
+      "name": "Poleaxe",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 2,
+      "powerRating": 1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Thrust and armor spike retained, swings inhibited",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 18
+    },
+    {
+      "id": "spear",
+      "name": "Spear",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": 2,
+      "powerRating": -2,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Linear thrust benefits from a narrow approach when aligned",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 19
+    },
+    {
+      "id": "trident",
+      "name": "Trident",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Forward prongs favor thrust; special mastery effects separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 20
+    },
+    {
+      "id": "shield-horned",
+      "name": "Shield, Horned",
+      "category": "Melee",
+      "rcDamage": "1d2",
+      "sizeRating": -3,
+      "powerRating": 0,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Compact close attack with a shield; defense separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 21
+    },
+    {
+      "id": "shield-knife",
+      "name": "Shield, Knife",
+      "category": "Melee",
+      "rcDamage": "1d4+1",
+      "sizeRating": -2,
+      "powerRating": -1,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Short edge on shield; special defensive properties separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 22
+    },
+    {
+      "id": "shield-sword",
+      "name": "Shield, Sword",
+      "category": "Melee",
+      "rcDamage": "1d4+2",
+      "sizeRating": -1,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Sword-like shield protrusion; may be awkward in confined movement",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 23
+    },
+    {
+      "id": "shield-tusked",
+      "name": "Shield, Tusked",
+      "category": "Melee",
+      "rcDamage": "1d4+1",
+      "sizeRating": 0,
+      "powerRating": 0,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Bulky two-hand defensive/offensive shield",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 24
+    },
+    {
+      "id": "sword-short",
+      "name": "Sword, Short",
+      "category": "Melee",
+      "rcDamage": "1d6",
+      "sizeRating": -1,
+      "powerRating": -1,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Gladius/xiphos-like compact cut and thrust",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 25
+    },
+    {
+      "id": "sword-normal",
+      "name": "Sword, Normal",
+      "category": "Melee",
+      "rcDamage": "1d8",
+      "sizeRating": 0,
+      "powerRating": -1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Arming sword loses some cutting/angle versatility",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 26
+    },
+    {
+      "id": "sword-bastard-1h",
+      "name": "Sword, Bastard (1H)",
+      "category": "Melee",
+      "rcDamage": "1d6+1",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed / AAE interpolation",
+      "handlingRationale": "RC 1d6+1 one-handed; rating proposed",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 27
+    },
+    {
+      "id": "sword-bastard-2h",
+      "name": "Sword, Bastard (2H)",
+      "category": "Melee",
+      "rcDamage": "1d8+1",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed / AAE interpolation",
+      "handlingRationale": "RC 1d8+1 two-handed; rating proposed",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 28
+    },
+    {
+      "id": "sword-two-handed",
+      "name": "Sword, Two-Handed",
+      "category": "Melee",
+      "rcDamage": "1d10",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": -2,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Normal full cut/thrust repertoire significantly curtailed",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 29
+    },
+    {
+      "id": "cestus",
+      "name": "Cestus",
+      "category": "Melee",
+      "rcDamage": "1d3",
+      "sizeRating": -3,
+      "powerRating": 0,
+      "handlingRating": 1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Compact punching, can be employed at body-contact measure",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 30
+    },
+    {
+      "id": "whip",
+      "name": "Whip",
+      "category": "Melee",
+      "rcDamage": "1d2",
+      "sizeRating": 1,
+      "powerRating": -2,
+      "handlingRating": -2,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Whip deployment and recovery strongly depend on clearance",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 31
+    },
+    {
+      "id": "bow-short",
+      "name": "Bow, Short",
+      "category": "Missile",
+      "rcDamage": "1d6",
+      "sizeRating": 0,
+      "powerRating": -2,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Restricted conditions may prevent a draw; adjudicate feasibility",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 32
+    },
+    {
+      "id": "bow-long",
+      "name": "Bow, Long",
+      "category": "Missile",
+      "rcDamage": "1d6",
+      "sizeRating": 2,
+      "powerRating": -2,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Long bow requires room for draw and presentation",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 33
+    },
+    {
+      "id": "crossbow-light",
+      "name": "Crossbow, Light",
+      "category": "Missile",
+      "rcDamage": "1d6",
+      "sizeRating": 1,
+      "powerRating": 1,
+      "handlingRating": 0,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Can aim confined; loading/action penalties separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 34
+    },
+    {
+      "id": "crossbow-heavy",
+      "name": "Crossbow, Heavy",
+      "category": "Missile",
+      "rcDamage": "2d4",
+      "sizeRating": 2,
+      "powerRating": 2,
+      "handlingRating": -1,
+      "rangeProfile": "Size-Based",
+      "ratingProvenance": "AAE Size/Power",
+      "handlingRationale": "Bulky presentation/reload; RC loading remains separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 35
+    },
+    {
+      "id": "blowgun-short",
+      "name": "Blowgun, Short",
+      "category": "Special / Nil",
+      "rcDamage": "Nil",
+      "sizeRating": -2,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "No direct damage in RC; poison delivery not included in heatmap",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 36
+    },
+    {
+      "id": "blowgun-long",
+      "name": "Blowgun, Long",
+      "category": "Special / Nil",
+      "rcDamage": "Nil",
+      "sizeRating": -1,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "No direct damage in RC; poison delivery not included in heatmap",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 37
+    },
+    {
+      "id": "bola",
+      "name": "Bola",
+      "category": "Thrown",
+      "rcDamage": "1d2",
+      "sizeRating": 0,
+      "powerRating": 0,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Trip/entangle effects are special, not represented by damage modifier",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 38
+    },
+    {
+      "id": "holy-water",
+      "name": "Holy Water",
+      "category": "Special",
+      "rcDamage": "1d8",
+      "sizeRating": -2,
+      "powerRating": -2,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Damage only against applicable targets; exclude ordinary mismatch interpretation",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 39
+    },
+    {
+      "id": "net",
+      "name": "Net",
+      "category": "Special / Nil",
+      "rcDamage": "Nil",
+      "sizeRating": 0,
+      "powerRating": 0,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "No direct damage; entangle effects are separate",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 40
+    },
+    {
+      "id": "oil-burning",
+      "name": "Oil, Burning",
+      "category": "Special",
+      "rcDamage": "1d8",
+      "sizeRating": -2,
+      "powerRating": -2,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Burning oil duration/area/target interactions are RAW-specific",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 41
+    },
+    {
+      "id": "rock-thrown",
+      "name": "Rock, Thrown",
+      "category": "Thrown",
+      "rcDamage": "1d3",
+      "sizeRating": -2,
+      "powerRating": 0,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Ordinary thrown rock; short/medium/long to-hit applies",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 42
+    },
+    {
+      "id": "sling",
+      "name": "Sling",
+      "category": "Missile",
+      "rcDamage": "1d4",
+      "sizeRating": -2,
+      "powerRating": 0,
+      "handlingRating": -1,
+      "rangeProfile": "Long-Slight",
+      "ratingProvenance": "AAE Size/Power/Range",
+      "handlingRationale": "Requires swinging room; broad sling motion can be inhibited",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 43
+    },
+    {
+      "id": "javelin",
+      "name": "Javelin",
+      "category": "Thrown",
+      "rcDamage": "1d6",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "AAE Size/Power/Range",
+      "handlingRationale": "Purpose-built projectile, thrown mode, not held spear",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 44
+    },
+    {
+      "id": "spear-thrown",
+      "name": "Spear, Thrown",
+      "category": "Thrown",
+      "rcDamage": "1d6",
+      "sizeRating": 2,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "AAE thrown profile",
+      "handlingRationale": "Thrown spear has Flat damage-distance curve",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 45
+    },
+    {
+      "id": "dagger-thrown",
+      "name": "Dagger, Thrown",
+      "category": "Thrown",
+      "rcDamage": "1d4",
+      "sizeRating": -2,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "AAE thrown profile",
+      "handlingRationale": "Thrown dagger power/range differs from melee dagger",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 46
+    },
+    {
+      "id": "axe-hand-thrown",
+      "name": "Axe, Hand (Thrown)",
+      "category": "Thrown",
+      "rcDamage": "1d6",
+      "sizeRating": -1,
+      "powerRating": 0,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "AAE thrown profile",
+      "handlingRationale": "Thrown axe uses flat delivery range curve",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 47
+    },
+    {
+      "id": "trident-thrown",
+      "name": "Trident, Thrown",
+      "category": "Thrown",
+      "rcDamage": "1d6",
+      "sizeRating": 1,
+      "powerRating": -1,
+      "handlingRating": 0,
+      "rangeProfile": "Flat",
+      "ratingProvenance": "Proposed",
+      "handlingRationale": "Thrown trident, RC 10/20/30",
+      "sources": "RC p.62; AAE v3.2",
+      "rosterExportRowIndex": 48
+    }
+  ]
+}
