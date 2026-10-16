@@ -36,8 +36,8 @@ const fixtureSource=`window.__kwNativeFixtures=()=>{
    subject.diedAtAbsoluteMinute=1;subject.hpBeforePoisonDeath=2;
    if(kind==='ordinary'||kind==='sparse')state.combat=null;
    if(option==='full')subject.hp=subject.maxHp;
-   if(option==='knockout'){subject.knockedOutRounds=3;expected.sleeping=true;}
-   if(option==='artifact_sleep'){subject.artifactSleepEffectId='independent native v2 sleep';expected.sleeping=true;}
+   if(option==='generic'){subject.poisoned=true;subject.poison='represented current poison';}
+   if(option==='null_onset'){subject.poisonOnsetAtAbsoluteMinute=null;subject.poisonOnsetCombatRound=0;subject.poisonOnsetCombatEncounterId=null;}
    if(option==='symbol'){recordActiveSpellEffect(caster,'Symbol: Sleep',subject.name,30,{category:'control',rawEffect:'symbol_sleep',targetId:subject.id||null,unwakable:true,linkedState:'rawSymbolSleep'});expected.sleeping=true;}
   }
   if(kind==='sparse'){
@@ -57,24 +57,24 @@ const fixtureSource=`window.__kwNativeFixtures=()=>{
    if(option==='unknown_target')query='Unrepresented stranger';
    if(option==='explicit')query+=': poison';
    if(option==='unsupported')query+=': none';
-   if(option==='blindness'){subject.blinded=true;query+=': blindness';expected.sourceCleared=false;expected.sleeping=true;}
+   if(option==='disease'){subject.diseased=true;subject.disease='independent native v2 disease';query+=': disease';expected.sourceCleared=false;expected.sleeping=true;}
    expected.refused=['multi','range','dead','pp','none','unknown_target','unsupported'].includes(option);
    if(expected.refused){expected.pp=0;expected.sourceCleared=false;expected.sleeping=subject.sleeping;}
    if(!expected.refused){const seed=state.seed;artifactPreparePenalty(rec,artifactPowerRecord(rec,power));expected.seed=state.seed;state.seed=seed;}
    spell=power;
   }else{
    if(option==='unprepared')caster.preparedSpells=caster.preparedSpells.filter(p=>p.spell!==spell),syncLegacySpellFields(caster),expected.refused=true,expected.sourceCleared=false,expected.sleeping=subject.sleeping;
-   if(option==='immunity'){const warder=normalizeMember({name:'Wardkeeper',className:'Magic-User',level:36,hp:40,maxHp:40,abilities:{int:18},inventory:[]});state.party.push(warder);resolveBecmiSpellEffect(warder,'Immunity',{order:{target:subject.name},antiMagicChecked:true});expected.refused=true;expected.sourceCleared=false;expected.sleeping=subject.sleeping;}
+   if(option==='immunity'){const warder=normalizeMember({name:'Wardkeeper',className:'Magic-User',level:36,hp:40,maxHp:40,abilities:{int:18},inventory:[]});state.party.push(warder);resolveBecmiSpellEffect(warder,'Immunity',{order:{target:subject.name},antiMagicChecked:true});expected.blockedByImmunity=true;expected.sourceCleared=false;expected.sleeping=subject.sleeping;}
    expected.clock=expected.refused?0:1;
   }
   expected.seed=expected.artifact?expected.seed:state.seed;
   const command=expected.artifact?'dev artifact use '+rec.id+' by '+caster.name+': '+spell+' at '+query:caster.name+' casts '+spell+' on '+subject.name;
   cases.push({id,kind,option,state:harnessClone(state),caster:caster.name,subject:subject.name,artifactId:rec?.id,spell,command,expected});
  };
- for(const option of ['wounded','full','knockout','artifact_sleep','symbol','unprepared','immunity'])add('ordinary_'+option,'ordinary',option);
+ for(const option of ['wounded','full','generic','null_onset','symbol','unprepared','immunity'])add('ordinary_'+option,'ordinary',option);
  for(const option of ['recent','old','unknown','missing','wounds','zero_hp','null_hp'])add('chronology_'+option,'chronology',option);
  for(const option of ['missing','null','false','zero','empty','truthy'])add('sparse_'+option,'sparse',option);
- for(const option of ['neutralize','sole','explicit','blindness','multi','range','dead','pp','none','unknown_target','unsupported'])add('artifact_'+option,'artifact',option);
+ for(const option of ['neutralize','sole','explicit','disease','multi','range','dead','pp','none','unknown_target','unsupported'])add('artifact_'+option,'artifact',option);
  add('wood_spider','wood');add('medusa_episode','medusa');
  return {saveKey:STORAGE.save,cases};
 };\n`;
@@ -125,7 +125,8 @@ try{
    c('refusal preserves complete subject',same(a,b));
    c('refusal preserves caster preparation',same(caster(after).preparedSpells,caster(before).preparedSpells));
   }else{
-   if(f.kind==='sparse')c('only truthy source original is cleared',f.expected.sourceCleared?!Object.hasOwn(a,'baldandarPoisonSleep'):same(a.baldandarPoisonSleep,b.baldandarPoisonSleep)&&Object.hasOwn(a,'baldandarPoisonSleep')===Object.hasOwn(b,'baldandarPoisonSleep'));
+   if(f.expected.blockedByImmunity)c('Immunity preserves current poison at its binary boundary',same(a.baldandarPoisonSleep,b.baldandarPoisonSleep));
+   else if(f.kind==='sparse')c('only truthy source original is cleared',f.expected.sourceCleared?!Object.hasOwn(a,'baldandarPoisonSleep'):same(a.baldandarPoisonSleep,b.baldandarPoisonSleep)&&Object.hasOwn(a,'baldandarPoisonSleep')===Object.hasOwn(b,'baldandarPoisonSleep'));
    else if(f.kind==='wood')c('source-specific Wood Spider sluggishness is cleared',!Object.hasOwn(a,'woodSpiderSluggish'));
    else if(f.kind==='medusa')c('current onset episode is cleared',!Object.hasOwn(a,'poisonOnsetAtAbsoluteMinute')&&!Object.hasOwn(a,'poisonOnsetCombatRound')&&!Object.hasOwn(a,'poisonOnsetCombatEncounterId'));
    else if(f.kind==='chronology')c('only actual poisoning onset permits revival',a.dead===!f.expected.revived&&a.hp===(f.expected.revived?3:0));
@@ -133,7 +134,7 @@ try{
    if(f.kind!=='chronology')c('cure preserves wounded HP and max HP',a.hp===b.hp&&a.maxHp===b.maxHp);
    if(['ordinary','sparse','artifact'].includes(f.kind))c('independent sleeping cause is preserved',a.sleeping===f.expected.sleeping);
    if(!f.expected.artifact)c('one ready prepared spell is spent',ready(after)===ready(before)-1);
-   if(f.option==='blindness')c('selected blindness is cured',!a.blinded);
+   if(f.option==='disease')c('selected disease is cured independently',!a.diseased&&!a.disease);
   }
   c('exact existing RNG semantics',after.seed===f.expected.seed);
   c('exact existing minute cost',clock(after)===clock(before)+f.expected.clock);

@@ -74,8 +74,9 @@ historical evidence; **it was not rerun**, imitated, or silently relabeled.
 `native-v2.mjs` is an explicitly new suite reconstructed from the accepted audit
 entries v0.4.294–333, their recoverable fixture procedures, and the current exact
 production/browser command and save procedures. It runs 33 named scenarios:
-ordinary source-only poison cures (wounded/full and three independent sleep
-causes), unprepared and Immunity refusals; recent/expired/unknown/missing onset,
+ordinary source-only/generic poison cures (wounded/full and persisted independent
+Symbol sleep), sparse onset, unprepared refusal and the existing expended-spell
+Immunity boundary; recent/expired/unknown/missing onset,
 wound death and zero/null former HP; missing/null/false/zero/empty/truthy source
 originals; artifact Neutralize Poison/Heal sole/explicit/independent choice,
 multi-condition/range/dead/PP/unknown/unsupported/absent-condition refusals;
@@ -109,3 +110,12 @@ material. `AGENTS.md` supersedes historical start-version instructions in the
 preserved direction and continuous-work documents.
 
 Playwright installation procedure: https://playwright.dev/docs/ci
+
+Native v2 fixture review also confirmed inherited normalization limits: manually
+attached knockedOutRounds, artifactSleepEffectId and blinded flags are not member
+save fields. Their existing live helper regressions remain in core/focused; v2
+does not misreport fabricated saved flags as persisted native conditions. The
+persisted independent Symbol sleep and separate disease choice are used for
+native isolation. These unrelated persistence closures remain future work.
+Immunity's binary half-effect boundary retains poison but spends the prepared
+spell and minute, exactly as the accepted implementation specifies.
