@@ -1,7 +1,7 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.334**. Newly accepted checkpoints in this continuation session: **1 of at most 3**.
-Current candidate: **none**. Context Matrix status: **not started**.
+Current accepted build: **v0.4.334**. Newly accepted checkpoints in this Chat session: **0**.
+Current candidate: **v0.4.335 — Context Matrix data/mode only, NOT ACCEPTED** on `work/v0.4.335`. Context Matrix implementation is under qualification; `main` remains authoritative at v0.4.334.
 Exact next checkpoint: **v0.4.335 — Context Matrix data/mode only**.
 
 ## Authoritative ledger
