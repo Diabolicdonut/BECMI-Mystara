@@ -1,8 +1,8 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.334**. Newly accepted checkpoints in this Chat session: **0**.
-Current candidate: **v0.4.335 — Context Matrix data/mode only, NOT ACCEPTED** on `work/v0.4.335`. Context Matrix implementation is under qualification; `main` remains authoritative at v0.4.334.
-Exact next checkpoint: **v0.4.335 — Context Matrix data/mode only**.
+Current accepted build: **v0.4.335**. Newly accepted checkpoints in this Chat session: **1**.
+Current candidate: **none**. Context Matrix data/mode architecture **accepted**; calculator and live contextual damage remain unimplemented.
+Exact next checkpoint: **v0.4.336 — Context Matrix pure deterministic calculator only**.
 
 ## Authoritative ledger
 
@@ -14,6 +14,13 @@ accepted checkpoints; an acceptance metadata commit must pass required CI before
 promotion. Inspect main, active work branches, commits and Actions after a freeze.
 
 ## Accepted game and validation
+
+**v0.4.335 accepted**: candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020`, qualifying [Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097), ten required jobs green. Production SHA-256 `76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5`. **2316/2316 core; 1232/1232 focused; Chromium 579/579 ×4; ordered once-only coverage, campaign isolation, syntax, exact-production boot, native command/save-reload and supplemental Context Matrix selection/persistence checks; zero page/runtime/console errors.** Native Acceptance v2: 33 scenarios, **508/508** accepted v0.4.333 and **508/508** v0.4.335. Historical 523-runner not recovered/rerun; that historical result is not the current test count. Exact acceptance metadata commit and merged main must each be green; do not infer success from candidate CI.
+
+Context Matrix data/mode **complete**: RAW default; independent CONTEXT_MATRIX selected and persistent but live RAW-equivalent; existing AAE and legacy MATRIX damage unaffected. **46 canonical workbook weapon profiles** and source provenance/settings under `data/` and `design/context-matrix/`. Original workbook binary remains in Known World Project; GitHub holds full four-tab extraction, not original XLSX bytes. No contextual arithmetic or integration. The inherited default regression expectation was corrected only for the mandated RAW default; other ordered test identities preserved.
+
+**Previous v0.4.334 evidence (historical accepted checkpoint)**
+
 
 v0.4.334 is the original preserved ordinary Cureall Baldandar poison-discovery
 candidate, unchanged by native fixture repairs.
@@ -55,18 +62,9 @@ architecture remains deferred. No graphical work is authorized in this run.
 
 ## Exact next sequence
 
-1. From accepted main, create `work/v0.4.335`: Context Matrix data/mode only.
-   Primary design: BECMI_Weapon_Context_Matrix.xlsx. Atlas v0.4 is supporting
-   rationale; contextual rules v0.1 is exploratory only. Preserve the sources in
-   the repository. Runtime uses canonical machine-readable data, not XLSX parsing.
-   Establish RAW / CONTEXT_MATRIX / AAE; RAW is the default. Preserve RAW and AAE
-   outcomes and isolate them. Do not calculate or apply contextual damage yet.
-2. After v0.4.335 acceptance, `work/v0.4.336`: pure deterministic calculator only,
-   exact workbook conversion/rounding/calibration and −3…+3 clamp; unknown facts
-   fail neutral. Validate workbook reference cases and the complete condition
-   matrix. No live damage integration.
-3. Stop after v0.4.336 if three checkpoints have been accepted in this session.
-   v0.4.337 is live damage integration and must not begin after that cap.
+1. **v0.4.335 ACCEPTED:** 46 canonical Context Matrix weapon profiles and calibration, RAW/CONTEXT_MATRIX/AAE mode architecture and unchanged combat. This session stops after this one checkpoint; accepted main and green Actions remain authoritative.
+2. **v0.4.336 NOT STARTED:** pure deterministic Context Matrix calculator only: exact Size/Power/Range/Handling conversions, workbook reference/rounding, −3…+3 clamp, neutral unknown facts. No live-damage integration. Begin only after the user explicitly says **continue**.
+3. **v0.4.337 DEFERRED:** separately authorize/test live damage integration after pure-calculator acceptance.
 
 The ordinary multi-condition Cureall wounds-default fallback and parser closure
 remain separate BECM dependencies. Each checkpoint follows accepted main →

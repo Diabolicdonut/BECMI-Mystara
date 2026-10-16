@@ -3553,9 +3553,11 @@
     "v0.4.200 Great Whale resolves the DMR2 Ocean row and becomes the sixth implemented source gap while historical index evidence remains unchanged"
   ],
   "slices": 4,
-  "expectedNativeChecks": 523,
-  "establishedNativeScript": null,
-  "nativeBlocker": "The separate 523 native-check definitions/runner cited by the accepted v0.4.333 audit were not present in the recovered Known World files or v0.4.334 validation archive. They cannot be rerun or claimed passed. Supplemental browser command/reload checks do not replace them.",
-  "acceptedVersion": "0.4.334",
-  "productionSha256": "76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5"
+  "expectedNativeChecks": 508,
+  "establishedNativeScript": "validation/native-v2.mjs",
+  "nativeBlocker": null,
+  "acceptedVersion": "0.4.335",
+  "productionSha256": "76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5",
+  "nativeAcceptanceBaseline": "Native Acceptance v2; 33 scenarios; 508 on v0.4.333 and 508 on v0.4.335",
+  "historical523Rerun": false
 }

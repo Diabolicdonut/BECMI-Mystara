@@ -8,5 +8,5 @@ Runtime options: RAW (default for new campaigns), CONTEXT_MATRIX (profile-only, 
 No Context Matrix calculator or new live-damage effects are present.
 New focused native browser assertions: `validation/context-matrix-mode.mjs`.
 Canonical core/focused names: `validation/manifests/v0.4.335.json` (2316 and 1232 respectively), with exact production SHA-256.
-Status: **NOT ACCEPTED**. Await full GitHub Actions checks, then accepted audit/pipeline metadata commit, exact-commit CI, and merge to main.
+Qualification outcome: all ten candidate CI jobs passed on Actions run 38961050097; acceptance metadata is recorded in top audit/pipeline after its independent required CI. For final promotion use the accepted main SHA and Actions, not this historical candidate note.
 Next after acceptance: v0.4.336 deterministic Context Matrix calculator only.

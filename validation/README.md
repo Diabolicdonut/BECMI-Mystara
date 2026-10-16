@@ -147,3 +147,7 @@ prospective tests of the accepted baseline, not reruns of the missing 523 suite.
 Native Acceptance v2 was established prospectively by Actions run 38929949995:
 33 scenarios and 508/508 assertions on each exact v0.4.333 and v0.4.334 game.
 The acceptance metadata commit reruns every required procedure before promotion.
+
+## v0.4.335 — Context Matrix data/mode acceptance
+
+Candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020` passed all 10 required jobs on [Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097). 2316 core, 1232 focused, 4 × 579 fresh Chromium, syntax, exact-production boot, native save/reload and Native Acceptance v2 (33 scenarios, 508/508 on accepted v0.4.333 and v0.4.335) were green. The legacy 523 checks remain historical and were not rerun. `validation/context-matrix-mode.mjs` independently verifies 46 workbook profiles and calibration, isolated mode selection, real browser save/reload, malformed-mode validation and unchanged RAW/AAE dispatch. A single inherited default regression expectation was updated from MATRIX to RAW without renaming or deleting any inherited test. The closed settings panel requires invoking its actual DOM button handler rather than Playwright visibility clicks; no production UI changes were needed. The exact acceptance commit and main must also pass CI; see the newest audit/pipeline/Actions for their final promotion status.

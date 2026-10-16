@@ -1,10 +1,24 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.334**  
+Build: **0.4.335**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-16
 
+
+## v0.4.335 — Context Matrix data/mode only
+
+**Accepted candidate:** `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020`; [required Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097) completed successfully with all ten required jobs green before this acceptance metadata commit. Exact production SHA-256: `76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5`. This metadata commit must independently pass the complete required workflow before merging to main; candidate CI alone is not acceptance-commit evidence.
+
+**Scope:** first Context Matrix foundation checkpoint only. New campaigns select **RAW** weapon damage by default; the separate `CONTEXT_MATRIX` selector and command persist through actual browser save/reload and deliberately use the unchanged RAW roll, damage, RNG and mastery-minimum pathways. The separately selectable `AAE` mode follows the previously implemented weapon matrix damage pathways. Existing saved `MATRIX` mode tokens are retained and continue to use the same preexisting matrix behavior; the legacy command and regression fixtures are preserved. Invalid/malformed mode settings migrate safely to RAW; invalid direct mode selections refuse without changing the active mode. No Context Matrix arithmetic, signed damage modifiers, clamps, live damage, hit adjustments, tactical mechanics or AI-generated facts were implemented.
+
+**Canonical source-backed data:** `data/context-matrix-weapon-profiles.json` contains **46 workbook-derived weapon entries** with identity/category, unchanged published RC damage expression including `Nil`, Size/Power/Handling ratings, range profile, provenance and handling rationale, with the workbook Rating Guide calibration (reference Soft and Medium/Normal/Open, two original steps per whole damage point, Excel rounding instruction, −3/+3 limits, response tables and range-profile families). Runtime includes a machine-readable static profile snapshot; it does not parse XLSX or run the future calculator. The four-sheet text extraction and the authorized Weapon Effectiveness Atlas v0.4 and exploratory Contextual Weapon Damage Rules v0.1 are preserved under `design/context-matrix/`. The original `BECMI_Weapon_Context_Matrix.xlsx` remains in the Known World Project because the available Project file interface did not permit retrieving its original binary. The workbook takes precedence over the earlier replacement-damage-die proposal, which has not been implemented.
+
+**Validation:** **2316/2316 core**, **1232/1232 focused**, four fresh Chromium slices **579/579 × 4**, syntax and exact-production boot, ordered once-only test coverage, campaign isolation, supplemental native public-command/save-reload and new actual-browser Context Matrix mode persistence/canonical-data checks; zero page/runtime/console errors or external-network attempts. **Native Acceptance v2: 33 named scenarios and 508/508 assertions on byte-exact accepted v0.4.333 and 508/508 on v0.4.335**, with original fixture and historical acceptance distinctions maintained. The unavailable historical **523** runner was not recovered or rerun; the prior 523/523 is historical evidence only and no longer an acceptance blocker. An inherited regression labeled `Defaults: Matrix / audit / phased / developer` required one expectation change from old MATRIX default to mandated RAW; its original test identity and all unrelated regression bodies and ordered names were preserved. An additional new browser test initially used a visible-selector wait for a closed settings panel; validation alone was corrected to dispatch the existing DOM button handlers, without modifying production UI or weakening its real reload assertions. Candidate failures were repaired and the full suite rerun to green.
+
+Existing BECM authority, optional toggles, deterministic rules/save migration, RNG/time/resources, Special nonnumeric and planning-only ships, poison/death/former-HP chronology, world cartography deferral, and ordinary Cureall fallback/parser backlog remain separate and unmodified.
+
+**Exact next checkpoint after acceptance:** **v0.4.336 — Context Matrix pure deterministic calculator only**, using exact workbook step conversions, reference calibration, rounding and −3…+3 clamp with unknown facts neutral, **without changing live combat damage**. Do not begin it without a new explicit **continue** instruction. v0.4.337 live integration remains later and separately gated. This Chat session stops after accepting v0.4.335.
 
 ## v0.4.334 — Ordinary Cureall Baldandar poison discovery only
 
