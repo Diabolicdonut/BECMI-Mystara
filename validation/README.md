@@ -115,7 +115,7 @@ Native v2 fixture review also confirmed inherited normalization limits: manually
 attached knockedOutRounds, artifactSleepEffectId and blinded flags are not member
 save fields. Their existing live helper regressions remain in core/focused; v2
 does not misreport fabricated saved flags as persisted native conditions. The
-persisted independent Symbol sleep and separate disease choice are used for
+persisted independent Symbol sleep and separate wounds choice are used for
 native isolation. These unrelated persistence closures remain future work.
 Immunity's binary half-effect boundary retains poison but spends the prepared
 spell and minute, exactly as the accepted implementation specifies.

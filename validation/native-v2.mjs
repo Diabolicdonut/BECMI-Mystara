@@ -58,10 +58,10 @@ const fixtureSource=`window.__kwNativeFixtures=()=>{
    if(option==='unknown_target')query='Unrepresented stranger';
    if(option==='explicit')query+=': poison';
    if(option==='unsupported')query+=': none';
-   if(option==='disease'){subject.diseased=true;subject.disease='independent native v2 disease';query+=': disease';expected.sourceCleared=false;expected.sleeping=true;}
+   if(option==='wounds'){query+=': wounds';expected.sourceCleared=false;expected.sleeping=true;}
    expected.refused=['multi','range','dead','pp','none','unknown_target','unsupported'].includes(option);
    if(expected.refused){expected.pp=0;expected.sourceCleared=false;expected.sleeping=subject.sleeping;}
-   if(!expected.refused){const seed=state.seed;artifactPreparePenalty(rec,artifactPowerRecord(rec,power));expected.seed=state.seed;state.seed=seed;}
+   if(!expected.refused){const seed=state.seed;if(option==='wounds')expected.hp=subject.maxHp-rng(6);artifactPreparePenalty(rec,artifactPowerRecord(rec,power));expected.seed=state.seed;state.seed=seed;}
    spell=power;
   }else{
    if(option==='unprepared')caster.preparedSpells=caster.preparedSpells.filter(p=>p.spell!==spell),syncLegacySpellFields(caster),expected.refused=true,expected.sourceCleared=false,expected.sleeping=subject.sleeping;
@@ -75,7 +75,7 @@ const fixtureSource=`window.__kwNativeFixtures=()=>{
  for(const option of ['wounded','full','generic','null_onset','symbol','unprepared','immunity'])add('ordinary_'+option,'ordinary',option);
  for(const option of ['recent','old','unknown','missing','wounds','zero_hp','null_hp'])add('chronology_'+option,'chronology',option);
  for(const option of ['missing','null','false','zero','empty','truthy'])add('sparse_'+option,'sparse',option);
- for(const option of ['neutralize','sole','explicit','disease','multi','range','dead','pp','none','unknown_target','unsupported'])add('artifact_'+option,'artifact',option);
+ for(const option of ['neutralize','sole','explicit','wounds','multi','range','dead','pp','none','unknown_target','unsupported'])add('artifact_'+option,'artifact',option);
  add('wood_spider','wood');add('medusa_episode','medusa');
  return {saveKey:STORAGE.save,cases};
 };\n`;
@@ -132,10 +132,9 @@ try{
    else if(f.kind==='medusa')c('current onset episode is cleared',!Object.hasOwn(a,'poisonOnsetAtAbsoluteMinute')&&!Object.hasOwn(a,'poisonOnsetCombatRound')&&!Object.hasOwn(a,'poisonOnsetCombatEncounterId'));
    else if(f.kind==='chronology')c('only actual poisoning onset permits revival',a.dead===!f.expected.revived&&a.hp===(f.expected.revived?3:0));
    else c('poison-only choice preserves independent source when appropriate',f.expected.sourceCleared?!Object.hasOwn(a,'baldandarPoisonSleep'):same(a.baldandarPoisonSleep,b.baldandarPoisonSleep));
-   if(f.kind!=='chronology')c('cure preserves wounded HP and max HP',a.hp===b.hp&&a.maxHp===b.maxHp);
+   if(f.kind!=='chronology')c('only a selected wound cure changes HP',a.hp===(f.expected.hp??b.hp)&&a.maxHp===b.maxHp);
    if(['ordinary','sparse','artifact'].includes(f.kind))c('independent sleeping cause is preserved',a.sleeping===f.expected.sleeping);
    if(!f.expected.artifact)c('one ready prepared spell is spent',ready(after)===ready(before)-1);
-   if(f.option==='disease')c('selected disease is cured independently',!a.diseased&&!a.disease);
   }
   c('exact existing RNG semantics',after.seed===f.expected.seed);
   c('exact existing minute cost',clock(after)===clock(before)+f.expected.clock);
