@@ -1,0 +1,30 @@
+name: One-time v0.4.337 monster catalogue inspection
+
+on:
+  push:
+    branches: ['work/v0.4.337']
+    paths: ['tools/inspect-monsters-v0.4.337.mjs']
+
+permissions:
+  contents: write
+
+jobs:
+  inspect:
+    if: github.event.head_commit.message == 'Inspect v0.4.337 monster catalogue structure'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/inspect-monsters-v0.4.337.mjs
+      - name: Save bounded inventory
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add validation/candidate-v0.4.337/catalogue-inventory.txt
+          git commit -m "Record v0.4.337 monster catalogue inspection (no game changes)"
+          git push origin HEAD:refs/heads/work/v0.4.337
