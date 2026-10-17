@@ -1,7 +1,7 @@
 # Known World / BECMI Text RPG — Pipeline State
 
 Current accepted build: **v0.4.335**. Newly accepted checkpoints in this Chat session: **1**.
-Current candidate: **none**. Context Matrix data/mode architecture **accepted**; calculator and live contextual damage remain unimplemented.
+Current candidate: **work/v0.4.336 — NOT ACCEPTED**. Pure Context Matrix calculator and natural-attack boundary only; live combat and accepted main remain unchanged. Candidate validation underway.
 Exact next checkpoint: **v0.4.336 — Context Matrix pure deterministic calculator only**.
 
 ## Authoritative ledger
