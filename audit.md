@@ -1,10 +1,20 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.335**  
+Build: **0.4.336**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-16
 
+
+## v0.4.336 — Pure Context Matrix calculator only
+
+**Qualifying candidate:** eb483c7399b9e3836e943512e2834925ed760c0e, successful required Actions run https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39000565428 (ten required jobs green). Core 2316/2316, focused 1232/1232, Chromium 579/579 x four, Native Acceptance v2 33 scenarios and 508/508 assertions on baseline and candidate; ordered coverage, exact production boot and save/reload all green. The acceptance-metadata commit and authoritative main must each independently pass required CI before promotion. Exact v0.4.336 production SHA-256: c74c2f529566b957a0550178c4d5f51d5164ba67e4658e07d3e7dedb02daaf7d.
+
+**Scope:** isolated pure deterministic lib/context-matrix-calculator.mjs with workbook Size/Power/Protection/Range response, reference Power subtraction, two source steps per damage point, Excel ROUND ties away from zero, Restricted-only whole-point Handling and -3 to +3 clamp. The new required validation/context-matrix-calculator.mjs test covers all 36 workbook Spear reference conditions, each of the 46 canonical profiles across 36 condition combinations, six range families, positive/negative rounding boundaries, clamps, Nil and unknown/malformed neutrality and natural attack exclusions. Only the APP_VERSION marker changes in production HTML: no live caller, new damage, attack-roll/AC, RNG/time/resource or save/migration changes. RAW and AAE combat are unchanged.
+
+**Natural-attack binding rule:** each individual attack may later carry delivery, preferredMeasure, legalMeasures and contextualWeaponDamageEligible; natural, breath, projectile and special attacks never take Context Matrix weapon modifiers, despite tactical preferred measures. Published natural damage remains RAW. An armed monster using a normal weapon follows weapon rules. No Protection from AC or supernatural immunity; use actual current target Size and resolved physical Protection, never placeholder guesses; adjacency does not imply Restricted. Contract documented without catalogue rewrite.
+
+**Next isolated checkpoint:** v0.4.337 per-attack preferred-measure schema/data enrichment only. Live Context Matrix weapon-damage integration remains separately deferred (tentatively v0.4.338). Ordinary Cureall parser/fallback, monster AI and hidden cartography are unchanged and deferred.
 
 ## v0.4.335 — Context Matrix data/mode only
 
