@@ -73,11 +73,11 @@ const base=JSON.parse(read('validation/manifests/v0.4.336.json'));
 assert.equal(base.core.length,2316);assert.equal(base.focused.length,1232);
 write('validation/manifests/v0.4.337.json',
  JSON.stringify({...base,version:'0.4.337',acceptedVersion:'0.4.336',productionSha256:hash},null,2)+'\n');
-write('validation/context-matrix-mode.mjs',once(read('validation/context-matrix-mode.mjs'),
- "const APP_VERSION='0.4.336';","const APP_VERSION='0.4.337';"));
-write('.github/workflows/known-world-acceptance.yml',once(read('.github/workflows/known-world-acceptance.yml'),
- '      - run: node validation/context-matrix-calculator.mjs\n',
- '      - run: node validation/context-matrix-calculator.mjs\n      - run: node validation/monster-attack-context.mjs\n'));
+let modeSrc=once(read('validation/context-matrix-mode.mjs'),
+ "const APP_VERSION='0.4.336';","const APP_VERSION='0.4.337';");
+assert(!modeSrc.includes("import './monster-attack-context.mjs';"));
+modeSrc+="\nimport './monster-attack-context.mjs';\n";
+write('validation/context-matrix-mode.mjs',modeSrc);
 let pipeline=read('pipeline-state.md');
 pipeline=once(pipeline,
  'Current candidate: **none**. Pure calculator accepted in isolation; no live contextual damage.',
