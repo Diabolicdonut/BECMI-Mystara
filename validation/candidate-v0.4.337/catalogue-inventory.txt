@@ -362,3 +362,412 @@ line 9224: Evidence=declaredAvailable===false?false:declaredAvailable===true&&or
 18486: function isBasiliskGazeMonster(monster){
 18526: function rawBasiliskGazeAttackModifier(attacker,target,kind='melee'){
 18578: function isMedusaGazeMonster(monster){
+\n=== REPRESENTATIVE SOURCE LINES (TRUNCATED PER LINE) ===
+\n--- lines 12518-12587 ---
+12518     return 0;
+12519   }
+12520   function canonicalMovementModes(record){
+12521     return {
+12522       ground:encounterRateFromMovementField(record.movementGround),
+12523       fly:encounterRateFromMovementField(record.movementFlyingAir),
+12524       swim:encounterRateFromMovementField(record.movementWater),
+12525       burrow:encounterRateFromMovementField(record.movementBurrowing),
+12526       web:encounterRateFromMovementField(record.movementWeb),
+12527       throughRock:encounterRateFromMovementField(record.movementThroughRock),
+12528       ice:encounterRateFromMovementField(record.movementOnIce),
+12529       trees:encounterRateFromMovementField(record.movementInTrees),
+12530       mounted:encounterRateFromMovementField(record.movementMounted),
+12531       drift:encounterRateFromMovementField(record.movementDrifting)
+12532     };
+12533   }
+12534   function canonicalProfile(record){
+12535     const key=canonicalMonsterKey(record.name),parameterized=/parameterized|variable/i.test(String(record.sourceStatus||'')),hd=Math.max(.125,firstRuleNumber(record.hitDice,1)),hint=legacyHintFor(record,key)||{},extra=BASE_IMPLEMENTATION_HINTS[key]||{};
+12536     const protection=/hard/i.test(String(record.protection||''))?'hard':'soft',role=String(record.flexAiRole||'soldier').toLowerCase().replace(/[^a-z-]+/g,'_');
+12537     const profile={key,name:record.name,recordId:record.monsterId,catalogAuthority:'workbook-600',moduleExtension:false,source:record.primarySource,sourcePage:record.page,secondarySource:record.secondarySource,secondarySourcePage:record.secondarySourcePage,statQuality:'Authoritative 600-entry workbook',profileType:'base',directCombatEligible:true,parameterized,rawAc:record.armorClass,rawHd:record.hitDice,rawMorale:record.morale,rawAttacks:record.attacks,rawDamage:record.damage,rawSaveAs:record.saveAs,rawNoAppearing:record.numberAppearing,rcSizeCode:record.rcSizeCode,terrain:record.terrain,equipmentGuidance:record.equipmentWeaponAssignment,monsterType:record.monsterType||'',ac:firstRuleNumber(record.armorClass,9),hd,hpKind:hdHpKind(record.hitDice,hd),move:encounterMove(record),moveModes:{...canonicalMovementModes(record),...(extra.moveModes&&typeof extra.moveModes==='object'?extra.moveModes:{})},thac0:becmiThac0(hd),morale:firstRuleNumber(record.morale,7),intelligence:Number.isFinite(Number(extra.intelligence))?Number(extra.intelligence):(Number.isFinite(Number(hint.intelligence))?Number(hint.intelligence):3),alignment:record.alignment||'Neutral',xp:Math.max(0,firstRuleNumber(record.xp,0)),saveSpells:becmiSaveSpells(record.saveAs,h [LINE LENGTH=8345, TRUNCATED]
+12538     // Some catalogue entries print separate statistics for a body/base and its
+12539     // attack appendages. A source-specific implementation hint may identify the
+12540     // body statistics without changing the authoritative raw catalogue fields.
+12541     if(Number.isFinite(Number(extra.baseAc)))profile.ac=Number(extra.baseAc);
+12542     if(Number.isFinite(Number(extra.baseHd))){profile.hd=Math.max(.125,Number(extra.baseHd));profile.hpKind=String(extra.baseHpKind||hdHpKind(String(extra.baseHd),profile.hd));profile.thac0=becmiThac0(profile.hd);profile.saveSpells=becmiSaveSpells(record.saveAs,profile.hd);}
+12543     profile.automationReadiness=monsterAutomationReadiness(profile);
+12544     return profile;
+12545   }
+12546   function resolveMonsterProfileForSpawn(profile,spawnOptions={}){
+12547     if(profile?.giantSnailTemplate)return resolveGiantSnailProfile(profile,spawnOptions);
+12548     if(profile?.normalHumanAdapter)return resolveNormalHumanNpcAdapterProfile(profile,spawnOptions);
+12549     if(profile?.huptzeenTemplate)return resolveHuptzeenProfile(profile,spawnOptions);
+12550     if(profile?.oardTemplate)return resolveOardProfile(profile,spawnOptions);
+12551     if(profile?.possessionTemplate)return resolvePossessionProfile(profile,spawnOptions);
+12552     if(profile?.reflecterTemplate)return resolveReflecterProfile(profile,spawnOptions);
+12553     if(!profile?.parameterized)return profile;
+12554     const resolved={...profile};
+12555     const choose=raw=>{const range=ruleRange(raw);return range?range[0]+rng(Math.floor(range[1]-range[0])+1)-1:null;};
+12556     const hd=choose(profile.rawHd);if(hd!=null){resolved.hd=Math.max(.125,hd);resolved.hpKind=hdHpKind(profile.rawHd,resolved.hd);resolved.thac0=becmiThac0(resolved.hd);}
+12557     const ac=choose(profile.rawAc);if(ac!=null)resolved.ac=ac;
+12558     const morale=choose(profile.rawMorale);if(morale!=null)resolved.morale=morale;
+12559     if(profile.hydraVariant){
+12560       const rule=profile.hydraVariant,heads=Math.max(Number(rule.headsMin)||5,Math.min(Number(rule.headsMax)||12,Math.round(Number(resolved.hd)||Number(rule.headsMin)||5))),saves=classSaveValues('Fighter',heads);
+12561       resolved.hd=heads;resolved.hydraHeadCount=heads;resolved.fixedHp=heads*Math.max(1,Number(rule.hpPerHead)||8);resolved.hpKind=`${resolved.fixedHp} hp fixed`;resolved.thac0=becmiThac0(heads);resolved.attacks=Array.from({length:heads},()=>({name:'bite',damage:'1d10'}));resolved.saveOverrides={...saves};resolved.saveDeath=saves.death;resolved.savePoison=saves.death;resolved.saveWands=saves.wands;resolved.saveParalysis=saves.paralysis;resolved.saveBreath=saves.breath;resolved.saveSpells=saves.spells;resolved.xp=becmiMonsterXpByHdStars(heads,rule.xpAsterisks);resolved.parameterResolution={hd:heads,heads,hitPointsPerHead:Math.max(1,Number(rule.hpPerHead)||8),xpAsterisks:Number(rule.xpAsterisks)||0,ac:resolved.ac,morale:resolved.morale,source:'rolled from published Rules Cyclopedia Hydra variant range'};return resolved;
+12562     }
+12563     resolved.parameterResolution={hd:resolved.hd,ac:resolved.ac,morale:resolved.morale,source:'rolled from published workbook range'};
+12564     return resolved;
+12565   }
+12566   const MONSTER_CATALOG_INDEX_ROWS = MONSTER_LORE_RECORDS.map(record=>[record.monsterId,canonicalMonsterKey(record.name),record.name,record.primarySource,record.page,'base',true,null,'Authoritative workbook record','Low',null,'Workbook authority',record.sourceStatus,record.verbatimRulesCitation]);
+12567   const MONSTER_CATALOG_INDEX = Object.fromEntries(MONSTER_CATALOG_INDEX_ROWS.map(row=>{const [recordId,key,name,source,sourcePage,profileType,spawnable,parentAliasOf,verificationStatus,reviewPriority,reviewReasons,auditStatus,auditRationale,auditSourceReference]=row;return [recordId,{recordId,key,name,source,sourcePage,profileType,spawnable,parentAliasOf,verificationStatus,reviewPriority,reviewReasons,auditStatus,auditRationale,auditSourceReference}];}));
+12568   const MONSTER_CATALOG_BY_KEY = Object.fromEntries(Object.values(MONSTER_CATALOG_INDEX).map(record=>[record.key,record]));
+12569   const CATALOG_COMBAT_MONSTERS = Object.fromEntries(MONSTER_LORE_RECORDS.map(record=>{const profile=canonicalProfile(record);return [profile.key,profile];}));
+12570 
+12571   // --- v0.4.215 supplemental source-profile registry / closure reconciliation ---
+12572   // The audited 600-record workbook remains immutable. Source-backed profiles
+12573   // proven necessary by the completed DMR2 index are layered after it at
+12574   // runtime. v0.4.197 added the three Rules Cyclopedia Hydra forms; v0.4.198
+12575   // added the Normal Human NPC adapter; v0.4.199 Great Boar; v0.4.200 Great
+12576   // Whale; v0.4.201 Rock Python; v0.4.202 Living Crystal Statue; v0.4.203
+12577   // Living Iron Statue; v0.4.204 Living Rock Statue; v0.4.205 AC9 Agarat;
+12578   // v0.4.206 AC9 Huptzeen; v0.4.207 AC9 Leveller (Bodendruker); v0.4.208 AC9 Oard; v0.4.209 AC9 Phygorax; v0.4.210 AC9 Reflecter; v0.4.211 AC9 Possession; v0.4.212 AC9 Sacrol; v0.4.213 AC9 Stalwart; v0.4.214 added AC9 Vapour Ghoul; v0.4.215 closes and reconciles the complete 20-profile supplemental layer without adding another creature. v0.4.216 reconciles the five DMR2 wilderness-table rows that unambiguously point to those supplemental profiles; no new profile is added. v0.4.217 adds only an explicit referee-invoked DMR2 wilderness encounter-construction bridge; it does not make those tables automatic or change any creature profile. v0.4.218 adds only an explicit referee-supplied candidate selector for audited variant-required DMR2 wilderness rows; it still does not auto-select variants, complete variant-incomplete rows, or change encounter cadence. v0.4.219 adds only a closure audit across all fourteen DMR2 wilderness construction paths; it adds no creature/family mechanic and leaves all source/runtime boundaries unchanged. v0.4.220 adds the Rules Cyclopedia Giant Snail as the source-defined wilderness variant of Giant Slug, closes the final variant-incomplete DMR2 row, and implements their shared acid/elastic-body procedure w [LINE LENGTH=2058, TRUNCATED]
+12579   const RC_MONSTER_XP_BY_HD=Object.freeze({
+12580     3:[35,15],4:[75,50],5:[175,125],6:[275,225],7:[450,400],8:[650,550],9:[900,700],10:[1000,750],11:[1100,800],12:[1250,875]
+12581   });
+12582   function becmiMonsterXpByHdStars(hd,stars=0){const row=RC_MONSTER_XP_BY_HD[Math.max(1,Math.floor(Number(hd)||0))];return row?row[0]+Math.max(0,Math.floor(Number(stars)||0))*row[1]:0;}
+12583   function supplementalHydraVariantProfile({key,name,recordId,rawHd,minHd,maxHd,xpAsterisks,terrain,move,moveModes,kind,automationReadiness,specialRules,movementRefereeRequired=false,swoop=null,regeneration=null}){
+12584     const base=CATALOG_COMBAT_MONSTERS.hydra||{};
+12585     const saves=classSaveValues('Fighter',minHd);
+12586     return {...base,key,name,recordId,catalogAuthority:'supplemental-source-profile',supplementalSourceProfile:true,moduleExtension:false,source:'Rules Cyclopedia',sourcePage:186,secondarySource:null,secondarySourcePage:null,statQuality:'Supplemental source-backed profile',profileType:'supplemental-source',directCombatEligible:true,parameterized:true,rawAc:'5',rawHd,rawMorale:'11',rawAttacks:`${minHd}-${maxHd} bites (1 per head)`,rawDamage:'1d10 each',rawSaveAs:`F${minHd}-${maxHd}`,rawNoAppearing:'1 (1)',terrain,monsterType:'Monster (Rare)',ac:5,hd:minHd,hpKind:`${minHd*8} hp fixed`,fixedHp:minHd*8,move,moveModes:{ground:0,fly:0,swim:0,burrow:0,web:0,throughRock:0,ice:0,trees:0,mounted:0,drift:0,...moveModes},thac0:becmiThac0(minHd),morale:11,intelligence:2,alignment:'Neutral',xp:becmiMonsterXpByHdStars(minHd,xpAsterisks),saveSpells:saves.spells,savePoison:saves.death,saveDeath:saves.death,saveWands:saves.wands,saveParalysis:saves.paralysis,saveBreath:saves.breath,saveOverrides:{...saves},attacks:Array.from({length:minHd},()=>({name:'bite',damage:'1d10'})),specialRules,automationReadiness,hydraVariant:{kind,headsMin:minHd,headsMax:maxHd,hpPerHead:8,xpAsterisks,movementRefereeRequired:Boolean(movementRefereeRequired),swoop:swoop?JS [LINE LENGTH=1402, TRUNCATED]
+12587   }
+\n--- lines 12592-12609 ---
+12592   function supplementalGreatBoarProfile(){
+12593     const saves=classSaveValues('Fighter',5);
+12594     return {
+12595       key:'great_boar',
+12596       name:'Great Boar',
+12597       recordId:'RCX-BOAR-GREAT',
+12598       catalogAuthority:'supplemental-source-profile',
+12599       supplementalSourceProfile:true,
+12600       moduleExtension:false,
+12601       source:'Rules Cyclopedia',
+12602       sourcePage:162,
+12603       secondarySource:null,
+12604       secondarySourcePage:null,
+12605       statQuality:'Supplemental source-backed profile',
+12606       profileType:'supplemental-source',
+12607       directCombatEligible:true,
+12608       parameterized:false,
+12609       rawAc:'3',
+\n--- lines 12615-12660 ---
+12615       rawNoAppearing:'1d6 (1d6)',
+12616       rawTreasureType:'Nil',
+12617       rcSizeCode:'L',
+12618       terrain:'Woods',
+12619       monsterType:'Giant Animal (Rare)',
+12620       ac:3,
+12621       hd:10,
+12622       hpKind:hdHpKind('10* (L)',10),
+12623       move:30,
+12624       moveModes:{ground:30,fly:0,swim:0,burrow:0,web:0,throughRock:0,ice:0,trees:0,mounted:0,drift:0},
+12625       thac0:becmiThac0(10),
+12626       morale:9,
+12627       intelligence:2,
+12628       alignment:'Neutral',
+12629       xp:1750,
+12630       saveSpells:saves.spells,
+12631       savePoison:saves.death,
+12632       saveDeath:saves.death,
+12633       saveWands:saves.wands,
+12634       saveParalysis:saves.paralysis,
+12635       saveBreath:saves.breath,
+12636       saveOverrides:{...saves},
+12637       size:'large',
+12638       sizeProfile:{monster:'large',vessel:'small',structure:'small'},
+12639       nativeScale:'monster',
+12640       protection:'soft',
+12641       kind:'animal',
+12642       attacks:[{name:'tusk',damage:'2d8'}],
+12643       weaponId:null,
+12644       variableWeapon:false,
+12645       tacticalRole:'brute',
+12646       meleeRangePreference:'normal',
+12647       armorDesc:'huge thick-hided boar',
+12648       specialRules:"Rules Cyclopedia Great Boar: AC 3; 10* HD (L); Move 90' (30'); one tusk for 2d8; No. Appearing 1d6 (1d6); Save As F5; Morale 9; Treasure Nil; Intelligence 2; Neutral; XP 1,750. If it can charge for 20 yards before reaching its prey, a successful hit inflicts double damage. Terrain: Woods. Load 3,000 en at full speed or 6,000 en at half speed; barding multiplier x3. Great Boars are most often found in lost-world settings and are occasionally used as mounts by barbaric tribes.",
+12649       automationReadiness:'automated',
+12650       sourceCharge:{
+12651         minimumDistanceYards:20,
+12652         minimumDistanceFeet:60,
+12653         damageMultiplier:2,
+12654         appliesTo:'successful tusk hit',
+12655         requiresChargeMovement:true,
+12656         source:'Rules Cyclopedia',
+12657         sourcePage:162
+12658       },
+12659       loadCapacityEn:{fullSpeed:3000,halfSpeed:6000},
+12660       bardingMultiplier:3,
+\n--- lines 16282-16320 ---
+16282     if(dice)return Math.max(1,rollDamageExpression(dice[0]).total);
+16283     return Math.max(1,rollDamageExpression(source).total);
+16284   }
+16285 
+16286   function monsterTypeKey(text){
+16287     const n=normalizeMonsterLoreText(text),direct=canonicalMonsterKey(text);
+16288     if(COMBAT_MONSTERS[direct])return direct;
+16289     const alias=LEGACY_MONSTER_KEY_ALIASES[direct];if(alias&&COMBAT_MONSTERS[alias])return alias;
+16290     const singular=direct.replace(/ies$/,'y').replace(/ves$/,'f').replace(/s$/,'');if(COMBAT_MONSTERS[singular])return singular;
+16291     const requestedTokens=n.split(' ').filter(Boolean).sort().join(' ');
+16292     const named=Object.keys(COMBAT_MONSTERS).find(key=>normalizeMonsterLoreText(COMBAT_MONSTERS[key]?.name).split(' ').filter(Boolean).sort().join(' ')===requestedTokens);
+16293     if(named)return named;
+16294     if(/vapou?r ghoul/.test(n))return'vapour_ghoul';if(/bodendruker/.test(n))return'leveller';if(/hollow children|hollow child/.test(n))return'hollow_child';if(/zombie natives?/.test(n))return'zombie_native';if(/ash walker/.test(n))return'ash_walker';if(/stitcher/.test(n))return'hollow_child_stitcher';if(/captain harshaw|harshaw/.test(n))return'captain_harshaw';if(/rabid jaguar/.test(n))return'rabid_jaguar';if(/giant beetle/.test(n))return'giant_beetle';
+16295     return null;
+16296   }
+16297 
+16298   function createCombatMonster(type,index,spawnOptions={}){
+16299     const requestedType=type; type=monsterTypeKey(type)||type; const base=COMBAT_MONSTERS[type]; if(!base)throw new Error(`Unknown monster type: ${requestedType}`); const p=resolveMonsterProfileForSpawn(base,spawnOptions); if(p?.spawnConfigurationError)throw new Error(p.spawnConfigurationError); const hp=rollMonsterHp(p); const lore=monsterLoreForName(p?.name||type);
+16300     const monster={id:`${type}-${index}`,name:`${p.name}${type==='captain_harshaw'?'':` ${index}`}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intelligence:p.intelligence,alignment:p.alignment,xp:p.xp,size:p.size,sizeProfile:normalizedTargetSizeProfile(p),rcSizeCode:p.rcSizeCode||null,influenceRadiusFt:Number(p.influenceRadiusFt)||influenceRadiusForSizeCode(p.rcSizeCode,p.size),moveModes:p.moveModes?{...p.moveModes}:null,nativeScale:p.nativeScale||'monster',protection:p.protection,armorDesc:p.armorDesc||null,saveSpells:p.saveSpells,savePoison:p.savePoison||16,kind:p.kind,noWeapons:Boolean(p.noWeapons),weaponId:p.noWeapons?null:(p.weaponId||null),naturalDamage:p.naturalDamage||null,attacks:Array.isArray(p.attacks)?p.attacks.map(a=>({...a})):null,specialAttack:p.specialAttack||null,specialRules:p.specialRules||null,tacticalRole:p.tacticalRole||null,meleeRangePreference:p.meleeRangePreference||null,damageMod:p.damageMod||0,daylightPenalty:p.daylightPenalty||0,immuneSleep:Boolean(p.immuneSleep),immuneCharm:Boolean(p.immuneCharm),immuneHold:Boolean(p.immuneHold),immuneColdSpell:Boolean(p.immuneColdSpell),immuneMind:Boolean(p.immuneMind),immunePoison:Boolean(p.immunePoison),immuneParalysis:Boolean(p.immun [LINE LENGTH=7309, TRUNCATED]
+16301     monster.rawSaveAs=p.rawSaveAs??null;
+16302     if(monster.wingedWarriorTraits)ensureWingedWarriorState(monster,{create:true});
+16303     if(monster.woodImpTraits)ensureWoodImpState(monster,{create:true});
+16304     if(monster.hugeWoodSpiderTraits)ensureHugeWoodSpiderState(monster,{create:true});
+16305     if(monster.wychlampTraits)ensureWychlampState(monster,{create:true});
+16306     monster.className=p.className??null;
+16307     monster.level=p.level??null;
+16308     if(monster.araneaSpellcasting){monster.className=String(monster.araneaSpellcasting.casterClass||'Magic-User');monster.level=Math.max(1,Number(monster.araneaSpellcasting.casterLevel)||3);monster.spellbook=[];monster.preparedSpells=[];monster.pendingPreparedSpells=[];monster.araneaSpellState={spellbookDeclared:false,preparationDeclared:false,source:monster.araneaSpellcasting.source||'DMR2 Creature Catalog'};}
+16309     if(monster.huptzeenTraits)ensureHuptzeenSpellState(monster,{create:true,reset:true});
+16310     if(monster.oardTraits)ensureOardState(monster,{create:true,reset:true});
+16311     if(monster.phygoraxTraits)ensurePhygoraxState(monster,{create:true,reset:true});
+16312     monster.possessionHost=p.possessionHost&&typeof p.possessionHost==='object'?JSON.parse(JSON.stringify(p.possessionHost)):null;
+16313     if(monster.possessionTraits)ensurePossessionState(monster,{create:true,reset:true});
+16314     if(monster.reflecterTraits)ensureReflecterState(monster,{create:true,reset:true});
+16315     if(monster.sacrolTraits)ensureSacrolState(monster,{create:true,reset:true});
+16316     if(monster.stalwartTraits)ensureStalwartState(monster,{create:true,reset:true});
+16317     if(monster.brainCollectorSpells)monster.brainCollectorSpellState={sequence:0,brains:[],source:monster.brainCollectorSpells.source||'DMR2 Creature Catalog'};
+16318     if(monster.faedorneMagic){monster.className=String(monster.faedorneMagic.spellcasting?.casterClass||'Magic-User');monster.level=Math.max(1,Number(monster.faedorneMagic.spellcasting?.casterLevel)||12);monster.spellbook=[];monster.preparedSpells=[];monster.pendingPreparedSpells=[];monster.faedorneMagicState={spellbookDeclared:false,preparationDeclared:false,shiningIsleContextSpecified:false,onShiningIsle:false,clairvoyanceDay:null,clairvoyanceUses:0,summonSequence:0,summons:[],source:monster.faedorneMagic.source||'DMR2 Creature Catalog'};}
+16319     if(monster.randaraMagic){monster.className=String(monster.randaraMagic.spellcasting?.casterClass||'Cleric');monster.level=Math.max(1,Number(monster.randaraMagic.spellcasting?.casterLevel)||11);monster.spellbook=randaraClericKnownSpells();monster.preparedSpells=[];monster.pendingPreparedSpells=[];monster.randaraState={preparationDeclared:false,currentForm:'natural',formDescription:null,originalAppearance:null,charmDay:null,charmUses:0,source:monster.randaraMagic.source||'DMR2 Creature Catalog'};}
+16320     if(monster.mesmerTraits)monster.mesmerState={charmRound:null,charmUses:0,reflectionSequence:0,reflections:[],source:monster.mesmerTraits.source||'DMR2 Creature Catalog'};
+\n--- lines 13040-13055 ---
+13040       rcSizeCode:'M',
+13041       terrain:null,
+13042       monsterType:'Undead',
+13043       ac:4,
+13044       hd:4,
+13045       hpKind:hdHpKind('4+3*',4),
+13046       move:30,
+13047       moveModes:{ground:30,fly:0,swim:0,burrow:0,web:0,throughRock:0,ice:0,trees:0,mounted:0,drift:0},
+13048       thac0:becmiThac0(4),
+13049       morale:11,
+13050       intelligence:4,
+13051       alignment:'Chaotic',
+13052       xp:200,
+13053       saveSpells:saves.spells,
+13054       savePoison:saves.death,
+13055       saveDeath:saves.death,
+\n=== KEY DECLARATION WINDOWS ===
+\nconst MONSTER_LORE_RECORDS INDEX=5302832: or text-layer ordering that prevents reliable entry-only isolation; locate the named entry within this page text."]];
+  const MONSTER_LORE_RECORDS = MONSTER_LORE_ROWS.map(row=>Object.fromEntries(MONSTER_LORE_FIELDS.map((field,index)=>[field,row[index]])));
+  const MONSTER_LORE_BY_ID = Object.fromEntries(MONSTER_LORE_RECORDS.map(record=>[record.monsterId,record]));
+
+  function normalizeMonsterLoreText(value){
+    return String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/ +/g,' ').trim();
+  }
+
+  function monsterLoreNameKeys(value){
+    const direct=normalizeMonsterLoreText(value),tokens=direct.split(' ').filter(Boolean).sort().join(' ');
+    return [...new Set([direct,tokens].filter(Boolean))];
+  }
+
+  const MONSTER_LORE_BY_NAME = (()=>{
+    const out={};
+    for(const record of MONSTER_LORE_RECORDS){
+      record.searchText=normalizeMonsterLoreText([record.monsterId,record.name,record.primarySource,record.secondarySource,record.monsterType,record.terrain,record.flexAiRole,record.supportEntry,record.supportVariant].join(' '));
+      for(const key of monsterLoreNameKeys(record.name))(out[key]||(out[key]=[])).push(record);
+    }
+    return out;
+  })();
+
+  function monsterLoreForName(value){
+    const keys=monsterLoreNameKeys(value);
+    for(const key of keys){
+      const matches=MONSTER_LORE_BY_NAME[key]||[];
+      if(matches.length===1)return matches[0];
+      const exact=matches.find(record=>normalizeMonsterLoreText(record.name)===normalizeMonsterLoreText(value));
+      if(exact)return exact;
+    }
+    return null;
+  }
+
+  function monsterLoreForSubject(subject){
+    if(subject?.loreId&&MONSTER_LORE_BY_ID[subject.loreId])return MONSTER_LORE_BY_ID[subject.loreId];
+    const profile=COMBAT_MONSTERS?.[subject?.type]||subject||{};
+    return monsterLoreForName(profile.name||subject?.name||'');
+  }
+
+  function monsterLoreMatches(query){
+    const normalized=normalizeMonsterLoreText(query);
+    if(!normalized)return MONSTER_LORE_RECORDS.slice();
+    return MONSTER_LORE_RECORDS.filter(record=>record.searchText.includes(normalized)||normalizeMonsterLoreText(record.description).includes(normalized)||normalizeMonsterLoreText(record.supportInformation).includes(normalized));
+  }
+
+  function clipMonsterLore(value,max=1400){
+    const text=String(value||'').trim();
+    return text.length<=max?text:`${text.slice(0,max-1).trimEnd()}…`;
+  }
+
+  const LEGACY_IM
+\nfunction canonicalMonster INDEX=5412646: munePoison:/poison/i.test(String(specialRules||''))&&/immune/i.test(String(specialRules||'')),specialRules}];
+  }));
+
+  function canonicalMonsterKey(name){
+    return String(name||'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').replace(/_+/g,'_');
+  }
+  function firstRuleNumber(value,fallback){
+    const text=String(value??'').replace(/,/g,'').replace(/[¼]/g,'.25').replace(/[½]/g,'.5').replace(/[¾]/g,'.75');
+    const fraction=text.match(/(?:^| )(\d+) *\/ *(\d+)/); if(fraction)return Number(fraction[1])/Number(fraction[2]);
+    const match=text.match(/-?\d+(?:\.\d+)?/); return match?Number(match[0]):fallback;
+  }
+  function ruleRange(value){
+    const text=String(value??'').replace(/[–—]/g,'-');
+    const match=text.match(/(-?\d+(?:\.\d+)?) *(?:-|to) *(-?\d+(?:\.\d+)?)/i);
+    if(!match)return null; const a=Number(match[1]),b=Number(match[2]); return Number.isFinite(a)&&Number.isFinite(b)?[Math.min(a,b),Math.max(a,b)]:null;
+  }
+  function hdHpKind(raw,hd){
+    const text=String(raw||'').trim();
+    // A parenthetical hit-point range (for example “1/2 (1-4 hp)”) is not a
+    // fixed-HP creature. Only an entry beginning with an explicit hp value is.
+    const fixed=text.match(/^(\d+) *hp(?: *fixed)?\b/i); if(fixed)return fixed[1]+' hp fixed';
+    if(hd<1)return hd<=.25?'1d2':hd<=.5?'1d4':'1d6';
+    const modifierMatch=text.match(/^ *(\d+) *([+-]) *(\d+)/);
+    const modifier=modifierMatch&&(modifierMatch[2]==='+'||Number(modifierMatch[1])>=Number(modifierMatch[3]))?modifierMatch:null;
+    return Math.max(1,Math.round(hd))+'d8'+(modifier?modifier[2]+modifier[3]:'');
+  }
+  function becmiThac0(hd){
+    if(hd<2)return 19;if(hd<3)return 18;if(hd<4)return 17;if(hd<6)return 16;if(hd<7)return 15;if(hd<9)return 14;if(hd<10)return 13;if(hd<11)return 12;if(hd<13)return 11;if(hd<14)return 10;if(hd<15)return 9;if(hd<17)return 8;if(hd<18)return 7;if(hd<19)return 6;if(hd<21)return 5;return Math.max(1,5-Math.floor((hd-20)/2));
+  }
+  function becmiSaveProfile(raw,hd=null,character=null){
+    const text=String(raw||'').trim();
+    const formula=/^([FCT]) *= *(half +)?HD$/i.exec(text);
+    if(formula&&Number.isFinite(hd)&&hd>0)return classSaveValues(({F:'Fighter',C:'Cleric',T:'Thief'})[formula[1].toUpperCase()],Math.max(1,Math.ceil(hd/(formula[2]?2:1))));
+    if(/^Fighter at twice HD$/i.test(text)&&Number.isFinite(hd)&&hd>0
+\nfunction canonicalProfile INDEX=5421874: MovementField(record.movementMounted),
+      drift:encounterRateFromMovementField(record.movementDrifting)
+    };
+  }
+  function canonicalProfile(record){
+    const key=canonicalMonsterKey(record.name),parameterized=/parameterized|variable/i.test(String(record.sourceStatus||'')),hd=Math.max(.125,firstRuleNumber(record.hitDice,1)),hint=legacyHintFor(record,key)||{},extra=BASE_IMPLEMENTATION_HINTS[key]||{};
+    const protection=/hard/i.test(String(record.protection||''))?'hard':'soft',role=String(record.flexAiRole||'soldier').toLowerCase().replace(/[^a-z-]+/g,'_');
+    const profile={key,name:record.name,recordId:record.monsterId,catalogAuthority:'workbook-600',moduleExtension:false,source:record.primarySource,sourcePage:record.page,secondarySource:record.secondarySource,secondarySourcePage:record.secondarySourcePage,statQuality:'Authoritative 600-entry workbook',profileType:'base',directCombatEligible:true,parameterized,rawAc:record.armorClass,rawHd:record.hitDice,rawMorale:record.morale,rawAttacks:record.attacks,rawDamage:record.damage,rawSaveAs:record.saveAs,rawNoAppearing:record.numberAppearing,rcSizeCode:record.rcSizeCode,terrain:record.terrain,equipmentGuidance:record.equipmentWeaponAssignment,monsterType:record.monsterType||'',ac:firstRuleNumber(record.armorClass,9),hd,hpKind:hdHpKind(record.hitDice,hd),move:encounterMove(record),moveModes:{...canonicalMovementModes(record),...(extra.moveModes&&typeof extra.moveModes==='object'?extra.moveModes:{})},thac0:becmiThac0(hd),morale:firstRuleNumber(record.morale,7),intelligence:Number.isFinite(Number(extra.intelligence))?Number(extra.intelligence):(Number.isFinite(Number(hint.intelligence))?Number(hint.intelligence):3),alignment:record.alignment||'Neutral',xp:Math.max(0,firstRuleNumber(record.xp,0)),saveSpells:becmiSaveSpells(record.saveAs,hd),size:String(record.sizeMonster||'Medium').toLowerCase(),sizeProfile:{monster:String(record.sizeMonster||'Medium').toLowerCase(),vessel:String(record.sizeVessel||'Small').toLowerCase(),structure:String(record.sizeStructure||'Small').toLowerCase()},influenceRadiusFt:influenceRadiusForSizeCode(record.rcSizeCode,record.sizeMonster),influenceDiameterFt:influenceRadiusForSizeCode(record.rcSizeCode,record.sizeMonster)*2,nativeScale:'monster',protection,kind:canonicalKind(record),attacks:Array.isArray(extra.attacks)?extra.attacks.map(a=>({...a})):canonicalAttacks(record),tactica
+\nconst CATALOG_COMBAT_MONSTERS INDEX=5434599: t MONSTER_CATALOG_BY_KEY = Object.fromEntries(Object.values(MONSTER_CATALOG_INDEX).map(record=>[record.key,record]));
+  const CATALOG_COMBAT_MONSTERS = Object.fromEntries(MONSTER_LORE_RECORDS.map(record=>{const profile=canonicalProfile(record);return [profile.key,profile];}));
+
+  // --- v0.4.215 supplemental source-profile registry / closure reconciliation ---
+  // The audited 600-record workbook remains immutable. Source-backed profiles
+  // proven necessary by the completed DMR2 index are layered after it at
+  // runtime. v0.4.197 added the three Rules Cyclopedia Hydra forms; v0.4.198
+  // added the Normal Human NPC adapter; v0.4.199 Great Boar; v0.4.200 Great
+  // Whale; v0.4.201 Rock Python; v0.4.202 Living Crystal Statue; v0.4.203
+  // Living Iron Statue; v0.4.204 Living Rock Statue; v0.4.205 AC9 Agarat;
+  // v0.4.206 AC9 Huptzeen; v0.4.207 AC9 Leveller (Bodendruker); v0.4.208 AC9 Oard; v0.4.209 AC9 Phygorax; v0.4.210 AC9 Reflecter; v0.4.211 AC9 Possession; v0.4.212 AC9 Sacrol; v0.4.213 AC9 Stalwart; v0.4.214 added AC9 Vapour Ghoul; v0.4.215 closes and reconciles the complete 20-profile supplemental layer without adding another creature. v0.4.216 reconciles the five DMR2 wilderness-table rows that unambiguously point to those supplemental profiles; no new profile is added. v0.4.217 adds only an explicit referee-invoked DMR2 wilderness encounter-construction bridge; it does not make those tables automatic or change any creature profile. v0.4.218 adds only an explicit referee-supplied candidate selector for audited variant-required DMR2 wilderness rows; it still does not auto-select variants, complete variant-incomplete rows, or change encounter cadence. v0.4.219 adds only a closure audit across all fourteen DMR2 wilderness construction paths; it adds no creature/family mechanic and leaves all source/runtime boundaries unchanged. v0.4.220 adds the Rules Cyclopedia Giant Snail as the source-defined wilderness variant of Giant Slug, closes the final variant-incomplete DMR2 row, and implements their shared acid/elastic-body procedure without altering the canonical 600-record catalogue. v0.4.221 adds only the explicit referee/equipment adapter for the Giant Snail shell shield and wires its acid-save/item-protection benefits while leaving source-silent crafting logistics referee-owned. v0.4.222 reviews the five source-defined nonnumeric DMR2 wilderness rosters
+\nconst COMBAT_MONSTERS INDEX=5521679: alSacrolProfile(),
+    stalwart:supplementalStalwartProfile(),
+    vapour_ghoul:supplementalVapourGhoulProfile()
+  };
+  const COMBAT_MONSTERS = {...CATALOG_COMBAT_MONSTERS,...SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS,...MODULE_COMBAT_MONSTERS};
+  // Every runtime profile receives the spatial/readiness fields required by the
+  // 3D combat engine. Supplemental and module profiles stay separate from the
+  // immutable 600-record workbook authority.
+  for(const [runtimeKey,profile] of Object.entries(COMBAT_MONSTERS)){
+    if(!profile || typeof profile!=='object') continue;
+    const radius=Number(profile.influenceRadiusFt)||influenceRadiusForSizeCode(profile.rcSizeCode,profile.size||profile.sizeProfile?.monster);
+    profile.influenceRadiusFt=radius;
+    profile.influenceDiameterFt=Number(profile.influenceDiameterFt)||radius*2;
+    if(!profile.moveModes || typeof profile.moveModes!=='object'){
+      profile.moveModes={ground:Number(profile.move)||0,fly:0,swim:0,burrow:0,web:0,throughRock:0,ice:0,trees:0,mounted:0,drift:0};
+    }
+    profile.key=profile.key||runtimeKey;
+    profile.supplementalSourceProfile=Boolean(profile.supplementalSourceProfile||SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS[runtimeKey]);
+    profile.moduleExtension=Boolean(profile.moduleExtension||MODULE_COMBAT_MONSTERS[runtimeKey]);
+    profile.catalogAuthority=profile.supplementalSourceProfile?'supplemental-source-profile':profile.moduleExtension?'smoking-pillar-extension':(profile.catalogAuthority||'workbook-600');
+    profile.automationReadiness=profile.automationReadiness||monsterAutomationReadiness(profile);
+  }
+  // Unified 628-profile runtime catalogue: 600 authoritative workbook records,
+  // twenty-one non-destructive source-backed supplemental profiles, and seven Smoking
+  // Pillar module extensions.
+  const RUNTIME_MONSTER_CATALOG_INDEX = {
+    ...Object.fromEntries(Object.values(MONSTER_CATALOG_INDEX).map(record=>[record.recordId,{...record,authority:'workbook-600'}])),
+    ...Object.fromEntries(Object.entries(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).map(([key,p])=>[p.recordId||key,{recordId:p.recordId||key,key,name:p.name,source:p.source,sourcePage:p.sourcePage,profileType:p.profileType||'supplemental-source',spawnable:true,spawnMode:p.normalHumanAdapter?'npc-adapter':p.huptzeenTemplate?'construct-config':p.oardTemplate?'device-config':p.possessionTemplate?'hosted-object-config':p.reflecterTempla
+\nconst RUNTIME_MONSTER_CATALOG_INDEX INDEX=5523355:   // twenty-one non-destructive source-backed supplemental profiles, and seven Smoking
+  // Pillar module extensions.
+  const RUNTIME_MONSTER_CATALOG_INDEX = {
+    ...Object.fromEntries(Object.values(MONSTER_CATALOG_INDEX).map(record=>[record.recordId,{...record,authority:'workbook-600'}])),
+    ...Object.fromEntries(Object.entries(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).map(([key,p])=>[p.recordId||key,{recordId:p.recordId||key,key,name:p.name,source:p.source,sourcePage:p.sourcePage,profileType:p.profileType||'supplemental-source',spawnable:true,spawnMode:p.normalHumanAdapter?'npc-adapter':p.huptzeenTemplate?'construct-config':p.oardTemplate?'device-config':p.possessionTemplate?'hosted-object-config':p.reflecterTemplate?'hd-config':p.giantSnailTemplate?'hd-config-optional':'direct',requiresConfiguration:Boolean(p.normalHumanAdapter||p.huptzeenTemplate||p.oardTemplate||p.possessionTemplate||p.reflecterTemplate),authority:'supplemental-source-profile',influenceRadiusFt:p.influenceRadiusFt,influenceDiameterFt:p.influenceDiameterFt,moveModes:{...(p.moveModes||{})},automationReadiness:p.automationReadiness||monsterAutomationReadiness(p)}])),
+    ...Object.fromEntries(Object.entries(MODULE_COMBAT_MONSTERS).map(([key,p])=>[p.recordId||key,{recordId:p.recordId||key,key,name:p.name,source:p.source||'The Smoking Pillar of Lan Yu',sourcePage:p.sourcePage||null,profileType:'module-extension',spawnable:true,authority:'smoking-pillar-extension',influenceRadiusFt:p.influenceRadiusFt,influenceDiameterFt:p.influenceDiameterFt,moveModes:{...(p.moveModes||{})},automationReadiness:p.automationReadiness||monsterAutomationReadiness(p)}]))
+  };
+
+  // --- v0.4.191 DMR2 D&D Game Creature Index reconciliation -----------
+  // DMR2 printed p. 123 (PDF p. 124). The index is a cross-reference, not
+  // a monster-stat source. This sidecar records page-123 index labels, their
+  // published references, and explicit routing into the existing 600-record
+  // catalogue without inventing mechanics for index-only external entries.
+  const DMR2_CREATURE_INDEX_PAGE_123=[
+    ["Actaeon","156"],
+    ["Adaptor","157"],
+    ["Aerial Servant","157"],
+    ["Agarat","AC9"],
+    ["Air Elemental","175"],
+    ["Air Fundamental","42"],
+    ["Allosaurus","29"],
+    ["Amber Dragon","171"],
+    ["Amber Golem","180"],
+    ["Amber Lotus Flower","8"],
+    ["Amir","174"],
+    ["Amoeba, Giant","8"],
+    ["Animal Herd
+\nfunction monsterAutomationReadiness INDEX=5420254: CY_IMPLEMENTATION_PROFILES).find(p=>normalizeMonsterLoreText(p.name).split(' ').sort().join(' ')===target)||null;
+  }
+  function monsterAutomationReadiness(profile){
+    if(profile.moduleExtension)return profile.specialAttack?'module-automated':'module-ready';
+    if(profile.parameterized)return 'parameterized';
+    if(profile.specialAttack)return 'handler-backed';
+    if(profile.variableWeapon)return 'loadout-ready';
+    const attacks=Array.isArray(profile.attacks)?profile.attacks:[];
+    const zeroOnly=attacks.length&&attacks.every(a=>Number(safeDamage(a.damage))===0);
+    const mediated=attacks.some(a=>a.refereeMediated)||zeroOnly;
+    return mediated?'referee-required':'automated';
+  }
+  function encounterRateFromMovementField(value){
+    const text=String(value||'');
+    const inner=text.match(/\((\d+) *['’]?\)/); if(inner)return Number(inner[1]);
+    const outer=text.match(/(\d+) *['’]?/); if(outer)return Math.max(0,Math.round(Number(outer[1])/3));
+    return 0;
+  }
+  function canonicalMovementModes(record){
+    return {
+      ground:encounterRateFromMovementField(record.movementGround),
+      fly:encounterRateFromMovementField(record.movementFlyingAir),
+      swim:encounterRateFromMovementField(record.movementWater),
+      burrow:encounterRateFromMovementField(record.movementBurrowing),
+      web:encounterRateFromMovementField(record.movementWeb),
+      throughRock:encounterRateFromMovementField(record.movementThroughRock),
+      ice:encounterRateFromMovementField(record.movementOnIce),
+      trees:encounterRateFromMovementField(record.movementInTrees),
+      mounted:encounterRateFromMovementField(record.movementMounted),
+      drift:encounterRateFromMovementField(record.movementDrifting)
+    };
+  }
+  function canonicalProfile(record){
+    const key=canonicalMonsterKey(record.name),parameterized=/parameterized|variable/i.test(String(record.sourceStatus||'')),hd=Math.max(.125,firstRuleNumber(record.hitDice,1)),hint=legacyHintFor(record,key)||{},extra=BASE_IMPLEMENTATION_HINTS[key]||{};
+    const protection=/hard/i.test(String(record.protection||''))?'hard':'soft',role=String(record.flexAiRole||'soldier').toLowerCase().replace(/[^a-z-]+/g,'_');
+    const profile={key,name:record.name,recordId:record.monsterId,catalogAuthority:'workbook-600',moduleExtension:false,source:record.primarySource,sourcePage:record.page,secondarySource:record.secondarySource,
+\nattackList INDEX=-1: absent
+\nattackDamage INDEX=5474928: ight',immunePoison:true,
+      specialAttack:'leveller_attack',
+      grab:{kind:'trunk',partCount:8,partHp:50,partAc:3,attackDamage:'6d8',ongoingDamage:'6d8',maxNewAttacksPerRound:3,maxOneTrunkPerOpponent:true,releaseOnBodyDeath:true,tuskCount:2,tuskDamage:'6d10',stompCount:1,stompDamage:'1d100',stompSaveType:'death',stompFootDiameterFt:10,source:'AC9 Creature Catalogue'},
+      specialRules:"AC9 Creature Catalogue Leveller (Bodendruker): AC 1; 45** HD; Move 120' (40'); attacks are three trunks or two tusks, with a trample/stomp; trunk damage 6d8 each, tusk damage 6d10 each, stomp 1d100 or death; No. Appearing 0 (1-3); Save As Fighter 36; Morale 11; Treasure Nil; Intelligence 2; Neutral; XP 24,500. It has eight trunks. At most three trunks attack in a round and no more than one trunk attacks a given opponent. A successful trunk hit also grasps; on later rounds that trunk squeezes automatically for 6d8 until the trunk is detached (AC 3, 50 hp, appendage hp separate from body hp) or the Leveller is slain. All eight trunks may maintain squeezes at once. Its 10-foot-wide foot trample requires a hit and then Save vs. Death Ray: failure kills and flattens the victim and ruins flattened equipment even if magical; success takes 1d100 damage. It is immune to all poisons and to normal fire and cold. AC9 gives no trunk reach, victim escape roll, or voluntary-release probability.",
+      automationReadiness:'automated'
+    };
+  }
+
+
+  // --- v0.4.208 AC9 Oard source profile/configuration -------------------
+  // AC9 gives Oards variable attacks and AC 0 only when a Protection Belt is
+  // present; it does not print a standard device package or a method for
+  // choosing Intelligence within 14-18. Those source-owned choices are explicit
+  // spawn inputs. Oard technology remains creature-bound and is not added to
+  // SHOP_ITEMS or the player magic-item catalogue.
+  const OARD_DEVICE_KEYS=Object.freeze(['image_amulet','ray_glove','blaster_tube','fireball_gem','protection_belt','speech_bracelet']);
+  function canonicalOardDeviceKey(value){const q=String(value||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(/^image(?: amulet)?$/.test(q))return'image_amulet';if(/^ray(?: glove)?$/.test(q))return'ray_glove';if(/^blaster(?: tube)?$/.test(q))return'blaster_tube';if(/^fireball(?: gem)?$/.test(q))return'fireball_gem';if(/^protection(?: belt)?$/.test(q))return'protection_b
