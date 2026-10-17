@@ -44,6 +44,11 @@ for(const term of ['const MONSTER_LORE_RECORDS','function canonicalMonster','fun
  let i=src.indexOf(term);
  out.push('\\n'+term+' INDEX='+i+': '+(i<0?'absent':src.slice(Math.max(0,i-120),i+2400).slice(0,2400).replace(/\\s+/g,' ')));
 }
+out.push('\\n=== PER-ATTACK SOURCE PARSER DETAILS ===');
+for(const term of ['function canonicalAttacks','const MONSTER_LORE_FIELDS','const MONSTER_LORE_ROWS','function legacyHintFor','const BASE_IMPLEMENTATION_HINTS','function safeDamage','profileType:\'base\'','const profile={key','function monsterAttack(']){
+ let i=src.indexOf(term);
+ out.push('\\n'+term+' INDEX '+i+': '+(i>=0?src.slice(i,i+6200).slice(0,6200).replace(/\\s+/g,' '):'absent'));
+}
 fs.mkdirSync('validation/candidate-v0.4.337',{recursive:true});
 fs.writeFileSync('validation/candidate-v0.4.337/catalogue-inventory.txt',out.join('\n')+'\n');
 console.log('Stored '+out.length+' inventory lines for catalogue inspection.');
