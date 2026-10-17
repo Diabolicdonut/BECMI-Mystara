@@ -1,10 +1,20 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.336**  
+Build: **0.4.337**  
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-16
 
+
+## v0.4.337 — Per-attack natural-attack preferred measures, schema/data only
+
+**Qualifying candidate:** 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f, complete qualifying green required [Actions run 39056696281](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39056696281), ten jobs passed. **Core 2316/2316, focused 1232/1232, Chromium 579/579 x four, Native Acceptance v2 508/508 on reference v0.4.333 and this candidate**, ordered once-only coverage, exact production boot, browser/native reload and isolation, zero page/runtime/console/network errors. The historical 523-runner remains historical, not rerun. The acceptance-metadata commit and authoritative main each independently require further green CI. v0.4.337 exact production SHA-256: eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b.
+
+**Source/data boundary:** source-verified individual natural attack metadata added to 41 attacks in 19 canonical profiles, each guarded by exact source profile record ID, individual attack index, name and unchanged printed damage. All 628 runtime monster profiles remain; 1151 other runtime attack entries retain unknown/unresolved preferred measure. New attackContext holds natural delivery, Close preference, unknown legalMeasures=null, false contextualWeaponDamageEligible, High confidence and governing BECMI citation. Provisional records, family/alias rows, ambiguous alternatives and unsupported reach have no fabricated metadata. The 600-entry authoritative catalogue is not rewritten. Runtime catalogue tests proved exactly 41 actual enriched attacks, 1151 unresolved, spawn cloning, JSON roundtrip and real browser reload.
+
+**No live combat change:** natural attacks retain published/source damage with no Measure/Size/Protection/Space adjustments. Live monster movement, attack legality, targeting, AI, PCs/NPCs, RAW/AAE/CONTEXT_MATRIX current damage, special attacks and RNG/time/resources are unchanged. Pure v0.4.336 calculator untouched and disconnected from live combat. External test fixture is ephemeral, never in production. The 46 weapon profile calibration and existing rule toggles persist.
+
+**Next checkpoint only by separate user authorization:** v0.4.338 live Context Matrix damage integration for explicitly eligible canonical weapon hits, never natural attacks; preserve RAW/AAE, original dice and all other source/RPG effects. Ordinary Cureall/parser source closure and cartography remain separate/deferred.
 
 ## v0.4.336 — Pure Context Matrix calculator only
 

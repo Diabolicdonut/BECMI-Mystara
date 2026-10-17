@@ -1,8 +1,8 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.336**. Newly accepted checkpoints in this Chat continuation: **2**.
-Current candidate: **work/v0.4.337 — NOT ACCEPTED**. Per-attack preferred-measure metadata only; authoritative main remains v0.4.336. Await full CI.
-Exact next checkpoint: **v0.4.337 — per-attack natural-attack preferred-measure schema/data enrichment only**.
+Current accepted build: **v0.4.337**. Newly accepted checkpoints in this Chat continuation: **3**.
+Current candidate: **none**. Source-verified natural attack measure enrichment accepted; no live contextual damage.
+Exact next checkpoint: **v0.4.338 — live Context Matrix weapon-damage integration** (not started; requires user continuation).
 
 ## Authoritative ledger
 
@@ -15,14 +15,14 @@ promotion. Inspect main, active work branches, commits and Actions after a freez
 
 ## Accepted game and validation
 
-**v0.4.337 candidate (NOT ACCEPTED):** 19 canonical source-verified profile candidates, 41 guarded individual natural attacks (Close only). Unknown reach, alternative and provisional profiles remain unresolved. Original attack expressions, natural damage, live combat, calculator and mode rules unchanged. Candidate production SHA-256 eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b.
+**v0.4.337 ACCEPTED:** 19 source-verified canonical profiles; 41 actual individual natural attacks enriched with a Close preference, 1151 other attacks left unresolved; 628 total runtime profiles. All damage remains published RAW; no live Context Matrix calculation. Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f qualified by all ten required successful jobs, https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39056696281. Core 2316/2316, focused 1232/1232, Chromium 579/579 x 4, native v2 508/508 on both reference and candidate. Exact production SHA-256 eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b. Acceptance metadata and main each must also pass their own exact SHA CI.
 
 
 **v0.4.336 acceptance:** candidate eb483c7399b9e3836e943512e2834925ed760c0e, qualifying green https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39000565428. Ten required jobs passed, core 2316/2316, focused 1232/1232, Chromium 579/579 x four, Native Acceptance v2 508/508 both baseline and candidate. Exact production SHA-256 c74c2f529566b957a0550178c4d5f51d5164ba67e4658e07d3e7dedb02daaf7d. Acceptance metadata and authoritative main each require new green CI. Only APP_VERSION changes in production HTML. Pure calculator is unconnected to live combat and validates all 36 workbook references, 46 weapon profiles across all 36 contexts, six range families, rounding, clamps, Nil/unknown safety and natural exclusions.
 
 **Binding monster-attack rule:** preferred Measure belongs to each attack for positioning/availability/AI, NEVER published natural attack damage. Natural/breath/projectile/special attacks are ineligible for Context Matrix; armed monster weapon attacks are eligible. No inferred Protection from AC/immunity, target Size from provisional rows or restricted Space from adjacency. See design/context-matrix/MONSTER-ATTACK-MEASURE-CONTRACT.md.
 
-**Next:** v0.4.337 preferred-measure schema/data enrichment only; live weapon-damage integration is a separate later checkpoint (tentatively v0.4.338).
+**Next:** v0.4.338 live Context Matrix weapon-damage integration only after user continuation. Natural attacks retain RAW damage.
 
 
 **v0.4.335 accepted**: candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020`, qualifying [Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097), ten required jobs green. Production SHA-256 `76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5`. **2316/2316 core; 1232/1232 focused; Chromium 579/579 ×4; ordered once-only coverage, campaign isolation, syntax, exact-production boot, native command/save-reload and supplemental Context Matrix selection/persistence checks; zero page/runtime/console errors.** Native Acceptance v2: 33 scenarios, **508/508** accepted v0.4.333 and **508/508** v0.4.335. Historical 523-runner not recovered/rerun; that historical result is not the current test count. Exact acceptance metadata commit and merged main must each be green; do not infer success from candidate CI.
@@ -74,7 +74,8 @@ architecture remains deferred. No graphical work is authorized in this run.
 
 1. **v0.4.335 ACCEPTED:** 46 canonical Context Matrix weapon profiles and calibration, RAW/CONTEXT_MATRIX/AAE mode architecture and unchanged combat. This session stops after this one checkpoint; accepted main and green Actions remain authoritative.
 2. **v0.4.336 ACCEPTED:** independently tested pure calculator with all workbook cases, no live damage, natural attacks excluded.
-3. **v0.4.337 NEXT (not started):** per-attack preferred-measure schema/data enrichment only. Live Context Matrix weapon-damage integration is separately deferred (tentatively v0.4.338).
+3. **v0.4.337 ACCEPTED:** 41 source-verified attacks across 19 canonical profiles; 1151 other attack measures unknown; damage/AI/legal movement unchanged.
+4. **v0.4.338 NEXT (not started):** live Context Matrix damage on eligible explicit weapon hits only, with natural attacks excluded. Requires user continuation.
 
 The ordinary multi-condition Cureall wounds-default fallback and parser closure
 remain separate BECM dependencies. Each checkpoint follows accepted main →

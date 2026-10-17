@@ -159,3 +159,7 @@ The required smoke job executes node validation/context-matrix-calculator.mjs fo
 ## v0.4.337 candidate — per-attack metadata
 
 Required native smoke additionally runs validation/monster-attack-context.mjs to verify source-backed attack-level metadata and preserved damage, unknowns and serialization. This checkpoint does not call the pure calculator in live combat.
+
+## v0.4.337 accepted metadata-only natural attack measures
+
+Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f passed all ten required jobs on run 39056696281. Core 2316/2316, focused 1232/1232, four fresh Chromium slices 579/579 each, Native Acceptance v2 508/508 on reference and candidate, ordered coverage and native boot green. Sidecar plus runtime fixture independently prove 41 natural attacks enriched across 19 canonical profiles, 1151 unresolved attack measures across 628 profiles, unchanged damage and serialized/reloaded attack metadata. Full CI must pass on acceptance-ledger commit and merged main before promotion is final. The historic 523 test remains historical.
