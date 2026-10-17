@@ -31,6 +31,19 @@ for(let i=0;i<lines.length;i++){
     if(++count>=180)break;
   }
 }
+out.push('\\n=== REPRESENTATIVE SOURCE LINES (TRUNCATED PER LINE) ===');
+for(const [start,end] of [[12518,12587],[12592,12609],[12615,12660],[16282,16320],[13040,13055]]) {
+  out.push('\\n--- lines '+start+'-'+end+' ---');
+  for(let k=start;k<=end;k++){
+    const raw=lines[k-1]||'';
+    out.push(k+' '+raw.slice(0,1250)+(raw.length>1250?' [LINE LENGTH='+raw.length+', TRUNCATED]':''));
+  }
+}
+out.push('\\n=== KEY DECLARATION WINDOWS ===');
+for(const term of ['const MONSTER_LORE_RECORDS','function canonicalMonster','function canonicalProfile','const CATALOG_COMBAT_MONSTERS','const COMBAT_MONSTERS','const RUNTIME_MONSTER_CATALOG_INDEX','function monsterAutomationReadiness','attackList','attackDamage']) {
+ let i=src.indexOf(term);
+ out.push('\\n'+term+' INDEX='+i+': '+(i<0?'absent':src.slice(Math.max(0,i-120),i+2400).slice(0,2400).replace(/\\s+/g,' ')));
+}
 fs.mkdirSync('validation/candidate-v0.4.337',{recursive:true});
 fs.writeFileSync('validation/candidate-v0.4.337/catalogue-inventory.txt',out.join('\n')+'\n');
 console.log('Stored '+out.length+' inventory lines for catalogue inspection.');
