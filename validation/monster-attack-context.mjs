@@ -52,3 +52,94 @@ assert.equal(JSON.parse(JSON.stringify(provisional)).attackContext.preferredMeas
 console.log('Monster preferred-measure schema/data PASS; source candidates='+count+
  ', profiles='+data.profiles.length+', anatomical forms='+forms.size+
  ', unknown reach and mixed-per-attack/armed synthetic contracts preserved; no live combat call.');
+
+
+// Exercise the real production catalogue in a temporary in-memory browser fixture.
+// The fixture is NEVER written to shipped index.html, and no live attack or damage code changes.
+import http from 'node:http';
+import {chromium} from 'playwright';
+const anchor='  boot();\n})();';
+assert.equal(html.split(anchor).length,2,'Expected exactly one isolated runtime fixture anchor');
+const instrument=[
+ '  window.__kw337Read = (spawn=false) => {',
+ '    const entries=Object.entries(COMBAT_MONSTERS).map(([key,p])=>({',
+ '      key,recordId:p.recordId,parameterized:!!p.parameterized,variableWeapon:!!p.variableWeapon,',
+ '      attacks:Array.isArray(p.attacks)?p.attacks.map(a=>({',
+ '        name:a.name,damage:a.damage,attackContext:a.attackContext??null',
+ '      })):null',
+ '    }));',
+ '    let spawned=null;',
+ '    if(spawn){',
+ "      const m=createCombatMonster('black_bear',1);",
+ '      spawned={attacks:m.attacks,roundtrip:JSON.parse(JSON.stringify(m.attacks))};',
+ '    }',
+ '    return {entries,spawned};',
+ '  };'
+].join('\n');
+const served=html.replace(anchor,instrument+'\n'+anchor);
+const server=http.createServer((req,res)=>{
+  if(req.url==='/favicon.ico'){res.writeHead(204);res.end();return;}
+  res.writeHead(200,{'Content-Type':'text/html; charset=utf-8'});res.end(served);
+});
+await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
+const origin='http://127.0.0.1:'+server.address().port;
+let browser;
+try{
+ browser=await chromium.launch({headless:true});
+ const context=await browser.newContext();
+ const errors=[];
+ await context.route('**/*',route=>{
+   if(new URL(route.request().url()).origin===origin)return route.continue();
+   errors.push('external network '+route.request().url());return route.abort();
+ });
+ context.on('page',page=>{
+   page.on('pageerror',e=>errors.push(String(e)));
+   page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ });
+ const page=await context.newPage();
+ await page.goto(origin+'/',{waitUntil:'load'});
+ await page.waitForFunction(()=>typeof window.__kw337Read==='function');
+ const before=await page.evaluate(()=>window.__kw337Read(true));
+ assert.equal(before.entries.length,628,'Canonical, supplemental, and module profile counts must remain 628');
+ const byKey=new Map(before.entries.map(p=>[p.key,p]));
+ let actual=0,unresolved=0;
+ for(const p of before.entries){
+  if(p.attacks===null)continue;
+  for(const a of p.attacks){
+    if(a.attackContext!==null){
+      actual++;
+      assert.equal(a.attackContext.delivery,'natural');
+      assert.equal(a.attackContext.preferredMeasure,'Close');
+      assert.equal(a.attackContext.contextualWeaponDamageEligible,false);
+    }else unresolved++;
+  }
+ }
+ assert(actual>0&&actual<=count,'Source-guarded runtime enrichment must be bounded');
+ for(const p of data.profiles){
+   const runtime=byKey.get(p.key);
+   assert(runtime&&runtime.recordId===p.recordId,'Source record must exist unchanged');
+   for(const attack of p.attacks){
+     const live=runtime.attacks?.[attack.attackIndex];
+     const matching=live&&live.name===attack.attackName&&live.damage===attack.damageExact;
+     if(matching&&!runtime.parameterized&&!runtime.variableWeapon)
+       assert.deepEqual(live.attackContext,attack.attackContext,
+         'Verified matching natural attack metadata lost: '+p.key+' '+attack.attackIndex);
+   }
+ }
+ const bear=byKey.get('black_bear');
+ assert(bear&&bear.attacks?.length===3,'Expected multiple black bear natural attacks');
+ assert(bear.attacks.every(a=>a.attackContext?.delivery==='natural'));
+ assert.deepEqual(before.spawned.attacks,before.spawned.roundtrip,'Spawn actor JSON must retain attack metadata');
+ assert.deepEqual(before.spawned.attacks.map(a=>a.damage),bear.attacks.map(a=>a.damage),'Spawn must not change existing attack damage');
+ await page.reload({waitUntil:'load'});
+ await page.waitForFunction(()=>typeof window.__kw337Read==='function');
+ const after=await page.evaluate(()=>window.__kw337Read());
+ assert.deepEqual(after.entries,before.entries,'Catalogue metadata must reconstruct identically on actual browser reload');
+ assert.deepEqual(errors,[],'New catalogue must not produce page, console or network errors');
+ console.log('v0.4.337 LIVE CATALOGUE METADATA CHECK: PASS; actual enriched='+actual+
+   ', unresolved individual attacks='+unresolved+', source candidates='+count+
+   ', profiles='+before.entries.length+', bear spawn/JSON/reload=PASS; no combat effect.');
+}finally{
+ await browser?.close();
+ await new Promise(resolve=>server.close(resolve));
+}
