@@ -27,6 +27,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html validation/manifests/v0.4.336.json validation/context-matrix-mode.mjs audit.md pipeline-state.md validation/README.md
-          git diff --cached --check
+          git diff --cached --check -- index.html validation/manifests/v0.4.336.json validation/context-matrix-mode.mjs pipeline-state.md validation/README.md
           git commit -m "Accept v0.4.336 pure Context Matrix calculator — exact version, manifest, audit and pipeline"
           git push origin HEAD:refs/heads/work/v0.4.336

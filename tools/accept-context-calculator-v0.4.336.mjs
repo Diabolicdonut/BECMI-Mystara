@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 // One-time deterministic acceptance script; only APP_VERSION changes in production.
+// Existing audit Markdown two-space line breaks are intentionally retained.
 const get=p=>fs.readFileSync(p,'utf8'), save=(p,s)=>fs.writeFileSync(p,s);
 const sha=s=>createHash('sha256').update(s).digest('hex');
 function once(s,a,b){assert.equal(s.split(a).length,2,'Expected exactly one '+a);return s.replace(a,b);}
