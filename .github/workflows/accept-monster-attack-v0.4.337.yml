@@ -1,0 +1,31 @@
+name: One-time v0.4.337 acceptance metadata
+
+on:
+  push:
+    branches: ['work/v0.4.337']
+    paths: ['tools/accept-monster-attack-v0.4.337.mjs']
+
+permissions:
+  contents: write
+
+jobs:
+  accept:
+    if: github.event.head_commit.message == 'Prepare v0.4.337 acceptance metadata builder'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/accept-monster-attack-v0.4.337.mjs
+      - name: Commit v0.4.337 acceptance ledger
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit.md pipeline-state.md validation/manifests/v0.4.337.json validation/README.md
+          git diff --cached --check -- pipeline-state.md validation/manifests/v0.4.337.json validation/README.md
+          git commit -m "Accept v0.4.337 source-verified per-attack natural measures — exact audit and pipeline"
+          git push origin HEAD:refs/heads/work/v0.4.337
