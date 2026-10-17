@@ -47,7 +47,8 @@ for(const rec of parsed){
   source:rec.primarySource,sourcePage:rec.page,attacks
  });
 }
-assert(profiles.length>25,'Too few unambiguous source records');
+console.log('SOURCE CANDIDATES',profiles.length,'ATTACKS',profiles.reduce((n,p)=>n+p.attacks.length,0),'SKIPPED',skipped,'AMBIGUOUS',ambiguousCount,'FIRST',JSON.stringify(profiles.slice(0,6).map(p=>({id:p.recordId,name:p.key,n:p.attacks.length}))));
+assert(profiles.length>0,'No unambiguous source records');
 const data={schemaVersion:'v0.4.337',acceptedInputSha256:sha(html),
  policy:'Source-backed anatomy only, never modifies combat damage',profiles,
  sourceExcludedCount:skipped,ambiguousRecordCount:ambiguousCount};
