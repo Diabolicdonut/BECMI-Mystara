@@ -155,3 +155,7 @@ Candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020` passed all 10 required jobs
 ## v0.4.336 pure calculator
 
 The required smoke job executes node validation/context-matrix-calculator.mjs for all 36 workbook Spear references, canonical profile cross-product, all Range Profiles, signed Excel rounding, clamps, Nil/unknown neutrality and natural attack exclusions. This calculator is not imported by live combat. Native Acceptance v2 provenance remains unchanged.
+
+## v0.4.337 candidate — per-attack metadata
+
+Required native smoke additionally runs validation/monster-attack-context.mjs to verify source-backed attack-level metadata and preserved damage, unknowns and serialization. This checkpoint does not call the pure calculator in live combat.

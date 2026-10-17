@@ -1,7 +1,7 @@
 # Known World / BECMI Text RPG — Pipeline State
 
 Current accepted build: **v0.4.336**. Newly accepted checkpoints in this Chat continuation: **2**.
-Current candidate: **none**. Pure calculator accepted in isolation; no live contextual damage.
+Current candidate: **work/v0.4.337 — NOT ACCEPTED**. Per-attack preferred-measure metadata only; authoritative main remains v0.4.336. Await full CI.
 Exact next checkpoint: **v0.4.337 — per-attack natural-attack preferred-measure schema/data enrichment only**.
 
 ## Authoritative ledger
@@ -14,6 +14,9 @@ accepted checkpoints; an acceptance metadata commit must pass required CI before
 promotion. Inspect main, active work branches, commits and Actions after a freeze.
 
 ## Accepted game and validation
+
+**v0.4.337 candidate (NOT ACCEPTED):** 19 canonical source-verified profile candidates, 41 guarded individual natural attacks (Close only). Unknown reach, alternative and provisional profiles remain unresolved. Original attack expressions, natural damage, live combat, calculator and mode rules unchanged. Candidate production SHA-256 eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b.
+
 
 **v0.4.336 acceptance:** candidate eb483c7399b9e3836e943512e2834925ed760c0e, qualifying green https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39000565428. Ten required jobs passed, core 2316/2316, focused 1232/1232, Chromium 579/579 x four, Native Acceptance v2 508/508 both baseline and candidate. Exact production SHA-256 c74c2f529566b957a0550178c4d5f51d5164ba67e4658e07d3e7dedb02daaf7d. Acceptance metadata and authoritative main each require new green CI. Only APP_VERSION changes in production HTML. Pure calculator is unconnected to live combat and validates all 36 workbook references, 46 weapon profiles across all 36 contexts, six range families, rounding, clamps, Nil/unknown safety and natural exclusions.
 

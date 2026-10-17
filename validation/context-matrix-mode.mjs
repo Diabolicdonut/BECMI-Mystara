@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
 const data=JSON.parse(fs.readFileSync('data/context-matrix-weapon-profiles.json','utf8'));
-assert(html.includes("const APP_VERSION='0.4.336';"));
+assert(html.includes("const APP_VERSION='0.4.337';"));
 assert.equal(data.weapons.length,46);
 assert.equal(data.calibration.referenceProtection,'Soft');
 assert.equal(data.calibration.stepsPerDamagePoint,2);
@@ -68,3 +68,5 @@ try {
   assert.deepEqual(errors,[]);
   console.log('v0.4.335 supplemental browser/data/mode acceptance: PASS (46 profiles, canonical data match, selectors, real RAW/CONTEXT_MATRIX/AAE save/reload, safe mode gating).');
 } finally {await browser?.close();await new Promise(r=>server.close(r));}
+
+import './monster-attack-context.mjs';
