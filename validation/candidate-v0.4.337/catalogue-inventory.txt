@@ -1,0 +1,364 @@
+Accepted-source inspection; no production change. Lines: 41689, bytes: 11553295
+
+=== MONSTER_CATALOG: 95 occurrences ===
+line 7445: x=>x.resolution.status==='variant_required'),variantIncompleteRows:unresolved.filter(x=>x.resolution.status==='variant_incomplete'),issues,canonicalCatalogueCount:Object.keys(MONSTER_CATALOG_INDEX).length,supplementalProfileCount:Object.keys(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).length,runtimeCount:Object.keys(COMBAT_MONSTERS).length,kaiBesilOverride:false,automaticEncounterCadence:false}; } functio
+line 7696: Rows:unexpectedUnresolved.length,tableSummaries,rows,issues,automaticEncounterCadence:false,kaiBesilOverride:false,autoSelectVariant:false,canonicalCatalogueCount:Object.keys(MONSTER_CATALOG_INDEX).length,supplementalProfileCount:Object.keys(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).length,runtimeCount:Object.keys(COMBAT_MONSTERS).length}; } function developerDmr2WildernessConstructionClosure(){ con
+line 12566:  } resolved.parameterResolution={hd:resolved.hd,ac:resolved.ac,morale:resolved.morale,source:'rolled from published workbook range'}; return resolved; } const MONSTER_CATALOG_INDEX_ROWS = MONSTER_LORE_RECORDS.map(record=>[record.monsterId,canonicalMonsterKey(record.name),record.name,record.primarySource,record.page,'base',true,null,'Authoritative workbook record','Low',null,'Workbook au
+line 12567: ,record.primarySource,record.page,'base',true,null,'Authoritative workbook record','Low',null,'Workbook authority',record.sourceStatus,record.verbatimRulesCitation]); const MONSTER_CATALOG_INDEX = Object.fromEntries(MONSTER_CATALOG_INDEX_ROWS.map(row=>{const [recordId,key,name,source,sourcePage,profileType,spawnable,parentAliasOf,verificationStatus,reviewPriority,reviewReasons,auditStatus,auditRation
+line 12567: ue,null,'Authoritative workbook record','Low',null,'Workbook authority',record.sourceStatus,record.verbatimRulesCitation]); const MONSTER_CATALOG_INDEX = Object.fromEntries(MONSTER_CATALOG_INDEX_ROWS.map(row=>{const [recordId,key,name,source,sourcePage,profileType,spawnable,parentAliasOf,verificationStatus,reviewPriority,reviewReasons,auditStatus,auditRationale,auditSourceReference]=row;return [recor
+line 12568: ,key,name,source,sourcePage,profileType,spawnable,parentAliasOf,verificationStatus,reviewPriority,reviewReasons,auditStatus,auditRationale,auditSourceReference}];})); const MONSTER_CATALOG_BY_KEY = Object.fromEntries(Object.values(MONSTER_CATALOG_INDEX).map(record=>[record.key,record])); const CATALOG_COMBAT_MONSTERS = Object.fromEntries(MONSTER_LORE_RECORDS.map(record=>{const profile=canonicalProf
+
+=== MONSTER_CATALOGUE: 0 occurrences ===
+
+=== MONSTER_PROFILES: 0 occurrences ===
+
+=== MONSTER_ROSTER: 0 occurrences ===
+
+=== monsterCatalog: 2 occurrences ===
+line 27196: ile${rows.length===1?'':'s'}\n${Object.entries(counts).sort().map(([k,v])=>`${k}: ${v}`).join('; ')}${details?'\n'+details:''}`,'system');return counts;} function developerMonsterCatalog(match){ const query=normalizedItemText(match?.[1]||''); const runtimeRows=Object.values(RUNTIME_MONSTER_CATALOG_INDEX).filter(record=>!query||normalizedItemText(`${record.recordId} ${record.key} ${record.nam
+line 29627: edia, AC9/DMR2, and module monster profile with source/quality, stats, Matrix classifications, and FlexAI role.',pattern:/^dev monster catalog(?:\s+(.+))?$/i,execute:developerMonsterCatalog}, {category:'Reference and Diagnostics',usage:'dev combat position <combatant>: x=<ft>, y=<ft>, z=<ft>',summary:'Developer-only: set an exact 3D combat coordinate in feet, then recompute hostile Influence-Sphere
+
+=== monsterCatalogue: 0 occurrences ===
+
+=== monsterProfiles: 1 occurrences ===
+line 31092: mbat?.active ? { ...state.combat, sharedMelees:meleeGroups().map((g,i)=>({id:i+1,pcNames:g.pcNames.slice(),monsterIds:g.monsterIds.slice(),range:g.range})), monsterProfiles:Object.fromEntries((state.combat.monsters||[]).map(m=>[m.id||m.name,COMBAT_MONSTERS[m.type]||null])) } : null; const payload={ rules:state.rules,day:state.day,minute:state.minute,turn:state.turn, 
+
+=== CREATURE_CATALOG: 0 occurrences ===
+
+=== monsterSize: 0 occurrences ===
+
+=== matrixConfidence: 0 occurrences ===
+
+=== Matrix Confidence: 0 occurrences ===
+
+=== Armor / Protection Description: 0 occurrences ===
+
+=== Monster Size: 5 occurrences ===
+line 12352: ecific special rules: Can alter size at will from largest-horse scale down to one hand high without changing printed movement/HD/attacks; encounter handler must track current Monster Size (Small/Medium/Large) for the weapon matrix. Travels at 900'(300') regardless of size and ignores rough terrain, bogs, and water. Can become invisible to mortals. Coltpixies serving important fairies are normally Lawfu
+line 12352: cockrobin (AC 2; HD 5; Damage 1d6/1d6/2d6). A flock is led by one rooster (AC 1; HD 7; Damage 1d8/1d8/ 2-16). Terrain: Open, Woods. Row-specific special rules: Choose current Monster Size Small or Medium when the individual is instantiated; DMR2 explicitly prints '(S to M)'. Gyerians cannot fly. A nervous gyerian may sneeze; anyone in front must roll below Dexterity on 1d20 or be bowled over for 1d4 da
+line 12352: they will causing 1d4 points of damage with each blow. Terrain: Any. Row-specific special rules: Before spawning, choose the phantom's current physical form and corresponding Monster Size (Small or Medium under the project matrix). Its mist body may take any shape of human size or smaller. It flies, can walk on water or quicksand as though solid, and commonly lures victims onto dangerous terrain while 
+line 12352: e from any bite. They can burrow through rock and surprise their victims 50% of the time. Terrain: Cavern. Row-specific special rules: Before spawning, choose Medium or Large Monster Size according to the generated individual's physical growth. Failed save vs poison causes the bite to deal double damage. Red worms can burrow through rock and surprise victims 50% of the time. They are immature fyrsnaca 
+line 12352: pseudopods at once, but only one will be sticky. Each hi including the first, does 3-18 points of damage. Terrain: Cavern. Row-specific special rules: Before spawning, choose Monster Size Medium or Large and Intelligence 1-9. At rest a scamille imitates an inanimate object such as a rock, door, wall, table, chair, or treasure chest; it never imitates a creature. If hostile, one pseudopod is sticky. A v
+
+=== protectionDescription: 3 occurrences ===
+line 17195: ly wounded'; if(ratio>=0.5) return 'visibly wounded'; if(ratio>=0.25) return 'badly wounded'; return 'reeling and barely able to continue'; } function monsterProtectionDescription(m){ return m?.armorDesc || 'its protection is not yet clear'; } function combatMonsterLabel(m){ const effect=masteryEffectSummary(m); return `${m.name} — ${monsterHealthDescription(m)}${effec
+line 17201: t effect=masteryEffectSummary(m); return `${m.name} — ${monsterHealthDescription(m)}${effect?` [${effect}]`:''} · ${targetClassificationText(m)}\n ${m.appearance||monsterProtectionDescription(m)}`; } function meleeCapableWeapon(item){ if(!item || item.missile) return false; return !['bola','holy_water','burning_oil','thrown_rock'].includes(item.itemId); } function combatWeaponDis
+line 31121: ound:state.combat.round,hostiles:state.combat.monsters.filter(m=>!m.dead&&!m.fled).map(m=>({name:m.name,condition:monsterHealthDescription(m),description:m.appearance||monsterProtectionDescription(m),matrixClassification:targetClassificationText(m),governingDescription:monsterLoreForSubject(m)?.description||null,terrain:monsterLoreForSubject(m)?.terrain||null,loreCitation:monsterLoreForSubject(m)?.verb
+
+=== attackDamage: 2 occurrences ===
+line 13166: sickly-green elephantine hide; twice normal elephant height',immunePoison:true, specialAttack:'leveller_attack', grab:{kind:'trunk',partCount:8,partHp:50,partAc:3,attackDamage:'6d8',ongoingDamage:'6d8',maxNewAttacksPerRound:3,maxOneTrunkPerOpponent:true,releaseOnBodyDeath:true,tuskCount:2,tuskDamage:'6d10',stompCount:1,stompDamage:'1d100',stompSaveType:'death',stompFootDiameterFt:10,source:
+line 19537: ush(rec);write(`${monster.name}'s trunk ${part.index} attacks ${target.name} — ${hit.hit?'HIT':'miss'}.`,'system');if(!hit.hit)continue;const damage=rollDamageExpression(rule.attackDamage||'6d8').total;rec.damage=damage;damagePc(target,damage,`${monster.name}'s trunk`,{kind:'natural',attackKind:'melee'});if(!target.dead&&target.hp>0&&setLevellerTrunkHold(monster,part,target)){rec.grabbed=true;write(`${
+
+=== attacksAndDamage: 0 occurrences ===
+
+=== attacks:: 1254 occurrences ===
+line 2260: dge_any_missiles:{name:'Dodge any missiles',type:'defense',cost:50,mechanic:'dodge_any_missiles',targetMode:'self',durationTurns:1,sourceCategory:'D2'}, dodge_directional_attacks:{name:'Dodge directional attacks',type:'defense',cost:65,mechanic:'dodge_directional_attacks',targetMode:'self',durationTurns:1,sourceCategory:'D2'}, polymorph_self:{name:'Polymorph Self',type:'defense',cost:65,mechani
+line 2274: _poison:{name:'Immune to Poison',type:'defense',cost:40,mechanic:'immune_poison',targetMode:'self',durationTurns:18,requiresLiving:true,sourceCategory:'D3'}, immune_aging_attacks:{name:'Immune to Aging attacks',type:'defense',cost:50,mechanic:'immune_aging',targetMode:'pc',rangeFeet:5,durationTurns:18,requiresLiving:true,sourceCategory:'D3'}, anti_magic_30:{name:'Anti-Magic 30%',type:'defense',
+line 9849: ,move:40,thac0:becmiThac0(3),morale:12,xp:0,intelligence:null,alignment:null,kind:'enchanted',monsterType:'Enchanted',saveOverrides:classSaveValues('Fighter',3),weaponId:null,attacks:[{name:'illusory weapon',hitEffect:'save_vs_wands_or_unconscious'}],specialAttack:'dmr2_ghostly_horde',fixedUpfrontRoster:false}; } hazard.history.push({event:'fear_save',pcName:pc.name,visit:row.visit,stage,saveTy
+line 11208:  } function demihumanCombatOptionProfile(member){ const xp=Math.max(0,Number(member?.xp)||0),name=member?.className; if(name==='Dwarf')return {qualified:xp>=660000,attacks:xp>=2200000?3:xp>=660000?2:1,giantDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=30
+line 11209: ember?.className; if(name==='Dwarf')return {qualified:xp>=660000,attacks:xp>=2200000?3:xp>=660000?2:1,giantDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=3000000?3:xp>=900000?2:1,giantDisarm:false}; return null; } function demihumanDamageAfterResistance(
+line 11210: tDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=3000000?3:xp>=900000?2:1,giantDisarm:false}; return null; } function demihumanDamageAfterResistance(member,rolledDamage,{kind='ordinary',saveSucceeded=false}={}){ const xp=Math.max(0,Number(member?.xp)||0),
+
+=== attacks:: 1254 occurrences ===
+line 2260: dge_any_missiles:{name:'Dodge any missiles',type:'defense',cost:50,mechanic:'dodge_any_missiles',targetMode:'self',durationTurns:1,sourceCategory:'D2'}, dodge_directional_attacks:{name:'Dodge directional attacks',type:'defense',cost:65,mechanic:'dodge_directional_attacks',targetMode:'self',durationTurns:1,sourceCategory:'D2'}, polymorph_self:{name:'Polymorph Self',type:'defense',cost:65,mechani
+line 2274: _poison:{name:'Immune to Poison',type:'defense',cost:40,mechanic:'immune_poison',targetMode:'self',durationTurns:18,requiresLiving:true,sourceCategory:'D3'}, immune_aging_attacks:{name:'Immune to Aging attacks',type:'defense',cost:50,mechanic:'immune_aging',targetMode:'pc',rangeFeet:5,durationTurns:18,requiresLiving:true,sourceCategory:'D3'}, anti_magic_30:{name:'Anti-Magic 30%',type:'defense',
+line 9849: ,move:40,thac0:becmiThac0(3),morale:12,xp:0,intelligence:null,alignment:null,kind:'enchanted',monsterType:'Enchanted',saveOverrides:classSaveValues('Fighter',3),weaponId:null,attacks:[{name:'illusory weapon',hitEffect:'save_vs_wands_or_unconscious'}],specialAttack:'dmr2_ghostly_horde',fixedUpfrontRoster:false}; } hazard.history.push({event:'fear_save',pcName:pc.name,visit:row.visit,stage,saveTy
+line 11208:  } function demihumanCombatOptionProfile(member){ const xp=Math.max(0,Number(member?.xp)||0),name=member?.className; if(name==='Dwarf')return {qualified:xp>=660000,attacks:xp>=2200000?3:xp>=660000?2:1,giantDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=30
+line 11209: ember?.className; if(name==='Dwarf')return {qualified:xp>=660000,attacks:xp>=2200000?3:xp>=660000?2:1,giantDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=3000000?3:xp>=900000?2:1,giantDisarm:false}; return null; } function demihumanDamageAfterResistance(
+line 11210: tDisarm:false}; if(name==='Elf')return {qualified:xp>=850000,attacks:xp>=2600000?3:xp>=850000?2:1,giantDisarm:true}; if(name==='Halfling')return {qualified:xp>=900000,attacks:xp>=3000000?3:xp>=900000?2:1,giantDisarm:false}; return null; } function demihumanDamageAfterResistance(member,rolledDamage,{kind='ordinary',saveSucceeded=false}={}){ const xp=Math.max(0,Number(member?.xp)||0),
+
+=== damage:: 1364 occurrences ===
+line 1927: gnitude:true,sourceCategory:'3C'}, damage_penalty_3c:{name:'Damage Penalty',kind:'both',mechanic:'artifact_adverse_damage_penalty',minPenalty:2,maxPenalty:12,minSuccessfulDamage:1,sourceCategory:'3C'}, extra_damage_blows_3c:{name:'Extra Damage from Blows',kind:'both',mechanic:'artifact_adverse_extra_damage_blows',requiresRefereeMagnitude:true,sourceCategory:'3C'}, extra_damage_magic_3c:{nam
+line 2058: roll, +3d6 HD',type:'attack',cost:60,mechanic:'artifact_turn_undead_bonus',targetMode:'self',durationTurns:1,rollBonus:6,extraHdDice:3,sourceCategory:'A5'}, double_weapon_damage:{name:'Double weapon damage',type:'attack',cost:70,mechanic:'weapon_damage_multiplier',multiplier:2,durationTurns:1,sourceCategory:'A5'}, weapon_strength_bonus_4:{name:'Weapon strength bonus +4',type:'attack',cost:70,me
+line 2064: apon_strength_bonus_5:{name:'Weapon strength bonus +5',type:'attack',cost:85,mechanic:'weapon_strength_bonus',amount:5,durationTurns:1,sourceCategory:'A5'}, triple_weapon_damage:{name:'Triple weapon damage',type:'attack',cost:90,mechanic:'weapon_damage_multiplier',multiplier:3,durationTurns:1,sourceCategory:'A5'}, spell_damage_bonus_4:{name:'Spell damage bonus +4/die',type:'attack',cost:100,mec
+line 5846: AW_STRICT'?'RAW STRICT — missing handlers refuse without spending':'LEGACY FALLBACK — generic tracked placeholders allowed'}`; weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Initiative:</strong> ${rules.initiativeMode==='PHASED'?'PHASE-BASED':'RC RAW S
+line 6354: {harmed.length?`; deprivation damage ${harmed.join(', ')}`:''}.`); if(supplied<needed) write(`DAILY RATIONS — ${provisionText}.${survivalText}${sanctuaryText} Deprivation damage: ${harmed.join('; ')}.`,'error'); else if(lodging&&needed) write(`Daily rations are supplied by Batari’s paid room and board; packed expedition provisions remain untouched.${survivalText}${sanctuaryText}`,'system'); 
+line 9747: ;hazard.contacts.push({pcName:pc.name,squareIndex:square.index,atAbsoluteMinute:absoluteCampaignMinute(),automaticHold:true,separateAttackRoll:false,separateSave:false,contactDamage:0});refreshDmr2GrabGrassPendingHazard(hazard); if(announce)write(`${pc.name} moves into or through Grab Grass square ${square.index} and is held. The source supplies no separate contact attack roll, saving throw, or dam
+
+=== Attack / Damage: 0 occurrences ===
+
+=== getMonster: 219 occurrences ===
+line 18036: ter','hold monster','geas','dance','power word kill','power word stun','power word blind']); function resolveReflecterSpellReflection(caster,spell,{order={},combat=false,targetMonster=null}={}){ if(!combat||order?._reflecterReflected)return null;const query=String(order?.targetQuery||order?.targetSelection||order?.target||'').trim(),explicit=query?magicSubjectByName(query):null,reflecter=isReflec
+line 18037: rn null;const query=String(order?.targetQuery||order?.targetSelection||order?.target||'').trim(),explicit=query?magicSubjectByName(query):null,reflecter=isReflecterMonster(targetMonster)?targetMonster:(isReflecterMonster(explicit)?explicit:null);if(!reflecter)return null;if(reflecterWishIntent(spell,order))return null;const lower=String(spell||'').trim().toLowerCase(); if(reflecterSpellIsArea(spell
+line 18037: uery=String(order?.targetQuery||order?.targetSelection||order?.target||'').trim(),explicit=query?magicSubjectByName(query):null,reflecter=isReflecterMonster(targetMonster)?targetMonster:(isReflecterMonster(explicit)?explicit:null);if(!reflecter)return null;if(reflecterWishIntent(spell,order))return null;const lower=String(spell||'').trim().toLowerCase(); if(reflecterSpellIsArea(spell)&&lower!=='lig
+line 20160: onster.id;effect.mesmerMonsterName=monster.name;effect.mesmerOriginalSpell=spell;}return rows;} function resolveMesmerSpellReflection(caster,spell,{order={},combat=false,targetMonster=null}={}){ if(!combat||order?._mesmerReflected)return null;const query=String(order?.targetQuery||order?.targetSelection||order?.target||'').trim();if(!query)return null;const explicitSubject=magicSubjectByName(quer
+line 20161: ng(order?.targetQuery||order?.targetSelection||order?.target||'').trim();if(!query)return null;const explicitSubject=magicSubjectByName(query),mesmerTarget=isMesmerMonster(targetMonster)?targetMonster:(isMesmerMonster(explicitSubject)?explicitSubject:null);if(!mesmerTarget)return null;targetMonster=mesmerTarget;const rule=monsterMesmerRule(targetMonster),radius=Math.max(0,Number(rule?.spellReflection?.
+line 20161: tQuery||order?.targetSelection||order?.target||'').trim();if(!query)return null;const explicitSubject=magicSubjectByName(query),mesmerTarget=isMesmerMonster(targetMonster)?targetMonster:(isMesmerMonster(explicitSubject)?explicitSubject:null);if(!mesmerTarget)return null;targetMonster=mesmerTarget;const rule=monsterMesmerRule(targetMonster),radius=Math.max(0,Number(rule?.spellReflection?.radiusFt)||10),
+
+=== spawnMonster: 0 occurrences ===
+
+=== resolveMonster: 27 occurrences ===
+line 12546: ile.hd);profile.saveSpells=becmiSaveSpells(record.saveAs,profile.hd);} profile.automationReadiness=monsterAutomationReadiness(profile); return profile; } function resolveMonsterProfileForSpawn(profile,spawnOptions={}){ if(profile?.giantSnailTemplate)return resolveGiantSnailProfile(profile,spawnOptions); if(profile?.normalHumanAdapter)return resolveNormalHumanNpcAdapterProfile(profil
+line 16299: { const requestedType=type; type=monsterTypeKey(type)||type; const base=COMBAT_MONSTERS[type]; if(!base)throw new Error(`Unknown monster type: ${requestedType}`); const p=resolveMonsterProfileForSpawn(base,spawnOptions); if(p?.spawnConfigurationError)throw new Error(p.spawnConfigurationError); const hp=rollMonsterHp(p); const lore=monsterLoreForName(p?.name||type); const monster={id:`${type}-${
+line 17935: elDrain:0,chokeDamage:0};if(!hit.hit){if(announce)write(`${monster.name}'s mist extension misses ${target.name}.`,'system');return {ok:true,hit:false,event};} const drain=resolveMonsterEnergyDrainHit(monster,target,{energyDrainLevels:Math.max(1,Number(rule.touch?.energyDrainLevels)||1)});event.levelDrain=Number(drain?.levelsApplied)||0;if(target.dead||Number(target.hp)<=0){if(announce)write(`${mons
+line 18844: .'; return recordPendingMonsterTransformation(pc,{type:spec.energyDrainSpawn,source:monster?.name||'Energy Drain',timing:rise,dueAbsoluteMinute:due,note}); } function resolveMonsterEnergyDrainHit(monster,pc,spec){ const levels=Math.max(0,Math.floor(Number(spec?.energyDrainLevels)||0));if(!levels)return null; if(pc.dead||pc.hp<=0){energyDrainRiseRecord(monster,pc,spec);return {levelsAppl
+line 19088: rn {cleared:true}; } function paralysisAwareAttackRoll(attacker,target,kind='melee',extra=0,options={}){return attackRoll(attacker,target,kind,extra,options);} function resolveMonsterParalysisHit(monster,pc,spec={}){return spec.paralysisRule?applyMonsterParalysis(monster,pc,spec.paralysisRule,spec.name||'attack'):{applied:false};} function scamilleGiantStrengthActive(pc){ if(!pc)return fals
+line 19331: ber(w.originalStrength)||current};delete pc.roperWeakness;write(`${pc.name}'s three-turn Roper weakness ends; Strength returns to its prior value.`,'system');} } function resolveMonsterAppendageAttack(attacker,monster,partId,{victim=null}={}){ if(!attacker||!monster)return false;const part=monsterAppendagePart(monster,partId);if(!part||part.severed){write(`That appendage is not an active target
+
+=== monsterData: 0 occurrences ===
+
+=== monsterDb: 0 occurrences ===
+
+=== MONSTERS: 2235 occurrences ===
+line 870: Geas','Invisible Stalker','Lower Water','Move Earth','Projected Image','Reincarnation','Stone to Flesh','Wall of Iron','Weather Control'], 7:['Charm Plant','Create Normal Monsters','Delayed Blast Fire Ball','Lore','Magic Door','Mass Invisibility','Power Word Stun','Reverse Gravity','Statue','Summon Object','Sword','Teleport Any Object'], 8:['Clone','Create Magical Monsters','Dance','Explosive C
+line 871: Fire Ball','Lore','Magic Door','Mass Invisibility','Power Word Stun','Reverse Gravity','Statue','Summon Object','Sword','Teleport Any Object'], 8:['Clone','Create Magical Monsters','Dance','Explosive Cloud','Force Field','Mass Charm','Mind Barrier','Permanence','Polymorph Any Object','Power Word Blind','Symbol','Travel'], 9:['Contingency','Create Any Monster','Gate','Heal','Immunity','Maze','Me
+line 880: pel Evil','Insect Plague','Quest','Raise Dead','Truesight'], 6:['Aerial Servant','Animate Objects','Barrier','Create Normal Animals','Cureall','Find the Path','Speak with Monsters','Word of Recall'], 7:['Earthquake','Holy Word','Raise Dead Fully','Restore','Survival','Travel','Wish','Wizardry'] }; // Reversed spell names are first-class preparation/casting variants in RAW mode. // Clerics
+line 909: h',classes:['Magic-User','Elf'],level:6}, 'remove barrier':{name:'Remove Barrier',base:'Barrier',classes:['Cleric'],level:6}, 'babble':{name:'Babble',base:'Speak with Monsters',classes:['Cleric'],level:6}, 'magic lock':{name:'Magic Lock',base:'Magic Door',classes:['Magic-User','Elf'],level:7}, 'appear':{name:'Appear',base:'Mass Invisibility',classes:['Magic-User','Elf'],level:7}, 'o
+line 2082: tion:{name:'Lie Detection',type:'info_move',cost:50,mechanic:'artifact_lie_detection',rangeFeet:120,durationTurns:3,targetMode:'creature',sourceCategory:'B1'}, speak_with_monsters:{name:'Speak with Monsters',type:'info_move',cost:60,mechanic:'artifact_speak_with_monsters',rangeFeet:30,durationTurns:6,targetMode:'self',sourceCategory:'B1'}, tracking_90_anywhere:{name:'Tracking, 90% anywhere',typ
+line 2082: type:'info_move',cost:50,mechanic:'artifact_lie_detection',rangeFeet:120,durationTurns:3,targetMode:'creature',sourceCategory:'B1'}, speak_with_monsters:{name:'Speak with Monsters',type:'info_move',cost:60,mechanic:'artifact_speak_with_monsters',rangeFeet:30,durationTurns:6,targetMode:'self',sourceCategory:'B1'}, tracking_90_anywhere:{name:'Tracking, 90% anywhere',type:'info_move',cost:70,mecha
+
+=== MONSTER_DATA: 0 occurrences ===
+
+=== MONSTER: 14958 occurrences ===
+line 291: osure, encounters, rest, and provisions.</p> <p class="tiny">The contextual matrix is loaded only from the 52 workbook entries marked <strong>(RC)</strong>. Natural monster attacks remain Rules Cyclopedia damage. <strong>Weapon Audit</strong> records RAW and Matrix damage side-by-side while applying only the selected system. Matrix melee uses one shared Close/Normal/Far state per melee. After
+line 310:  Mode is full referee/testing transparency. It lets the referee answer any informational question and exposes loaded behind-the-screen state as well as hidden engine records: monster statistics, current HP, morale, saves, target logic, hidden exits/keyed data, encounter-distance procedure, initiative, attacks, and other referee-side decisions. It does not change the actual rules or rolls.</p> 
+line 867: d Person','Infravision','Invisibility, 10 ft Radius','Lightning Bolt','Protection from Evil, 10 ft Radius','Protection from Normal Missiles','Water Breathing'], 4:['Charm Monster','Confusion','Dimension Door','Growth of Plants','Hallucinatory Terrain','Ice Storm / Wall of Ice','Massmorph','Polymorph Others','Polymorph Self','Remove Curse','Wall of Fire','Wizard Eye'], 5:['Animate Dead','Cloudki
+line 868: thers','Polymorph Self','Remove Curse','Wall of Fire','Wizard Eye'], 5:['Animate Dead','Cloudkill','Conjure Elemental','Contact Outer Plane','Dissolve','Feeblemind','Hold Monster','Magic Jar','Pass-Wall','Telekinesis','Teleport','Wall of Stone'], 6:['Anti-Magic Shell','Death Spell','Disintegrate','Geas','Invisible Stalker','Lower Water','Move Earth','Projected Image','Reincarnation','Stone to F
+line 870: Geas','Invisible Stalker','Lower Water','Move Earth','Projected Image','Reincarnation','Stone to Flesh','Wall of Iron','Weather Control'], 7:['Charm Plant','Create Normal Monsters','Delayed Blast Fire Ball','Lore','Magic Door','Mass Invisibility','Power Word Stun','Reverse Gravity','Statue','Summon Object','Sword','Teleport Any Object'], 8:['Clone','Create Magical Monsters','Dance','Explosive C
+line 871: Fire Ball','Lore','Magic Door','Mass Invisibility','Power Word Stun','Reverse Gravity','Statue','Summon Object','Sword','Teleport Any Object'], 8:['Clone','Create Magical Monsters','Dance','Explosive Cloud','Force Field','Mass Charm','Mind Barrier','Permanence','Polymorph Any Object','Power Word Blind','Symbol','Travel'], 9:['Contingency','Create Any Monster','Gate','Heal','Immunity','Maze','Me
+
+=== monsterAttack: 80 occurrences ===
+line 20641: bite ${target.name} yet.`;if(announce)write(reason,'system');return {ok:false,needsClose:true,reason};}monster.xytarResolvingBite=true;const hpBefore=Number(target.hp)||0;try{monsterAttack(monster,target,true,false);}finally{delete monster.xytarResolvingBite;}row.lastActionRound=Number(state.combat?.round)||1;row.lastAction='bite';return {ok:true,action:'bite',damage:Math.max(0,hpBefore-(Number(target.
+line 20875: ssful ${rule.appliesTo||'attack'} damage by ${multiplier} (${base} → ${resolved}).`,'system'); return {damage:resolved,applied:true,multiplier,base,rule}; } function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){ if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return; if(isMesmerMonster(monster))cle
+line 25445: ration>specialReach){ recordMeleeAttempt(m.name,pc.name,separation,false,'monster'); continue; } recordMeleeAttempt(m.name,pc.name,separation,true,'monster'); monsterAttack(m,pc,eligible,Boolean(eligibleIds)); } } } function moralePhase(side){ if(!sideIsPc(side)) monsterMoralePhase(); } function decrementCombatEffects(){ advanceAquaticCombatRound();processMag
+line 28425: Spells and is charmed.`};} function artifactCharmPersonAttack(rec,actor,power,subject){return artifactApplyCharm(rec,actor,power,subject,'person');} function artifactCharmMonsterAttack(rec,actor,power,subjects){const list=[...new Map((subjects||[]).map(s=>[artifactSubjectKey(s),s])).values()];if(list.length>1&&list.some(s=>artifactSubjectHitDice(s)>3))return {ok:false,summary:'Charm Monster can aff
+line 28799: anic==='artifact_confusion')return artifactConfusionAttack(rec,actor,power,subjects||[subject],{combat}); if(power.mechanic==='artifact_charm_monster')return artifactCharmMonsterAttack(rec,actor,power,subjects||[subject]); if(power.mechanic==='artifact_calm_others')return artifactCalmOthersAttack(rec,actor,power,subjects||[subject]); if(power.mechanic==='artifact_control_plants')return arti
+line 31960:  function harnessInstallArtifactPoisonOnsetFixture324(type='medusa'){ const f=harnessInstallDelayedPoisonOnsetFixture308(type);archiveCombatEncounterRoster(state.combat);monsterAttack(f.monster,f.subject);const rec=createArtifactRecord({id:'current_onset_relic',name:'Current Onset Relic',magnitude:'major',powerLevel:300});addArtifactTablePower(rec,'neutralize_poison');possessArtifact(rec,f.caster)
+
+=== catalogue: 736 occurrences ===
+line 7164: quency, surprise, distance, reaction, // or an automatic rule for choosing River/Lake terrain. Source labels are // retained verbatim; aliases are runtime-only bridges to catalogue names. const DMR2_RIVER_LAKE_WILDERNESS_ENCOUNTERS=[ [1,4,'Catfish, Giant','1d2'],[5,11,'Cay-Man','10d6'],[12,16,'Crab, Giant','1d6'],[17,23,'Crocodile','1d8'],[24,26,'Decapus (Marine)','1'],[27,30,'Eel, Giant','1d
+line 7445: iredRows:unresolved.filter(x=>x.resolution.status==='variant_required'),variantIncompleteRows:unresolved.filter(x=>x.resolution.status==='variant_incomplete'),issues,canonicalCatalogueCount:Object.keys(MONSTER_CATALOG_INDEX).length,supplementalProfileCount:Object.keys(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).length,runtimeCount:Object.keys(COMBAT_MONSTERS).length,kaiBesilOverride:false,automaticEncounterCa
+line 7449: erved: ${st.unresolvedRows.length} (${st.variantRequiredRows.length} variant-required, ${st.variantIncompleteRows.length} variant-incomplete).\n${lines.join('\n')}\nCanonical catalogue remains ${st.canonicalCatalogueCount}; supplemental layer ${st.supplementalProfileCount}; runtime total ${st.runtimeCount}. Kai Besil override: no. Automatic DMR2 encounter cadence: no.${st.issues.length?`\nIssues: ${st.
+line 7449: h} (${st.variantRequiredRows.length} variant-required, ${st.variantIncompleteRows.length} variant-incomplete).\n${lines.join('\n')}\nCanonical catalogue remains ${st.canonicalCatalogueCount}; supplemental layer ${st.supplementalProfileCount}; runtime total ${st.runtimeCount}. Kai Besil override: no. Automatic DMR2 encounter cadence: no.${st.issues.length?`\nIssues: ${st.issues.map(x=>`${x.routeId}: ${x
+line 7696: ounded,unexpectedUnresolvedRows:unexpectedUnresolved.length,tableSummaries,rows,issues,automaticEncounterCadence:false,kaiBesilOverride:false,autoSelectVariant:false,canonicalCatalogueCount:Object.keys(MONSTER_CATALOG_INDEX).length,supplementalProfileCount:Object.keys(SUPPLEMENTAL_SOURCE_COMBAT_MONSTERS).length,runtimeCount:Object.keys(COMBAT_MONSTERS).length}; } function developerDmr2WildernessCon
+line 7700: tes checked: ${st.variantRequiredCandidateCount}. Auto-select variant: no. Automatic DMR2 cadence: no. Kai Besil override: no.\n${tableLines}\nRuntime layering: ${st.canonicalCatalogueCount} canonical + ${st.supplementalProfileCount} supplemental + ${st.runtimeCount-st.canonicalCatalogueCount-st.supplementalProfileCount} module extensions = ${st.runtimeCount}.${st.issues.length?`\nIssues: ${st.issues.m
+
+=== catalog: 1638 occurrences ===
+line 4165: Hex?.q),Number(stronghold.locationHex?.r))?.terrain; return Boolean(stronghold.settledSite||['road','clear','plains','hills'].includes(terrain)); } function strongholdCatalog(){ const components=Object.entries(STRONGHOLD_COMPONENTS).map(([id,c])=>`${id}: ${c.label}, ${c.costGp.toLocaleString()} gp${c.timberAnalogueOf?' (20% timber analogue price)':c.material==='stone'?' (published stone pri
+line 4214: le a fortification plan is still uncommitted.','warning'); return false; } const id=resolveStrongholdComponent(text); if(!id){ write('Name a component from “fortification catalog”.','warning'); return false; } const qty=Math.max(1,Number(/\b(\d+)\b/.exec(String(text))?.[1])||1),next=Math.max(0,(Number(s.components[id])||0)+sign*qty); if(next) s.components[id]=next; else delete s.components[
+line 4418: Hex.r); } function strongholdStatus(){ const d=ensureDomainState(),s=d.stronghold; if(s.status==='none'){ write('No fortification has been planned. Use “fortification catalog”, then “plan timber keep for <character>”, “plan timber barbican for <character>”, or a traditional design bundle. Any living adventurer may commission the physical base; Name-level stronghold authority is separate.'); ret
+line 6687: ILDERNESS_SUPPLEMENTAL_ROUTE_MAP[`${entry.table}|${entry.monster}`]; if(!route)return null; const profile=COMBAT_MONSTERS?.[route.key]||null; if(!profile||profile.catalogAuthority!=='supplemental-source-profile'||profile.recordId!==route.recordId){ return {status:'supplemental_unavailable',key:null,candidates:[],routeKind:'supplemental_source_profile',sourceGapRecordId:route.recordId,
+line 6702: ,[96,96,'Thunderhead','1d3'],[97,98,'Werebat','1d8'],[99,100,'Wyvern','1d6'] ].map(([min,max,monster,number])=>({min,max,monster,number,table:'aerial',source:'DMR2 Creature Catalog',sourcePage:118,pdfPage:119})); const DMR2_AERIAL_RUNTIME_ALIASES={ 'Aerial Servant':'aerial_servant_haoou', 'Airdrake':'drake_airdrake', 'Bat':'bat_normal', 'Blackball':'blackball_deadly_sphere', 'Dj
+line 6743: aring(entry.number,countRoller),runtime=dmr2AerialRuntimeResolution(entry);return {ok:number.ok,table:'aerial',roll:d100,entry:{...entry},number,runtime,source:'DMR2 Creature Catalog',sourcePage:118,pdfPage:119,automaticEncounterCheck:false}; } function dmr2AerialEncounterIntegrationStatus(){ const covered=[];for(const row of DMR2_AERIAL_WILDERNESS_ENCOUNTERS)for(let n=row.min;n<=row.max;n++)co
+
+=== profileSource: 0 occurrences ===
+
+=== profileConfidence: 0 occurrences ===
+
+=== attackContext: 0 occurrences ===
+
+=== rawDamage: 101 occurrences ===
+line 725: ce":"Proposed","handlingRationale":"Thrown trident, RC 10/20/30","sources":"RC p.62; AAE v3.2","rosterExportRowIndex":48}]}); const RC_WEAPON_MATRIX = {"Axe, Battle (RC)":{"rawDamage":"1d8","size":"Medium-Large","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Rules Cyclopedia battle axe: a 3–5 ft two-handed chopping weapon; strong committed cuts without a strong Soft/Hard 
+line 725: close":"2d3","normal":"1d8","far":"2d4"}},"large":{"soft":{"close":"1d8","normal":"2d4","far":"1d10"},"hard":{"close":"1d8","normal":"2d4","far":"1d10"}}}},"Axe, Hand (RC)":{"rawDamage":"1d6","size":"Medium-Small","power":"Normal","consistency":0,"rangeProfile":"Size-Based","description":"Compact one-handed chopping axe; useful in melee and throwable.","matrix":{"small":{"soft":{"close":"1d8","normal":
+line 725: "close":"2d3","normal":"1d6","far":"2d2"}},"large":{"soft":{"close":"1d6","normal":"2d2","far":"1d4"},"hard":{"close":"1d6","normal":"2d2","far":"1d4"}}}},"Bow, Short (RC)":{"rawDamage":"1d6","size":"Medium","power":"Light","consistency":0.17,"rangeProfile":"Short-Slight","description":"Compact bow favoring mobility and exposed targets; modest performance against rigid protection.","matrix":{"small":{"
+line 725: {"close":"2d2","normal":"1d4","far":"1d3"}},"large":{"soft":{"close":"2d4","normal":"1d8","far":"2d3"},"hard":{"close":"2d2","normal":"1d4","far":"1d3"}}}},"Bow, Long (RC)":{"rawDamage":"1d6","size":"Large","power":"Light","consistency":0.33,"rangeProfile":"Long-Slight","description":"Longer bow with greater reach and repeatability; arrows remain Soft-target biased.","matrix":{"small":{"soft":{"close":
+line 725: rmal":"2d2","far":"1d4+1"}},"large":{"soft":{"close":"1d8+1","normal":"2d4+1","far":"1d8+2"},"hard":{"close":"1d4+1","normal":"2d3","far":"1d6+1"}}}},"Crossbow, Light (RC)":{"rawDamage":"1d6","size":"Medium-Large","power":"Normal-Heavy","consistency":0.5,"rangeProfile":"Long-Slight","description":"Mechanically launched bolt with good repeatability and meaningful performance against hard protection.","m
+line 725: al":"2d3+1","far":"1d6+2"}},"large":{"soft":{"close":"2d3","normal":"1d6+1","far":"2d3+1"},"hard":{"close":"2d3+1","normal":"1d6+2","far":"2d4+1"}}}},"Crossbow, Heavy (RC)":{"rawDamage":"2d4","size":"Large","power":"Heavy","consistency":0.67,"rangeProfile":"Long-Favored","description":"Heavy mechanically spanned crossbow; excellent rigid-target performance, offset in play by slow reloading.","matrix":{
+
+=== Creature Catalogue: 194 occurrences ===
+line 12089: ',afterOpening:'close_to_melee',meleeChoiceDie:6,meleeBreathMax:2,meleeBreathChance:'1-2 on 1d6',breathInsteadOfBite:true},source:'DMR2 Creature Catalog',secondarySource:'AC9 Creature Catalogue'}}, yowler:{meleeRangePreference:'close',attacks:[{name:'bite',damage:'2d4'}],moveModes:{ground:30,fly:90},yowlerTraits:{flight:{magical:true,groundEncounterFt:30,flyEncounterFt:90},baying:{audibleRangeFt:52
+line 12149: d:{specialAttack:'strangleweed_opposed',strangleweed:{reachFt:10,opposedDice:'4d6',baseAdd:4,damageCap:'weed_total',allyVictimHitChance:25,source:'DMR2 Creature Catalog / AC9 Creature Catalogue'}}, // v0.4.137 — Vampire Rose only. DMR2/AC9 give one thorn attack for 1d8; // after a successful hit the hollow thorn automatically drains 1d8 blood // per round. The injected hypnotic anaesthetic
+line 12157: sAttack:{ongoingDamage:'1d8',ongoingLabel:'blood drain',releaseOnMonsterDeath:true,releaseOnVictimDeath:true,lockAgainstVoluntaryFlee:true,source:'DMR2 Creature Catalog / AC9 Creature Catalogue'},vampireRose:{saveType:'spells',source:'DMR2 Creature Catalog / AC9 Creature Catalogue'}}, // v0.4.138 — Lava Ooze only. Mentzer Master gives three 15-foot // pseudopods, 4d6 impact damage, then one 3d
+line 12157: seOnVictimDeath:true,lockAgainstVoluntaryFlee:true,source:'DMR2 Creature Catalog / AC9 Creature Catalogue'},vampireRose:{saveType:'spells',source:'DMR2 Creature Catalog / AC9 Creature Catalogue'}}, // v0.4.138 — Lava Ooze only. Mentzer Master gives three 15-foot // pseudopods, 4d6 impact damage, then one 3d6 automatic heat packet per // round for a cumulative 1d4-round coating duration. Re
+line 12344: antDisintegration:true,requiresFullyOutOfSwamp:true,survivesIfAnyPartInSwamp:true}; traits.source='DMR2 Creature Catalog'; return base; })(); // Consolidated D&D creature catalogue. Rows are compact in the delivered // HTML, then expanded once at startup. DMR2 governs revised AC9 entries; // Rules Cyclopedia governs the core B/X/BECMI list. Module-specific Kai Besil // profiles below
+line 12352: r using heading “Spider, Planar”; the next printed page is available when the block crosses a page boundary."],["DMR-0001","Amber Lotus Flower","DMR2 Creature Catalog",8,"AC9 Creature Catalogue",50,"9","1/2 (1-4 hit points) (S)","S",null,null,null,null,null,null,null,null,null,null,"1 spray","Special","0 (3d6)","Normal Man","12","Nil","Neutral","Lowlife","Open, Woods, Jungle, Swamp","6","Monster Type: 
+
+=== DMR2: 9118 occurrences ===
+line 2400: e:0,records:{},history:[]}, artifactCreations:{sequence:0,records:{},history:[]}, pendingEncounter:null, specialEncounterHistory:[], wildernessHazards:[], dmr2ShipRosterContracts:[], knownPlaces:[], visiblePlaces:[], knownSettlementPlaces:{talamau:['talamau']}, locationState:{shipwreck:{searched:false,salvage:{rope:true,timber:true,canvas:true,containers:true}},talam
+line 6439: teCampaignMinute(); processHomunculusAbilityDrainClock(beforeAbsolute,afterAbsolute); processAgaratTemporaryEnergyDrainClock(beforeAbsolute,afterAbsolute); processDmr2GhostlyHordeRecoveryClock(beforeAbsolute,afterAbsolute); processVapourGhoulIntelligenceRecoveryClock(beforeAbsolute,afterAbsolute); processVapourGhoulMindParalysisClock(beforeAbsolute,afterAbsolute); for(const pc o
+line 6668: r*partyTravelConditionFactor()); return {minutes,cost:0,byRoad,bySea:false,temporaryTrail,loadFactor,conditionFactor:partyTravelConditionFactor()}; } // --- v0.4.216 DMR2 wilderness supplemental-route reconciliation ------- // The wilderness tables were implemented before the source-gap creature // ledger was complete. Keep the printed row labels and Number Appearing // expressions immut
+line 6674: mbiguous table rows to // their source-backed supplemental profiles. Variant/family rows remain // unresolved until the source or referee actually selects a form. const DMR2_WILDERNESS_SUPPLEMENTAL_ROUTE_MAP=Object.freeze({ 'ocean|Great Whale':Object.freeze({key:'great_whale',recordId:'RCX-WHALE-GREAT',reason:'Resolved to the source-distinct Rules Cyclopedia Great Whale supplemental profile.'
+line 6682: esolved to the Rules Cyclopedia Giant Snail wilderness variant: AC -2 shell, otherwise Giant Slug mechanics, and no slug squeeze-through-openings ability.'}) }); function dmr2SupplementalWildernessRouteResolution(entry){ if(!entry)return null; const route=DMR2_WILDERNESS_SUPPLEMENTAL_ROUTE_MAP[`${entry.table}|${entry.monster}`]; if(!route)return null; const profile=COMBAT_MONSTERS?.
+line 6684: Slug mechanics, and no slug squeeze-through-openings ability.'}) }); function dmr2SupplementalWildernessRouteResolution(entry){ if(!entry)return null; const route=DMR2_WILDERNESS_SUPPLEMENTAL_ROUTE_MAP[`${entry.table}|${entry.monster}`]; if(!route)return null; const profile=COMBAT_MONSTERS?.[route.key]||null; if(!profile||profile.catalogAuthority!=='supplemental-source-profile'|
+
+=== sourceRef: 15 occurrences ===
+line 8221: row.captainLink.status,indexedCaptainIds:[...row.captainLink.indexedCaptainIds]})),unassignedCaptainIds:captains.filter(row=>!Object.hasOwn(row,'shipIndex')).map(row=>row.id),sourceReferences:[{book:'Mentzer Expert',page:26,pdfPage:149},{book:'Mentzer Expert',page:42,pdfPage:165},{book:'Mentzer Expert',page:43,pdfPage:166}],navigatorContext:'The source seaman/navigator descriptions distinguish coastal 
+line 9180: (id)?.combat.data:profileById.get(id)?.data,hp=Number.isSafeInteger(data?.hp)&&data.hp>=0?data.hp:null; return {id:member.id,origin:member.origin,hullId:member.hullId,sourceReference:{kind,id},originalHp:hp,originalHpKnown:hp!==null,originalHpPositive:hp===null?null:hp>0,statsCopiedToActor:false,hpInferredFromMaximum:false,actualLivingOrAvailabilityConfirmed:false}; }),missingHpMemberIds=
+line 9186: w.hullDisabledByZero?'; parent hull disabled by zero hull points':''}.\nOriginal HP references: ${row.memberHpReferences.map(member=>`${member.id} (${member.origin}; ${member.sourceReference.kind} ${member.sourceReference.id}): HP ${member.originalHp??'unresolved'}`).join('; ')||'none supplied'}.`).join('\n')}`:''}\nHP comes only from each referenced original person/profile declaration. Omitted HP stay
+line 9186: hull disabled by zero hull points':''}.\nOriginal HP references: ${row.memberHpReferences.map(member=>`${member.id} (${member.origin}; ${member.sourceReference.kind} ${member.sourceReference.id}): HP ${member.originalHp??'unresolved'}`).join('; ')||'none supplied'}.`).join('\n')}`:''}\nHP comes only from each referenced original person/profile declaration. Omitted HP stays unknown even when a maximum i
+line 9203: `);knownUnresolvedAvailabilityMemberCount++;} data.members.push(value);memberReferences.push({id,origin:member.origin,hullId:member.hullId,roles:[...member.roles],sourceReference:member.existingReference?{...member.existingReference}:{kind:'other_operator_profile',id},declaredAvailable,availabilitySupplied:declaredAvailable!==null,personStatsCopied:false,actualLivingOrAvailabilityConfirmed:
+line 9224: Evidence=declaredAvailable===false?false:declaredAvailable===true&&originalHp!==null?originalHp>0:null; return {id:member.id,origin:member.origin,hullId:member.hullId,sourceReference:member.existingReference?{...member.existingReference}:{kind:'other_operator_profile',id:member.id},declaredAvailable,originalHp,availablePositiveHpEvidence,excludedByExplicitUnavailable:declaredAvailable===false,u
+
+=== Attack / Damage: 0 occurrences ===
+
+=== DECLARATIONS MATCHING MONSTER/CREATURE/ATTACK IN NAME ===
+3869: function avengerMonsterHirelingRows(pc,{activeOnly=true}={}){
+3873: function avengerMonsterHirelingCap(pc){return charismaProfile(Number(pc?.abilities?.cha)||10).maxRetainers;}
+3874: function avengerMonsterAlignment(monster){
+3878: function avengerMonsterHirelingSnapshot(monster){
+3890: function endAvengerMonsterHireling(pc,row,reason='The temporary Avenger monster-hireling effect ended.'){
+3895: function endAllAvengerMonsterHirelings(pc,reason){for(const row of avengerMonsterHirelingRows(pc))endAvengerMonsterHireling(pc,row,reason);}
+3896: function persuadeAvengerMonsterHireling(pc,monster,{method='food'}={}){
+3907: const creature=avengerMonsterHirelingSnapshot(monster),interval=rawCharmResaveIntervalMinutes(creature),now=absoluteCampaignMinute(),row={id:`avenger-hire-${e.monsterHirelingSequen
+3911: function avengerMonsterHirelingDangerSave(pc,query){
+3915: function loseAvengerMonsterHireling(pc,query,reason='lost from service'){
+5307: function mapMonsterToken(m){
+5313: function normalizeMonsterGroupKey(value){
+5317: function monsterGroupRecords(){
+5323: function monsterGroupMembers(group,{presentOnly=true,combatCapableOnly=false}={}){
+5336: function defineMonsterGroup(name,members,{role='melee',createdBy='referee',formation=true,sideId='foes',sideName=null}={}){
+5340: const monsters=(Array.isArray(members)?members:[]).filter(m=>m&&state.combat.monsters.includes(m));
+5369: function monsterInitiativeSideId(monster){
+5377: function monsterSideMembers(sideId,{combatCapableOnly=true}={}){
+5449: const monsters=livingHostiles().slice(); pools=[monsters.filter((_,i)=>i%2===0),monsters.filter((_,i)=>i%2===1)]; defenders=livingParty();
+5459: const attackerCount=pools[0].length+pools[1].length,defenderCount=Math.max(1,defenders.length);
+5477: function maybeMonsterSurround(){
+5504: function monsterDefaultTacticalRole(monster){
+5513: function pluralMonsterName(monsters){
+5521: function ensureMonsterTacticalGroups(){
+5606: function compressedMeleeMonsterLabels(monsterIds){
+7546: const monster=state.combat?.monsters?.[0];if(!monster||monster.type!=='strangle_vine'||!setStrangleVineFootprint(monster,footprint,{announce:false})){state.combat=null;return {hand
+9881: const attack=attackRoll(soldier,pc,'melee');
+9900: function attackDmr2GhostlySoldier(pcOrName,{battlefieldId=null,announce=true}={}){
+10156: function prepareKaiMonsterEncounter(entry,count){
+10211: function attackPendingEncounter(){
+10735: const monsters=[]; for(let i=1;i<=15;i++) monsters.push(createCombatMonster('pirate',i)); monsters.push(createCombatMonster('captain_harshaw',1));
+11195: function demihumanAttackRank(member){
+11201: function nextDemihumanAttackRank(member){const rows=DEMIHUMAN_ATTACK_RANK_THRESHOLDS[member?.className]||[],xp=Math.max(0,Number(member?.xp)||0);return rows.find(([,threshold])=>th
+11202: function demihumanAttackThac0(member){
+12356: function normalizeMonsterLoreText(value){
+12360: function monsterLoreNameKeys(value){
+12374: function monsterLoreForName(value){
+12385: function monsterLoreForSubject(subject){
+12391: function monsterLoreMatches(query){
+12397: function clipMonsterLore(value,max=1400){
+12408: function canonicalMonsterKey(name){
+12452: function monsterSaveTarget(monster,type){
+12489: function canonicalAttacks(record){
+12490: const rawAttacks=String(record.attacks||'attack').split(/;|\bor\b/i)[0];
+12504: function monsterAutomationReadiness(profile){
+12509: const attacks=Array.isArray(profile.attacks)?profile.attacks:[];
+12546: function resolveMonsterProfileForSpawn(profile,spawnOptions={}){
+12582: function becmiMonsterXpByHdStars(hd,stars=0){const row=RC_MONSTER_XP_BY_HD[Math.max(1,Math.floor(Number(hd)||0))];return row?row[0]+Math.max(0,Math.floor(Number(stars)||0))*row[1]:
+13678: function dmr2CreatureIndexPage123Key(entryOrName,indexRef=null){const name=typeof entryOrName==='object'?entryOrName?.name:entryOrName,ref=typeof entryOrName==='object'?entryOrName
+13679: function dmr2CreatureIndexReferenceSource(indexRef){const raw=String(indexRef||'').trim();if(/^\d+$/.test(raw))return Number(raw)<=117?'DMR2 Creature Catalog':'Rules Cyclopedia';re
+13680: function dmr2CreatureIndexTokenSignature(value){return normalizeMonsterLoreText(value).split(' ').filter(Boolean).sort().join(' ');}
+13681: function dmr2CreatureIndexPage123DirectRecordIds(name){const normalized=normalizeMonsterLoreText(name),records=Object.values(MONSTER_CATALOG_INDEX),exact=records.filter(record=>nor
+13682: function dmr2CreatureIndexPage123Resolution(entryOrName,indexRef=null){
+13694: function dmr2CreatureIndexPage123Status(){
+13700: function developerDmr2CreatureIndexPage123(match){
+13961: function dmr2CreatureIndexPage124Key(entryOrName,indexRef=null){const name=typeof entryOrName==='object'?entryOrName?.name:entryOrName,ref=typeof entryOrName==='object'?entryOrName
+13962: function dmr2CreatureIndexPage124DirectRecordIds(name){const normalized=normalizeMonsterLoreText(name),records=Object.values(MONSTER_CATALOG_INDEX),exact=records.filter(record=>nor
+13963: function dmr2CreatureIndexPage124Resolution(entryOrName,indexRef=null){
+13975: function dmr2CreatureIndexPage124Status(){
+13981: function developerDmr2CreatureIndexPage124(match){
+14227: function dmr2CreatureIndexPage125Key(entryOrName,indexRef=null){const name=typeof entryOrName==='object'?entryOrName?.name:entryOrName,ref=typeof entryOrName==='object'?entryOrName
+14228: function dmr2CreatureIndexPage125DirectRecordIds(name){const normalized=normalizeMonsterLoreText(name),records=Object.values(MONSTER_CATALOG_INDEX),exact=records.filter(record=>nor
+14229: function dmr2CreatureIndexPage125Resolution(entryOrName,indexRef=null){
+14241: function dmr2CreatureIndexPage125Status(){
+14247: function developerDmr2CreatureIndexPage125(match){
+14509: function dmr2CreatureIndexPage126Key(entryOrName,indexRef=null){const name=typeof entryOrName==='object'?entryOrName?.name:entryOrName,ref=typeof entryOrName==='object'?entryOrName
+14510: function dmr2CreatureIndexPage126DirectRecordIds(name){const normalized=normalizeMonsterLoreText(name),records=Object.values(MONSTER_CATALOG_INDEX),exact=records.filter(record=>nor
+14511: function dmr2CreatureIndexPage126Resolution(entryOrName,indexRef=null){
+14523: function dmr2CreatureIndexPage126Status(){
+14529: function developerDmr2CreatureIndexPage126(match){
+14733: function dmr2CreatureIndexPage127Key(entryOrName,indexRef=null){const name=typeof entryOrName==='object'?entryOrName?.name:entryOrName,ref=typeof entryOrName==='object'?entryOrName
+14734: function dmr2CreatureIndexPage127DirectRecordIds(name){const normalized=normalizeMonsterLoreText(name),records=Object.values(MONSTER_CATALOG_INDEX),exact=records.filter(record=>nor
+14735: function dmr2CreatureIndexPage127Resolution(entryOrName,indexRef=null){
+14747: function dmr2CreatureIndexPage127Status(){
+14753: function developerDmr2CreatureIndexPage127(match){
+14801: function dmr2SourceAvailableCreatureGapEvidence(){
+14806: function supplementalSourceCreatureClosureStatus(){
+14828: function dmr2RcCreatureGapLedgerStatus(){
+14837: function dmr2RcCreatureGapResolution(query){
+14841: function developerDmr2CreatureGapLedger(match){
+14884: function inferredMonsterLoadout(profile){
+14904: function applyMonsterInstanceLoadout(monster,profile){
+15258: function masteryCannotAttack(actor){ return Boolean(rawDanceEffect(actor)||actor?.rawSymbolInsane||mesmerPatternActionLocked(actor))||masteryHardDisabled(actor)||artifactAnyGaseous
+15261: function masteryAttackCount(actor,count=1){
+15495: function masteryDespairAttackerKey(attacker){return attacker?.type?`monster:${attacker.id||attacker.name}`:`pc:${String(attacker?.name||'unknown').toLowerCase()}`;}
+15616: function monsterMasteryCap(monster){const i=Number(monster?.intelligence)||0;return i>=18?'master':i>=16?'expert':i>=12?'skilled':'basic';}
+15617: function monsterWeaponMasteryRank(monster){
+15624: function monsterWeaponMasteryAttackBonus(monster,target,item=monsterWeaponItem(monster)){
+15632: function shieldWeaponSecondAttackEligible(pc){
+15638: function tuskedShieldExtraAttackEligible(pc){
+15669: function pcShieldWeaponSecondaryAttack(pc,target,rangeBand='normal',phaseEligible=true,simultaneous=false){
+15822: function weaponMasteryAttackBonus(pc,target,item=equippedWeaponItem(pc)){
+15911: function fighterMultipleAttackCount(pc,target,kind='melee'){
+15941: function creatureSizeRank(entity){ const size=String(entity?.size||entity?.sizeProfile?.monster||'medium').toLowerCase(); return {tiny:0,small:1,medium:2,large:3,huge:4,giant:4,gar
+16023: function underwaterAttackPenalty(attacker,kind='melee',item=equippedWeaponItem(attacker)){
+16084: function monsterCanFight(m){ const attackCount=Math.max(1,Array.isArray(m?.attacks)?m.attacks.length:1),pins=Math.max(0,Number(m?.wrestlingPinCount)||0),whipweedFrenzy=Boolean(m?.s
+16085: function monsterStillPresent(m){ return m && !m.dead && !m.fled && Number(m.hp)>0; }
+16276: function rollMonsterHp(profile){
+16286: function monsterTypeKey(text){
+16298: function createCombatMonster(type,index,spawnOptions={}){
+16300: const monster={id:`${type}-${index}`,name:`${p.name}${type==='captain_harshaw'?'':` ${index}`}`,type,hp,maxHp:hp,ac:p.ac,hd:p.hd,move:p.move,thac0:p.thac0,morale:p.morale,intellige
+16348: function monsterAppearanceVariant(monster,index=1){
+16403: const monsters=[]; for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i));
+16450: const monsters=tribeBuild?tribeBuild.monsters:[]; if(!tribeBuild)for(let i=1;i<=count;i++) monsters.push(createCombatMonster(key,i,opts.spawnOptions||{}));
+16532: function combatMonsterVector(monster){
+16544: function setCombatMonsterVector(monster,value){
+16551: function combatMonsterPosition(monster){ return feetToCombatUnits(combatMonsterVector(monster).x); }
+16555: function setCombatMonsterPosition(monster,value){
+16676: const monsterIds=tokens.filter(t=>t.startsWith('m:')).map(t=>t.slice(2));
+16777: function monsterCarryOffRule(monster){return monster?.carryOff||(monster?.type?COMBAT_MONSTERS?.[monster.type]?.carryOff:null)||null;}
+16778: function monsterCarryVictims(monster){return (state.party||[]).filter(pc=>pc?.carriedBy?.monsterId===monster?.id);}
+16789: function monsterSwoopContext(monster,pc,attackName){
+16797: function establishMonsterCarry(monster,pc,rule,{attackName='',hitRoll=null}={}){
+16805: function syncMonsterCarryVictims(monster){if(!combatActive()||!monster)return;const v=combatMonsterVector(monster);for(const pc of monsterCarryVictims(monster))setCombatPcVector(pc
+16806: function releaseMonsterCarryVictim(monster,pc,{reason='released',fall=true,announce=true}={}){
+16812: function finalizeMonsterCarryOffDeparture(monster,{reason='carrier left the encounter'}={}){
+16822: function monsterBurrowRule(monster){return monster?.burrowMovement||(monster?.type?COMBAT_MONSTERS?.[monster.type]?.burrowMovement:null)||null;}
+16823: function ensureMonsterBurrowState(monster,{create=false}={}){
+16827: function monsterBurrowed(monster){return Boolean(ensureMonsterBurrowState(monster,{create:false})?.burrowed);}
+16828: function monsterBurrowUntargetable(monster){return Boolean(monsterBurrowed(monster)&&monsterStillPresent(monster));}
+16829: function enterMonsterBurrow(monster,{reason='subterranean movement',announce=true}={}){
+16834: function emergeMonsterFromBurrow(monster,{target=null,reason='emerges to attack',announce=true}={}){
+16843: function rollMonsterBurrowSurprise(monster,{existingD6=null}={}){
+16859: function monsterPhantomRule(monster){return monster?.phantom||(monster?.type?COMBAT_MONSTERS?.[monster.type]?.phantom:null)||null;}
+16860: function ensureMonsterPhantomState(monster,{create=false}={}){
+17035: function resolvePhantomOpeningAttack(monster,primaryPc){
+17101: function movePcTowardMonster(pc,monster){
+17115: function artifactLeapTowardMonster(pc,monster){
+17121: function moveMonsterTowardPc(monster,pc){
+17131: function monsterGroupRecordForMonster(monster){
+17137: function moveMonsterGroupTowardPc(monsters,orders,groupRecord=null){
+17176: function engagementsForMonster(monster){
+17181: function monsterHealthDescription(m){
+17195: function monsterProtectionDescription(m){
+17199: function combatMonsterLabel(m){
+17356: function findMonster(query,allowInactive=false){
+17421: function pcAttackIsDeferred(pc){ return Boolean(pc?.attackInitiativeDeferred||masteryDelayedThisRound(pc)||mentzerBastardInitiativeLoss(pc)); }
+17438: const attackScale=String(profile?.scale||item?.attackScale||'monster').toLowerCase();
+17461: function monsterPreferredMeleeRange(monster,target,currentRange='far'){
+17515: function monsterLargerThanManSized(monster){
+17532: function attackRoll(attacker,target,kind='melee',extra=0,options={}){
+17589: function queueMonsterMorale(reason,monsterId=null){
+17606: function monsterRegenerationRule(monster){
+17621: function monsterMoraleScore(monster,round=Number(state.combat?.round)||1){
+17645: function syncHydraHeadAttacks(monster){
+17687: function isLavaOozeMonster(subject){return Boolean(subject?.type&&lavaOozeRule(subject));}
+17688: function lavaOozeMindAttackSpell(spell){const name=String(spell||'').trim().toLowerCase();return /^(?:charm person|charm monster|mass charm|sleep|esp|feeblemind|confusion|cause fea
+17735: function isSporacleMonster(monster){return Boolean(monster&&(monster.specialAttack==='sporacle_tentacles'||monster.type==='sporacle'));}
+17813: const attacker=damageContext.attackerName?findPc(damageContext.attackerName):null;
+17824: function monsterOardRule(monster){return monster?.oardTraits||COMBAT_MONSTERS?.[monster?.type]?.oardTraits||null;}
+17825: function isOardMonster(monster){return Boolean(monster&&(monster.specialAttack==='oard_devices'||monster.type==='oard'||monster.recordId==='AC9X-OARD'));}
+17852: function resolveOardDeviceAttack(monster,primaryTarget,{device=null,refereeRangeApproved=false}={}){if(!isOardMonster(monster))return {ok:false,reason:'not an Oard'};const availabl
+17860: function monsterPhygoraxRule(monster){return monster?.phygoraxTraits||COMBAT_MONSTERS?.[monster?.type]?.phygoraxTraits||null;}
+17861: function isPhygoraxMonster(monster){return Boolean(monster&&(monster.specialAttack==='phygorax_lure'||monster.type==='phygorax'||monster.recordId==='AC9X-PHYGORAX'||monster.phygora
+17884: function monsterPossessionRule(monster){return monster?.possessionTraits||COMBAT_MONSTERS?.[monster?.type]?.possessionTraits||null;}
+17885: function isPossessionMonster(monster){return Boolean(monster&&(monster.specialAttack==='possession_host'||monster.type==='possession'||monster.recordId==='AC9X-POSSESSION'||monster
+17903: function resolvePossessionHostedAttack(monster,target,{announce=true}={}){const row=ensurePossessionState(monster,{create:false});if(!row||row.phase!=='hosted'||!row.host)return {o
+17910: function monsterSacrolRule(monster){return monster?.sacrolTraits||COMBAT_MONSTERS?.[monster?.type]?.sacrolTraits||null;}
+17911: function isSacrolMonster(monster){return Boolean(monster&&(monster.specialAttack==='sacrol_extensions'||monster.type==='sacrol'||monster.recordId==='AC9X-SACROL'||monster.sacrolTra
+17930: function resolveSacrolExtensionAttack(monster,target,{extensionIndex=null,announce=true}={}){
+17938: function resolveSacrolAttackTurn(monster,primaryTarget,{announce=true}={}){
+17941: const attacks=[];for(let i=0;i<targets.length&&i<free.length;i++)attacks.push(resolveSacrolExtensionAttack(monster,targets[i],{extensionIndex:free[i].index,announce}));return {ok:t
+17951: function monsterStalwartRule(monster){return monster?.stalwartTraits||COMBAT_MONSTERS?.[monster?.type]?.stalwartTraits||null;}
+17952: function isStalwartMonster(monster){return Boolean(monster&&(monster.type==='stalwart'||monster.recordId==='AC9X-STALWART'||monster.stalwartTraits));}
+17987: function monsterReflecterRule(monster){return monster?.reflecterTraits||COMBAT_MONSTERS?.[monster?.type]?.reflecterTraits||null;}
+17988: function isReflecterMonster(monster){return Boolean(monster&&(monster.specialAttack==='reflecter_bolt'||monster.type==='reflecter'||monster.recordId==='AC9X-REFLECTER'||monster.ref
+18049: const attack=attackRoll(monster,target,'missile',0,{magical:true,magicalMissile:true,monsterAbility:true});if(!attack.hit){const miss=reflecterBoltMissDirection(),hasMissOffset=mis
+18057: function isLevellerMonster(monster){return Boolean(monster&&(monster.specialAttack==='leveller_attack'||monster.type==='leveller'||monster.recordId==='AC9X-LEVELLER'));}
+18072: function monsterVapourGhoulRule(monster){return monster?.vapourGhoulTraits||COMBAT_MONSTERS?.[monster?.type]?.vapourGhoulTraits||null;}
+18073: function isVapourGhoulMonster(monster){return Boolean(monster&&(monster.specialAttack==='vapour_ghoul_touch'||monster.type==='vapour_ghoul'||monster.recordId==='AC9X-VAPOUR-GHOUL'|
+18141: function resolveGiantGastropodAttack(monster,pc,{announce=true}={}){
+18157: function damageMonster(monster,amount,source,damageContext={}){
+18235: function monsterMoralePhase(){
+18244: const fleeMonster=m=>{
+18351: function pcWeaponAttack(pc,monster,kind='melee',rangeBand='normal',phaseEligible=true,simultaneous=false){
+18408: const optionAttackPenalty=(order.action==='smash'?(artifactSmashAttackActive(pc)?-3:-5):order.action==='haymaker'?-5:0)+strangleVineCaughtPenalty;
+18412: const attackName=item?.name||'unarmed strike';
+18486: function isBasiliskGazeMonster(monster){
+18526: function rawBasiliskGazeAttackModifier(attacker,target,kind='melee'){
+18578: function isMedusaGazeMonster(monster){
