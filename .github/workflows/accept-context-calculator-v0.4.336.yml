@@ -1,0 +1,32 @@
+name: One-time v0.4.336 acceptance builder
+
+on:
+  push:
+    branches: ['work/v0.4.336']
+    paths:
+      - 'tools/accept-context-calculator-v0.4.336.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  accept:
+    if: github.event.head_commit.message == 'Prepare v0.4.336 acceptance metadata builder'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/accept-context-calculator-v0.4.336.mjs
+      - name: Commit and push accepted files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html validation/manifests/v0.4.336.json validation/context-matrix-mode.mjs audit.md pipeline-state.md validation/README.md
+          git diff --cached --check
+          git commit -m "Accept v0.4.336 pure Context Matrix calculator — exact version, manifest, audit and pipeline"
+          git push origin HEAD:refs/heads/work/v0.4.336
