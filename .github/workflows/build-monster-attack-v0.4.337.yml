@@ -1,0 +1,31 @@
+name: One-time v0.4.337 candidate builder
+
+on:
+  push:
+    branches: ['work/v0.4.337']
+    paths: ['tools/build-monster-attack-v0.4.337.mjs']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Prepare v0.4.337 monster metadata candidate builder'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tools/build-monster-attack-v0.4.337.mjs
+      - name: Commit bounded candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html data/monster-attack-context-v0.4.337.json validation/manifests/v0.4.337.json validation/context-matrix-mode.mjs validation/monster-attack-context.mjs .github/workflows/known-world-acceptance.yml pipeline-state.md validation/README.md
+          git diff --cached --check
+          git commit -m "Candidate v0.4.337 — conservative per-attack natural measures and metadata-only tests"
+          git push origin HEAD:refs/heads/work/v0.4.337
