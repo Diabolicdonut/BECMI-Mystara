@@ -2,7 +2,7 @@ name: One-time v0.4.338 source inspection
 on:
   push:
     branches: ['work/v0.4.338']
-    paths: ['.github/workflows/inspect-combat-v0.4.338.yml']
+    paths: ['.github/workflows/inspect-combat-v0.4.338.yml', 'tools/inspect-combat-v0.4.338.mjs']
 permissions:
   contents: write
 jobs:
@@ -21,9 +21,9 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          sed -i 's/[[:blank:]]*$//' validation/candidate-v0.4.338/source-inspection.md
-          sed -i '${/^$/d;}' validation/candidate-v0.4.338/source-inspection.md
-          git add validation/candidate-v0.4.338/source-inspection.md
+          find validation/candidate-v0.4.338 -type f -name '*.md' -exec sed -i 's/[[:blank:]]*$//' {} +
+          find validation/candidate-v0.4.338 -type f -name '*.md' -exec sed -i '${/^$/d;}' {} +
+          git add validation/candidate-v0.4.338/
           git diff --cached --check
           git commit -m "Record v0.4.338 scoped combat inspection"
           git push origin HEAD:refs/heads/work/v0.4.338
