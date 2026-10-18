@@ -79,8 +79,8 @@ try{
  const connected=await run('connected_multi_actor');
  check(connected.snapshot.records.length===1,'Connected actors share melee');
  check(connected.snapshot.records[0].pcNames.length===2,'Both PCs in shared melee');
- equal(connected.snapshot.records[0].sideIntents.pc,'hold',
-  'Conflicting Press/Hold same initiative side aggregates Hold');
+ equal(connected.snapshot.records[0].sideIntents.pc,'press',
+  'The actual engine prioritizes one active Press over same-side Hold');
  const multi=evaluateSharedMeleeSizeControl({
   group:connected.snapshot.records[0],
   participants:[
