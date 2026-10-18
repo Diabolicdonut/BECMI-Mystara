@@ -1,10 +1,24 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.337**  
+Build: **0.4.338**
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-16
 
+
+## v0.4.338 — Live Context Matrix weapon damage only (visual/spatial work deferred)
+
+**Qualifying candidate:** 134c7ddf3521cb5423edda21dc4cc5a81277566b, independently passed all ten required jobs in [Actions run 39082900442](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39082900442). Production HTML SHA-256 **b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33**. Core **2316/2316**, focused **1232/1232**, fresh Chromium **579/579 ×4**, native boot and supplemental contextual combat/save-reload browser tests green, Native Acceptance v2 **508/508 on the immutable v0.4.333 reference and 508/508 on the v0.4.338 candidate**, required ordered coverage and once-only isolation passed. Zero reported page/console/network errors. The acceptance-metadata commit and later merged main must each separately pass their exact-SHA CI before publication is finally verified.
+
+**Exact live damage contract:** CONTEXT_MATRIX weapon damage uses the single byte-equivalent embedded v0.4.336 verified pure deterministic calculator. On successful eligible ordinary weapon hits, actual existing BECMI weapon dice and applicable RAW bonuses, mastery, charge, backstab and other extant effects are preserved. The context signed modifier is added exactly once after the existing weapon-damage pipeline, with the existing 0 floor unchanged. No new 1-point successful-hit minimum is asserted; that rule remains explicitly unresolved. Calculator calibration retains Excel-style rounding, six weapon range profiles and the −3…+3 cap; 46 canonical weapons and 36 verified workbook reference conditions remain established.
+
+**Authoritative contextual inputs and fail-neutral:** actual target Size and physical Protection require a source-verified resolved canonical monster record or an explicit encounter/actor override; dynamic Size is honored on resolved profiles. Physical Protection is never inferred from AC, HD, supernatural immunity or saving throws. Melee Measure uses the authoritative engagement state. Ordinary canonical missile weapons use the existing resolved shot range band only when the actual physical combat distance is known. Space must be explicitly established by combat/encounter state; contact alone never implies Restricted. Missing Size, physical Protection, Measure, Space or weapon profile returns neutral, not a guess. No invented double-penalty.
+
+**Absolute natural attack isolation:** all published animal/anatomical/supernatural attack damage is left untouched. Bite/claw/fist/horn/tail/constriction/slam/engulf/breath/gaze/poison/natural projectiles, nonnumeric Special and sources with their own rules never pass through the contextual weapon path. The previously accepted 19 monster profiles and 41 per-attack preferred Measure facts remain metadata-only; 1151 unresolved attacks remain unresolved, all 628 runtime monster profiles preserved. A monster carrying and actually wielding an explicitly canonical normal weapon is eligible, via the same calculator as a PC. RAW and AAE modes retain their previous damage/RNG behavior.
+
+**Deterministic trace and persistence:** eligible/context-neutral Context Matrix weapon attacks record weapon and rolled expression, base roll, RAW-adjusted damage, physical target Size/Protection with source, true Measure, explicit Space, eligibility/reason, signed modifier, final result and active mode. Real browser tests checked positive +3 and negative −3 live PC weapon hits, ordinary missile eligibility, armed monster hit, natural attack exclusion, RAW/AAE isolation, context unknowns, AC/immunity independence and real mode/Space save-reload. No SVG, local geometry, tokens, fog, maps or Smoking Pillar content conversion was included.
+
+**Next checkpoint:** v0.4.339 — persistent authoritative local-scene coordinate/state foundation, strictly separate from presentation and player map knowledge/belief/perception. Then formal Party vs Individual Scale, formation, scene geometry, monochrome SVG, counters, viewport, continuous combat overlay, visibility/LOS/fog and interface. Only afterward The Smoking Pillar of Lan Yu / Kai Besil may test the entire vertical slice. Ordinary Cureall/parser source closure remains separate.
 
 ## v0.4.337 — Per-attack natural-attack preferred measures, schema/data only
 

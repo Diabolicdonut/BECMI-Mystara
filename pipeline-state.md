@@ -1,8 +1,8 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.337**. Newly accepted checkpoints in this Chat continuation: **3**.
-Current candidate: **work/v0.4.338 — NOT ACCEPTED**. Live Context Matrix weapon integration awaits required CI; authoritative main is still v0.4.337.
-Exact next checkpoint: **v0.4.338 — live Context Matrix weapon-damage integration** (candidate, NOT ACCEPTED).
+Current accepted build: **v0.4.338**. Newly accepted checkpoints in this Chat continuation: **4**.
+Current candidate: **none**. v0.4.338 source-pinned Context Matrix live weapon candidate qualified and accepted; main merge/CI verification remains required.
+Exact next checkpoint: **v0.4.339 — persistent authoritative local-scene coordinate/state foundation only** (not started).
 
 ## Authoritative ledger
 
@@ -15,7 +15,7 @@ promotion. Inspect main, active work branches, commits and Actions after a freez
 
 ## Accepted game and validation
 
-**v0.4.338 candidate (NOT ACCEPTED):** verified v0.4.336 pure calculator embedded in production; explicit eligible weapon hits get signed +/−3 adjustment after existing BECMI effects, natural attacks excluded, unresolved spatial/physical facts neutral; no RAW/AAE changes or invented minimum-one floor. Candidate production SHA-256 b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33. Full required CI and acceptance metadata pending. Ordinary canonical missile hits may also use their actual range-band Measure if live distance is known; no range or Space means neutral. Graphics deferred.
+**v0.4.338 ACCEPTED (pending main verification):** qualified candidate 134c7ddf3521cb5423edda21dc4cc5a81277566b, green [required Actions 39082900442](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39082900442) with all ten jobs. Production SHA-256 b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33. Core 2316/2316, focused 1232/1232, Chromium 579/579 x4, Native Acceptance v2 508/508 both immutable reference and candidate. Verified live PC ±3, armed monster, missile hit, RAW/AAE isolation, unchanged natural damage and source-specific attacks, unknown fail-neutral, serialized context, true browser reload. No new minimum-one floor. No graphics. Acceptance metadata and main both separately need green CI.
 
 
 **v0.4.337 ACCEPTED:** 19 source-verified canonical profiles; 41 actual individual natural attacks enriched with a Close preference, 1151 other attacks left unresolved; 628 total runtime profiles. All damage remains published RAW; no live Context Matrix calculation. Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f qualified by all ten required successful jobs, https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39056696281. Core 2316/2316, focused 1232/1232, Chromium 579/579 x 4, native v2 508/508 on both reference and candidate. Exact production SHA-256 eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b. Acceptance metadata and main each must also pass their own exact SHA CI.
@@ -25,7 +25,7 @@ promotion. Inspect main, active work branches, commits and Actions after a freez
 
 **Binding monster-attack rule:** preferred Measure belongs to each attack for positioning/availability/AI, NEVER published natural attack damage. Natural/breath/projectile/special attacks are ineligible for Context Matrix; armed monster weapon attacks are eligible. No inferred Protection from AC/immunity, target Size from provisional rows or restricted Space from adjacency. See design/context-matrix/MONSTER-ATTACK-MEASURE-CONTRACT.md.
 
-**Next:** v0.4.338 live Context Matrix weapon-damage integration only after user continuation. Natural attacks retain RAW damage.
+**Next:** v0.4.339 authoritative persistent local-scene coordinates/state, no SVG or Smoking Pillar conversion yet. Natural attacks retain RAW damage.
 
 
 **v0.4.335 accepted**: candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020`, qualifying [Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097), ten required jobs green. Production SHA-256 `76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5`. **2316/2316 core; 1232/1232 focused; Chromium 579/579 ×4; ordered once-only coverage, campaign isolation, syntax, exact-production boot, native command/save-reload and supplemental Context Matrix selection/persistence checks; zero page/runtime/console errors.** Native Acceptance v2: 33 scenarios, **508/508** accepted v0.4.333 and **508/508** v0.4.335. Historical 523-runner not recovered/rerun; that historical result is not the current test count. Exact acceptance metadata commit and merged main must each be green; do not infer success from candidate CI.
@@ -78,7 +78,8 @@ architecture remains deferred. No graphical work is authorized in this run.
 1. **v0.4.335 ACCEPTED:** 46 canonical Context Matrix weapon profiles and calibration, RAW/CONTEXT_MATRIX/AAE mode architecture and unchanged combat. This session stops after this one checkpoint; accepted main and green Actions remain authoritative.
 2. **v0.4.336 ACCEPTED:** independently tested pure calculator with all workbook cases, no live damage, natural attacks excluded.
 3. **v0.4.337 ACCEPTED:** 41 source-verified attacks across 19 canonical profiles; 1151 other attack measures unknown; damage/AI/legal movement unchanged.
-4. **v0.4.338 NEXT (not started):** live Context Matrix damage on eligible explicit weapon hits only, with natural attacks excluded. Requires user continuation.
+4. **v0.4.338 ACCEPTED:** live contextual damage on eligible canonical melee/missile weapons only. Natural attacks, RAW and AAE preserved.
+5. **v0.4.339 NEXT (not started):** persistent local-scene authoritative physical coordinates, separate from player map knowledge, belief, perception and presentation; no graphics in the preceding v0.4.338 checkpoint.
 
 The ordinary multi-condition Cureall wounds-default fallback and parser closure
 remain separate BECM dependencies. Each checkpoint follows accepted main →

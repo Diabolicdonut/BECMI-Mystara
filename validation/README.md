@@ -173,3 +173,7 @@ Candidate v0.4.338: required acceptance was requested after the source-pinned pr
 Candidate v0.4.338 additional bounded verification: actual ranged weapon band (not guessed from melee), live PC negative modifier hit, real browser save/reload of explicit combat Space; missing missile band/Space remains neutral.
 
 Extended candidate v0.4.338: qualifying complete required CI explicitly requested after verified missile-range integration and the real reload test were committed.
+
+## v0.4.338 accepted metadata — live eligible weapon damage
+
+Qualified candidate 134c7ddf3521cb5423edda21dc4cc5a81277566b passed all ten required checks on https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39082900442. Core 2316/2316, focused 1232/1232, Chromium 579/579 x4, Native Acceptance v2 508/508 on reference and candidate, ordered coverage green. Exact production SHA-256 b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33. The unchanged accepted calculator is embedded verbatim. Mode isolation, natural exclusion, live PC positive and negative hits, armed monster, canonical missile, unknown neutrality, trace and true Space/mode save-reload were verified. Minimum-one floor unresolved, no introduced rule. Full acceptance-metadata commit and merged main CI still required; no visual/spatial content added.
