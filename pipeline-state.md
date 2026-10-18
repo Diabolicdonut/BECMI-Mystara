@@ -1,8 +1,8 @@
 # Known World / BECMI Text RPG — Pipeline State
 
 Current accepted build: **v0.4.337**. Newly accepted checkpoints in this Chat continuation: **3**.
-Current candidate: **none**. Source-verified natural attack measure enrichment accepted; no live contextual damage.
-Exact next checkpoint: **v0.4.338 — live Context Matrix weapon-damage integration** (not started; requires user continuation).
+Current candidate: **work/v0.4.338 — NOT ACCEPTED**. Live Context Matrix weapon integration awaits required CI; authoritative main is still v0.4.337.
+Exact next checkpoint: **v0.4.338 — live Context Matrix weapon-damage integration** (candidate, NOT ACCEPTED).
 
 ## Authoritative ledger
 
@@ -14,6 +14,9 @@ accepted checkpoints; an acceptance metadata commit must pass required CI before
 promotion. Inspect main, active work branches, commits and Actions after a freeze.
 
 ## Accepted game and validation
+
+**v0.4.338 candidate (NOT ACCEPTED):** verified v0.4.336 pure calculator embedded in production; explicit eligible weapon hits get signed +/−3 adjustment after existing BECMI effects, natural attacks excluded, unresolved spatial/physical facts neutral; no RAW/AAE changes or invented minimum-one floor. Candidate production SHA-256 ef59da86a79ccf66046e3d37a31fea7a80223c6a1c71bf1a3bd90b244f3c7757. Full required CI and acceptance metadata pending. Graphics deferred.
+
 
 **v0.4.337 ACCEPTED:** 19 source-verified canonical profiles; 41 actual individual natural attacks enriched with a Close preference, 1151 other attacks left unresolved; 628 total runtime profiles. All damage remains published RAW; no live Context Matrix calculation. Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f qualified by all ten required successful jobs, https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39056696281. Core 2316/2316, focused 1232/1232, Chromium 579/579 x 4, native v2 508/508 on both reference and candidate. Exact production SHA-256 eba6c44757003104f32f2e2fa0a6a2c30cdd37a456a3695a36d480eddb80b48b. Acceptance metadata and main each must also pass their own exact SHA CI.
 

@@ -11,7 +11,7 @@ assert(data.profiles.length>=10);
 assert.equal(html.split('const MONSTER_ATTACK_CONTEXT_DATA = Object.freeze(').length,2);
 const source=html.split('const MONSTER_ATTACK_CONTEXT_DATA = Object.freeze(')[1].split(');\n')[0];
 assert.deepEqual(JSON.parse(source),data,'Embedded runtime roster and source sidecar must agree');
-assert(!html.includes('calculateContextMatrix('),'The pure calculator must not be called in production');
+assert(html.includes('CONTEXT_MATRIX_RUNTIME.calculateContextMatrix('),'Live damage must call the verified calculator');
 const modes=['RAW','AAE','CONTEXT_MATRIX'];
 assert(modes.every(m=>html.includes(m)),'Modes must remain present');
 let count=0;const seen=new Set(),forms=new Set();

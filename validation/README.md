@@ -163,3 +163,7 @@ Required native smoke additionally runs validation/monster-attack-context.mjs to
 ## v0.4.337 accepted metadata-only natural attack measures
 
 Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f passed all ten required jobs on run 39056696281. Core 2316/2316, focused 1232/1232, four fresh Chromium slices 579/579 each, Native Acceptance v2 508/508 on reference and candidate, ordered coverage and native boot green. Sidecar plus runtime fixture independently prove 41 natural attacks enriched across 19 canonical profiles, 1151 unresolved attack measures across 628 profiles, unchanged damage and serialized/reloaded attack metadata. Full CI must pass on acceptance-ledger commit and merged main before promotion is final. The historic 523 test remains historical.
+
+## v0.4.338 live Context Matrix candidate — NOT ACCEPTED
+
+Verified v0.4.336 calculator called only by eligible weapon hits after existing damage effects. A canonical source-verified monster physical profile or explicit encounter override supplies Size/Protection; true engagement Measure and explicitly supplied Space are required. Missing facts fail neutral. RAW, AAE, natural/special attacks and RNG unchanged. No new 1-point minimum damage floor is assumed. Required native smoke additionally runs validation/context-matrix-live.mjs; promotion requires separate candidate and ledger/main green CI.
