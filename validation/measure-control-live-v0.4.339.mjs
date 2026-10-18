@@ -14,7 +14,7 @@ const fixture=`window.__kwMeasure339 = function(test){
   far_spear_overcome:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'normal'},
   far_pike_tie:{weapon:'pike',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'far'},
   far_sword_neutral:{weapon:'sword_normal',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'normal'},
-  far_dagger_no_natural_point:{weapon:'dagger',type:'black_bear',range:'far',pi:4,mi:5,pa:'press',ma:'hold',expected:'normal'},
+  far_dagger_no_natural_point:{weapon:'dagger',type:'black_bear',range:'far',pi:5,mi:4,pa:'press',ma:'hold',expected:'normal'},
   normal_pike_neutral:{weapon:'pike',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   normal_dagger_neutral:{weapon:'dagger',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   close_spear_natural_follow:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',expected:'close'},
