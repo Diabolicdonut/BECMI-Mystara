@@ -1,4 +1,4 @@
-// One-time v0.4.338 source-pinned bounded live damage candidate builder.
+// One-time v0.4.338 source-pinned bounded live damage candidate builder (workflow permission isolated).
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
