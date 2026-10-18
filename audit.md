@@ -6,7 +6,7 @@ Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarific
 Audit date: 2026-10-18
 
 
-## v0.4.340 — Pairwise independent Measure and unrestricted legal engagement (acceptance recorded; final main CI pending)
+### v0.4.340 — Pairwise independent Measure and unrestricted legal engagement (acceptance recorded; final main CI pending)
 
 **Recovery and provenance:** Based solely on accepted production main v0.4.339 at `389c3d928b7a3c61dec546997fca99cd78b8684a`. The existing candidate on `work/v0.4.340-pairwise-measure`, exact implementation commit `7365aeeea814909cf596f59bcea45e44b0c465bb`, was independently qualified by [full ten-job native/browser/deterministic workflow 39144046834](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39144046834) and [pairwise gate 39144046815](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39144046815). Exact production index.html SHA-256 `8d30711a555bb16961a9f0548fb32cac2b89ce60cfb6d4a9cfb0be91ddc66992` from v0.4.340 manifest. The established ordered coverage is 2316/2316 core, 1232/1232 focused, four 579/579 fresh Chromium slices; Native Acceptance v2 508/508 on accepted reference and candidate; dedicated exact-browser six-monster contact/contested-control/barrier/save tests passed. Historical 523 native record remains historical, not rerun.
 
