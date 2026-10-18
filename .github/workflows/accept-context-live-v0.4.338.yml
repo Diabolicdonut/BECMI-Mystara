@@ -2,7 +2,7 @@ name: One-time v0.4.338 acceptance ledger
 on:
   push:
     branches: ['work/v0.4.338']
-    paths: ['.github/workflows/accept-context-live-v0.4.338.yml']
+    paths: ['.github/workflows/accept-context-live-v0.4.338.yml','tools/accept-context-live-v0.4.338.mjs']
 permissions:
   contents: write
 jobs:
