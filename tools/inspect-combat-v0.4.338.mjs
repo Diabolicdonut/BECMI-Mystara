@@ -38,3 +38,16 @@ for(let i=0;i<ls.length;i++){
  if(l.length<5000&&/(?:function\s+\w+(?:Attack|Damage|Combat|Strike|Turn|Weapon)\w*\s*\(|function\s+(?:perform|resolve|execute|apply|roll)\w*(?:attack|weapon|damage|combat)\w*\s*\()/i.test(l))targeted.push((i+1)+': '+l.slice(0,500));
 }
 fs.writeFileSync('validation/candidate-v0.4.338/attack-function-index.md',['# Attack-related function declarations','',...targeted].join('\n').trimEnd()+'\n');
+
+const excerpt=(pattern,pad=20,max=14)=>{
+ const selected=[];for(let i=0;i<ls.length;i++)if(pattern.test(ls[i])&&ls[i].length<7000)selected.push(i);
+ return selected.slice(0,max).map(i=>ls.slice(Math.max(0,i-pad),Math.min(ls.length,i+pad+1)).map((x,j)=>(Math.max(0,i-pad)+j+1)+': '+x.slice(0,1100)).join('\n')).join('\n\n');
+};
+const contextLines=['# Context state discovery','',
+excerpt(/function getEngagement\(|function setCombatEnvironment\(|function normalizedTargetSizeProfile\(|function applyMonsterInstanceLoadout\(/,28,12),
+'## Current runtime item matrix mappings',''];
+const actorSource=ls.slice(200,17000).join('\n');
+const m=actorSource.match(/(?:const|let) SHOP_ITEMS\s*=\s*(\{[\s\S]*?\});/);
+if(m){try {contextLines.push('SHOP ITEMS expression starts '+m[1].slice(0,500));}catch{}}
+contextLines.push(excerpt(/matrixId:|matrixProtection:|contextMatrix|physicalProtection|fightMeasure|combatSpace/,4,55));
+fs.writeFileSync('validation/candidate-v0.4.338/context-discovery.md',contextLines.join('\n').trimEnd()+'\n');
