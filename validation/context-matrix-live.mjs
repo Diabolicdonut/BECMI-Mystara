@@ -13,12 +13,12 @@ const runtime=html.split('  const CONTEXT_MATRIX_RUNTIME=(()=>{')[1]?.split('   
 assert(runtime,'Accepted calculator must be present in production HTML');
 assert.equal(runtime.split('\n').map(line=>line.replace(/^    /,'')).join('\n').trim(),library.trim(),'Embedded calculator must match accepted v0.4.336 implementation exactly');
 assert(html.includes("const APP_VERSION='0.4.338';"));
-assert(html.includes("dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind)"));
+assert(html.includes("dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind,null,band)"));
 assert(html.includes('applyLiveContextMatrixDamage({applied:damage,rawExpr:masteryDamageAudit'));
 const digest=createHash('sha256').update(html).digest('hex');
 const manifest=JSON.parse(fs.readFileSync('validation/manifests/v0.4.338.json','utf8'));
 assert.equal(manifest.productionSha256,digest);
-assert.equal(manifest.acceptedVersion,'0.4.337');
+assert(['0.4.337','0.4.338'].includes(manifest.acceptedVersion));
 const anchor='  boot();\n})();';
 assert.equal(html.split(anchor).length,2);
 const self=fs.readFileSync('validation/context-matrix-live.mjs','utf8');
@@ -43,8 +43,13 @@ try {
  await page.goto(origin+'/',{waitUntil:'load'});
  const result=await page.evaluate(()=>window.__kw338Probe());
  assert.equal(result.positive,3);assert.equal(result.negative,-3);assert.equal(result.zero,0);
- assert.equal(result.pcTrace.modifier,3);assert.equal(result.monsterTrace.modifier,3);
+ assert.equal(result.pcTrace.modifier,3);assert.equal(result.negativePcTrace.modifier,-3);
+ assert.equal(result.monsterTrace.modifier,3);
  assert.equal(result.spatialMode,'CONTEXT_MATRIX');assert.equal(result.space,'Restricted');
+ await page.reload({waitUntil:'load'});
+ const restored=await page.evaluate(()=>window.__kw338Restored());
+ assert.equal(restored.mode,'CONTEXT_MATRIX','Mode lost on real save/reload');
+ assert.equal(restored.space,'Restricted','Explicit combat Space lost on real save/reload');
  assert.deepEqual(errors,[],'Page/console/network errors');
  console.log('v0.4.338 REAL BROWSER Context Matrix: PASS; '+result.probeCount+
   ' deterministic cases; +3/-3/0, PC and armed monster live hits, natural exclusion, RAW/AAE isolation, unknown fail-neutral, source-equal calculator, trace and serializable combat context.');
@@ -106,6 +111,16 @@ if(false){ /* BEGIN_BROWSER_FIXTURE */
     const bite={name:'bite',damage:'1d4',attackContext:{delivery:'natural',contextualWeaponDamageEligible:false}};
     const natural=cmWeaponAdjustment(spear,pc,monster,'melee',bite);
     check(!natural.eligible&&natural.modifier===0,'Natural attack entered weapon calculator');
+    const missileBow={...SHOP_ITEMS.bow_short,itemId:'bow_short'};
+    const missileContext=cmWeaponAdjustment(missileBow,pc,monster,'missile',null,'Far');
+    check(missileContext.eligible&&Number.isInteger(missileContext.modifier),
+      'Canonical missile with actual ranged measure must use Context Matrix');
+    const missileHit=applyLiveContextMatrixDamage(packet,missileBow,pc,monster,'missile',null,'Far');
+    check(missileHit.contextMatrix.eligible&&missileHit.applied===Math.max(0,5+missileContext.modifier),
+      'Canonical missile hit damage must match the verified calculator');
+    const noMissileMeasure=cmWeaponAdjustment(missileBow,pc,monster,'missile');
+    check(!noMissileMeasure.eligible&&noMissileMeasure.modifier===0,
+      'Unknown missile Measure must fail neutral');
     const unknownWeapon=cmWeaponAdjustment({...spear,matrixId:'Unmapped (RC)'},pc,monster,'melee');
     check(!unknownWeapon.eligible&&unknownWeapon.modifier===0,'Unknown weapon became eligible');
     state.rules.weaponDamageMode='RAW';
@@ -127,6 +142,19 @@ if(false){ /* BEGIN_BROWSER_FIXTURE */
       'Actual PC spear hit failed live calculator');
     check(pcTrace.finalDamage===pcTrace.rawAdjustedDamage+3,'PC formula double counted modifiers');
     state.combat.lastContextMatrixDamage=null;
+    monster.contextMatrixTarget={size:'Small',protection:'Hard'};
+    state.combat.contextMatrixSpace='Open';
+    check(setEngagement(pc,monster,'close'),'Actual negative measure not available');
+    for(let i=0;i<8&&!state.combat.lastContextMatrixDamage;i++)
+      pcWeaponAttack(pc,monster,'melee','close');
+    const negativePcTrace=state.combat.lastContextMatrixDamage;
+    check(negativePcTrace&&negativePcTrace.modifier===-3&&
+      negativePcTrace.finalDamage===Math.max(0,negativePcTrace.rawAdjustedDamage-3),
+      'Actual PC negative hit must use exactly -3 after existing modifiers');
+    monster.contextMatrixTarget={size:'Large',protection:'Soft'};
+    state.combat.contextMatrixSpace='Restricted';
+    check(setEngagement(pc,monster,'far'),'Restore long actual fighting measure');
+    state.combat.lastContextMatrixDamage=null;
     monster.weaponId='spear';monster.naturalDamage=null;
     monster.attacks=[{name:'weapon',damage:null}];monster.damageMod=0;monster.thac0=-50;
     pc.hp=pc.maxHp=4000;pc.ac=9;pc.contextMatrixTarget={size:'Large',protection:'Soft'};
@@ -139,10 +167,12 @@ if(false){ /* BEGIN_BROWSER_FIXTURE */
     for(let i=0;i<3;i++)monsterAttack(monster,pc);
     check(state.combat.lastContextMatrixDamage===null,'Actual bite must never use Context Matrix');
     const saved=JSON.parse(JSON.stringify({rules:state.rules,combat:state.combat}));
+    updatePanels();
     check(saved.rules.weaponDamageMode==='CONTEXT_MATRIX'&&saved.combat.contextMatrixSpace==='Restricted',
       'Mode or persistent context lost in save serialization');
     check(saved.combat.lastContextMatrixDamage===null,'Natural hit misreported');
-    return {positive:pos.modifier,negative:neg.modifier,zero:zero.modifier,pcTrace,monsterTrace,
-      spatialMode:saved.rules.weaponDamageMode,space:saved.combat.contextMatrixSpace,probeCount:24};
+    return {positive:pos.modifier,negative:neg.modifier,zero:zero.modifier,pcTrace,negativePcTrace,monsterTrace,
+      spatialMode:saved.rules.weaponDamageMode,space:saved.combat.contextMatrixSpace,probeCount:29};
   };
+  window.__kw338Restored=()=>({mode:state.rules?.weaponDamageMode,space:state.combat?.contextMatrixSpace||null});
 /* END_BROWSER_FIXTURE */ }

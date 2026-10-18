@@ -17627,19 +17627,24 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(!profile||profile.rcDamage==='Nil'||/Special/.test(profile.category||''))return null;
     return profile;
   }
-  function cmAttackFacts(attacker,target,kind='melee'){
-    if(kind!=='melee'||!state.combat?.active)return {measure:null,space:null};
+  function cmAttackFacts(attacker,target,kind='melee',rangeMeasure=null){
+    if(!state.combat?.active)return {measure:null,space:null};
     const pc=attacker?.type?target:attacker,monster=attacker?.type?attacker:target;
-    const engagement=getEngagement(pc,monster);
-    const measure=cmCanonical(engagement?.range,CM_MEASURES);
+    const engagement=kind==='melee'?getEngagement(pc,monster):null;
+    // Missile range band comes from the existing actual combat distance/band
+    // resolution, never from adjacency or weapon optimization. No distance or
+    // explicit range measure means no contextual missile modifier.
+    const missileDistance=kind==='missile'?combatSeparation(pc,monster):null;
+    const measure=kind==='melee'?cmCanonical(engagement?.range,CM_MEASURES):
+      kind==='missile'&&Number.isFinite(missileDistance)?cmCanonical(rangeMeasure,CM_MEASURES):null;
     const space=cmCanonical(engagement?.contextMatrixSpace,CM_SPACES)||
       cmCanonical(state.combat.contextMatrixSpace,CM_SPACES);
     return {measure,space};
   }
-  function cmWeaponAdjustment(item,attacker,target,kind='melee',attackSpec=null){
-    const targetFacts=cmTargetFacts(target),combatFacts=cmAttackFacts(attacker,target,kind),weapon=cmWeaponProfile(item);
+  function cmWeaponAdjustment(item,attacker,target,kind='melee',attackSpec=null,rangeMeasure=null){
+    const targetFacts=cmTargetFacts(target),combatFacts=cmAttackFacts(attacker,target,kind,rangeMeasure),weapon=cmWeaponProfile(item);
     const attackContext=(attackSpec?.attackContext&&typeof attackSpec.attackContext==='object')?
-      attackSpec.attackContext:{delivery:'weapon',contextualWeaponDamageEligible:!!weapon&&kind==='melee'};
+      attackSpec.attackContext:{delivery:'weapon',contextualWeaponDamageEligible:!!weapon&&(kind==='melee'||kind==='missile')};
     const computed=CONTEXT_MATRIX_RUNTIME.calculateContextMatrix({
       weapon,targetSize:targetFacts.targetSize,protection:targetFacts.protection,
       measure:combatFacts.measure,space:combatFacts.space,attackContext
@@ -17648,11 +17653,11 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       targetSize:targetFacts.targetSize,protection:targetFacts.protection,
       targetSource:targetFacts.source,measure:combatFacts.measure,space:combatFacts.space};
   }
-  function applyLiveContextMatrixDamage(packet,item,attacker,target,kind='melee',attackSpec=null){
+  function applyLiveContextMatrixDamage(packet,item,attacker,target,kind='melee',attackSpec=null,rangeMeasure=null){
     if(state.rules?.weaponDamageMode!=='CONTEXT_MATRIX')return packet;
-    const context=cmWeaponAdjustment(item,attacker,target,kind,attackSpec);
+    const context=cmWeaponAdjustment(item,attacker,target,kind,attackSpec,rangeMeasure);
     const before=packet.applied,after=Math.max(0,before+context.modifier);
-    const trace={mode:'CONTEXT_MATRIX',attacker:attacker?.name||null,target:target?.name||null,
+    const trace={mode:'CONTEXT_MATRIX',attackKind:kind,attacker:attacker?.name||null,target:target?.name||null,
       weapon:context.weapon,weaponId:context.weaponId,baseExpression:packet.rawExpr||null,
       rolledDamage:packet.rawBase??null,rawAdjustedDamage:before,
       targetSize:context.targetSize,protection:context.protection,
@@ -18631,7 +18636,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const masteryFactor=weaponMasteryDamageFactor(pc,item); if(masteryFactor<1){ dmg={...dmg,raw:Math.floor(dmg.raw*masteryFactor),matrix:Math.floor(dmg.matrix*masteryFactor),applied:Math.floor(dmg.applied*masteryFactor)}; write('Unskilled Weapon Mastery use halves damage (round down).','warning'); }
     if(rareThrow){const surprise=rng(6)<=2;let half=false;if(!surprise){const save=masteryEffectSave(monster,'death',0,`rare throw from ${item.name}`);half=Boolean(save.success);}if(half){dmg={...dmg,raw:Math.floor(dmg.raw/2),matrix:Math.floor(dmg.matrix/2),applied:Math.floor(dmg.applied/2)};write(`${monster.name} is not surprised and saves vs. Death Ray, reducing the rarely-thrown weapon damage by half.`,'system');}else write(`${item.name} is used as a rarely-thrown mastery weapon; ${surprise?`${monster.name} is surprised`:`${monster.name} fails the Death Ray save`}, so full damage applies.`,'system');}
     const strikingBonus=artifactStrikingBonusDamage(pc,item)+rawStrikingBonusDamage(pc,item);if(strikingBonus){dmg={...dmg,raw:dmg.raw+strikingBonus,matrix:dmg.matrix+strikingBonus,applied:dmg.applied+strikingBonus};write(`Striking adds ${strikingBonus} magical damage from the enchanted weapon.`,'system');}
-    const beforeWyrdDamage=dmg.applied;dmg=applyGreaterWyrdVisionDamagePacket(pc,monster,dmg);dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind);if(dmg.greaterWyrdVisionPenalty&&dmg.applied!==beforeWyrdDamage)write(`${pc.name}'s failed Greater Wyrd vision save imposes -3 on the damage roll${isGreaterWyrdVisionMonster(monster)?'; a successful hit on the Wyrd still inflicts at least 1 point':''}.`,'warning');
+    const beforeWyrdDamage=dmg.applied;dmg=applyGreaterWyrdVisionDamagePacket(pc,monster,dmg);dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind,null,band);if(dmg.greaterWyrdVisionPenalty&&dmg.applied!==beforeWyrdDamage)write(`${pc.name}'s failed Greater Wyrd vision save imposes -3 on the damage roll${isGreaterWyrdVisionMonster(monster)?'; a successful hit on the Wyrd still inflicts at least 1 point':''}.`,'warning');
     writeWeaponAudit(pc,monster,dmg); write(`${pc.name} deals ${dmg.applied} damage.`);
     delete pc.stealthState;
     if(monster.specialAttack==='strangle_vine'){resolveStrangleVineWeaponHit(pc,monster,item,dmg.applied);return;}
