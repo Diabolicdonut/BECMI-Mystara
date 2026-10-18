@@ -26,7 +26,7 @@ Existing `data/monster-attack-context-v0.4.337.json` has **41 sourced natural at
 6. A source-verified attack's Close preference can guide a monster's desired Press/Hold/Open *tactic* if the actual attack is legal; it does **not** supply Size, a success bonus, or a damage alteration. Unknown legality stays unknown.
 
 Companion design-only modules:
-- `lib/measure-control-symmetric-v0.5.mjs` — neutral Normal, Far long Hold denial, Close short active pursuit, explicit test-only Size 0 baseline alternative.
+- `lib/measure-control-symmetric-v0.5.mjs` — **strictly neutral** Normal (nonneutral policy requests rejected), Far long Hold denial, and Close short active pursuit.
 - `lib/monster-measure-control-v0.5.mjs` — distinction between verified melee weapon ratings, identified unverified natural attacks with neutral fallback, explicitly source-verified natural reach, and excluded/unknown deliveries.
 - `validation/measure-control-monsters-symmetric-v0.5.mjs` — exact cross-product and real sourced monster catalogue assertions.
 
