@@ -73,8 +73,8 @@ try{
  browser=await chromium.launch({headless:true});
  const context=await browser.newContext();
  await context.route('**/*',route=>{
-  if(new URL(route.request().url).origin===origin)return route.continue();
-  errors.push('external network '+route.request().url);return route.abort();
+  if(new URL(route.request().url()).origin===origin)return route.continue();
+  errors.push('external network '+route.request().url());return route.abort();
  });
  context.on('page',p=>{p.on('pageerror',e=>errors.push('page '+e));p.on('console',m=>{if(m.type()==='error')errors.push('console '+m.text());});});
  const page=await context.newPage();
