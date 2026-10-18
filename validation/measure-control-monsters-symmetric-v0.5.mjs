@@ -84,9 +84,9 @@ eq(dist({measure:'Normal',intentA:'Open',intentB:'Press',weaponA:pike,weaponB:da
  standard,'Absolute extremes remain neutral at Normal');
 eq(dist({measure:'Normal',intentA:'Hold',intentB:'Press',weaponA:spear,weaponB:sword}),
  standard,'Size0 sword not privileged at Normal');
-eq(dist({measure:'Normal',intentA:'Hold',intentB:'Press',weaponA:spear,weaponB:sword,
- normalPolicy:'size-zero-bias'}),{A:10,B:21,none:5},
- 'Competing Size0 bias experimental model differs, default remains neutral');
+eq(run({measure:'Normal',intentA:'Hold',intentB:'Press',weaponA:spear,weaponB:sword,
+ normalPolicy:'size-zero-bias'}).status,'unresolved',
+ 'Size0 bias is REJECTED: Normal can only be neutral for all weapons');
 const baselineFar=farOnly({measure:'Far',intentA:'Hold',intentB:'Press',weaponA:spear,weaponB:sword,
  initiativeA:4,initiativeB:5,movement,activeThreatA:true,normalReachPolicy:'far-only'});
 eq(baselineFar.measure,run().measure,'Far remains v0.3-compatible');
