@@ -65,10 +65,6 @@ pipeline=once(pipeline,'## Accepted game and validation\n',
 wr('pipeline-state.md',pipeline);
 wr('validation/README.md',rd('validation/README.md')+
 '\n## v0.4.338 live Context Matrix candidate — NOT ACCEPTED\n\nVerified v0.4.336 calculator called only by eligible weapon hits after existing damage effects. A canonical source-verified monster physical profile or explicit encounter override supplies Size/Protection; true engagement Measure and explicitly supplied Space are required. Missing facts fail neutral. RAW, AAE, natural/special attacks and RNG unchanged. No new 1-point minimum damage floor is assumed. Required native smoke additionally runs validation/context-matrix-live.mjs; promotion requires separate candidate and ledger/main green CI.\n');
-let ci=rd('.github/workflows/known-world-acceptance.yml');
-ci=once(ci,'      - run: node validation/context-matrix-calculator.mjs',
-'      - run: node validation/context-matrix-calculator.mjs\n      - run: node validation/context-matrix-live.mjs');
-wr('.github/workflows/known-world-acceptance.yml',ci);
 console.log('v0.4.338 candidate patched; production SHA-256 '+digest);
 process.exit(0);
 
