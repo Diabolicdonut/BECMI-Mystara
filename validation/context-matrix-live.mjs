@@ -12,13 +12,13 @@ const library=fs.readFileSync('lib/context-matrix-calculator.mjs','utf8')
 const runtime=html.split('  const CONTEXT_MATRIX_RUNTIME=(()=>{')[1]?.split('    return Object.freeze({calculateContextMatrix});')[0];
 assert(runtime,'Accepted calculator must be present in production HTML');
 assert.equal(runtime.split('\n').map(line=>line.replace(/^    /,'')).join('\n').trim(),library.trim(),'Embedded calculator must match accepted v0.4.336 implementation exactly');
-assert(html.includes("const APP_VERSION='0.4.338';"));
+assert(/const APP_VERSION='0\.4\.(?:338|339)';/.test(html));
 assert(html.includes("dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind,null,band)"));
 assert(html.includes('applyLiveContextMatrixDamage({applied:damage,rawExpr:masteryDamageAudit'));
 const digest=createHash('sha256').update(html).digest('hex');
-const manifest=JSON.parse(fs.readFileSync('validation/manifests/v0.4.338.json','utf8'));
+const manifest=JSON.parse(fs.readFileSync(`validation/manifests/v${html.match(/const APP_VERSION='([^']+)'/)[1]}.json`,'utf8'));
 assert.equal(manifest.productionSha256,digest);
-assert(['0.4.337','0.4.338'].includes(manifest.acceptedVersion));
+assert(['0.4.337','0.4.338','0.4.339'].includes(manifest.acceptedVersion));
 const anchor='  boot();\n})();';
 assert.equal(html.split(anchor).length,2);
 const self=fs.readFileSync('validation/context-matrix-live.mjs','utf8');

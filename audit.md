@@ -1,10 +1,22 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.338**
+Build: **0.4.339**
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
-Audit date: 2026-10-16
+Audit date: 2026-10-18
 
+
+## v0.4.339 — Live symmetric melee Measure resolution
+
+**Acceptance source and gate:** The unchanged live Measure implementation is candidate commit `ae2c791102103f2dbeda49da78450b5e2d743e63` on `work/v0.4.339-measure-resolution`, based on verified v0.4.338 main `943a27c3174fd31f17f19f9c377f4161c87a9e09`. Full [candidate acceptance run 39101362322](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39101362322), both PR and push checks, completed **success with all ten required jobs**. Core **2316/2316**, focused **1232/1232**, fresh Chromium **579/579 × 4**, Native Acceptance v2 **33 scenarios, 508/508** on the established immutable v0.4.333 reference and **508/508** on the candidate, plus native boot/save-reload, once-only coverage and campaign isolation. Dedicated actual-browser [Measure run 39100964143](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39100964143) passed **20 scenarios / 202 assertions**, no browser/runtime errors. Exact `index.html` SHA-256 **d4bc231245961cc2803326bf4572dbbd71acc115b7676282d555ea1e537e9487** (v0.4.339 candidate manifest). The acceptance metadata commit must independently pass required CI on its exact SHA, then PR #4 must be promoted and required CI on exact `main` must pass before v0.4.339 is considered finally accepted.
+
+**Binding live Measure rule:** at **Far**, the verified longer legitimate melee weapon actively **Holding** against the opponent's **Press** gets +1 at Size difference 1–2, or +2 at difference 3+, added to the existing **modified BECMI side initiative total**, no new roll. At **Normal**, Size is entirely neutral and the existing modified side initiative decides. At **Close**, the verified shorter melee attack actively **Pressing/pursuing** against the opponent's **Open** gets +1/+2 by those same differences; passive Hold never grants a grapple, weapon seizure, withdrawal lock, free movement or attack. This is a Measure-band contest, not a weapon damage or attack-roll adjustment.
+
+**Physical and multiplayer gates:** already valid physical positions, threat/contact lines, terrain, walls, elevation, legal paths, Influence Sphere, first-contact deferral, one shared Measure per connected melee, normally one band per resolution, retreat/fighting withdrawal and initiative side turns remain authoritative. Impossible contact/movement cannot be invented by a numeric win. A monster explicitly wielding a source-verified canonical melee weapon uses that weapon's Size. An identified natural *melee* attack lacking independently verified reach may use **neutral control Size 0 solely for relative comparison**; not its body Size, preferred measure, inferred range or affirmative threat/pursuit. Breath, gaze, spells, projectile, Special and unknown-delivery attacks are excluded. Where active threat, legal pursuit or multi-actor attribution cannot be verified—including conflicting intentions or ambiguous connected formations—fail closed to existing unmodified side-initiative Measure resolution, never a fabricated group Size.
+
+**Independent Context Matrix:** v0.4.338 live contextual weapon damage remains intact and separate. Measure control uses weapon Size and modified BECMI side initiative only, never weapon Power/Handling, armor/AC, monster HD, contextual damage or physical Protection. RAW/AAE/CONTEXT_MATRIX damage modes, natural attack printed RAW damage, ordinary dice/bonuses/Weapon Mastery/charge/mounted/lance/shields/backstab/poison/grapples/Special and save/RNG/time/resource semantics remain isolated as validated. Do not conflate each natural attack's tactical preferred Measure with natural attack damage.
+
+**Next isolated checkpoint after exact main acceptance:** **v0.4.340 — persistent authoritative local-scene coordinate/state foundation only**, generalizing existing x/y/z physical combat positions, continuous exploration/contact, connected melee groups and obstacle/path/vertical scene facts without SVG, player-knowledge fabrication or premature Smoking Pillar conversion. True physical state, map knowledge, belief, perception and renderer must remain distinct. Later Party/Individual Scale, formation, geometry, monochrome SVG, shared exploration/combat overlay, LOS/fog, interface and *Smoking Pillar of Lan Yu* vertical slice proceed in separately accepted checkpoints. Ordinary Cureall/parser source closure remains separate.
 
 ## v0.4.338 — Live Context Matrix weapon damage only (visual/spatial work deferred)
 

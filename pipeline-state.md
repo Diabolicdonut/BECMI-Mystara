@@ -1,8 +1,9 @@
 # Known World / BECMI Text RPG — Pipeline State
 
-Current accepted build: **v0.4.338**. Newly accepted checkpoints in this Chat continuation: **4**.
-Current candidate: **none**. v0.4.338 source-pinned Context Matrix live weapon candidate qualified and accepted; main merge/CI verification remains required.
-Exact next checkpoint: **v0.4.339 — persistent authoritative local-scene coordinate/state foundation only** (not started).
+Current accepted build: **v0.4.339** (acceptance record staged for promotion; treat v0.4.338 as deployed until full required exact-SHA main CI is green).
+Latest qualified build: **v0.4.339 live Measure resolution** (acceptance recorded here for exact candidate bytes; not finally accepted until metadata-commit CI, promotion to main, and main CI are green). Previous accepted main baseline: **v0.4.338**. Checkpoints v0.4.335–v0.4.338 were previously accepted.
+Current candidate for promotion: **v0.4.339** at `ae2c791102103f2dbeda49da78450b5e2d743e63`; [all ten required jobs green](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39101362322). Production SHA-256 `d4bc231245961cc2803326bf4572dbbd71acc115b7676282d555ea1e537e9487`. The metadata-only acceptance commit and subsequently promoted main must each independently have green exact-SHA CI; only then consider this build accepted.
+Exact next checkpoint **after v0.4.339 promotion**: **v0.4.340 — persistent authoritative local-scene coordinate/state foundation only** (not started; no SVG/Smoking Pillar).
 
 ## Authoritative ledger
 
@@ -15,6 +16,8 @@ promotion. Inspect main, active work branches, commits and Actions after a freez
 
 ## Accepted game and validation
 
+**v0.4.339 PROMOTION RECORD (acceptance gated on exact-SHA CI and main):** candidate `ae2c791102103f2dbeda49da78450b5e2d743e63`; complete [required Actions run 39101362322](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39101362322), ten jobs green. **2316/2316 core, 1232/1232 focused, fresh Chromium 579/579 ×4, Native Acceptance v2 33 scenarios and 508/508 on both reference and v0.4.339, zero browser/runtime errors**, native save/reload and once-only coverage green. Dedicated [live Measure run 39100964143](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39100964143): **20 scenarios, 202 assertions, green**. Exact index.html SHA-256 `d4bc231245961cc2803326bf4572dbbd71acc115b7676282d555ea1e537e9487`. Far active longer Hold vs Press +1 (Size delta 1–2), +2 (3+); Normal Size neutral; Close active shorter Press vs Open +1/+2; all added to existing modified side initiative with no new roll and no invented paths. Armed monsters use verified canonical weapon Size, identified natural melee attacks can compare using neutral Size 0 but never infer reach/legality, other deliveries excluded; ambiguous multi-actor melee fails closed to existing side-initiative contest. No Context Matrix damage or BECMI attack/save changes. **Next after green main** v0.4.340 local-scene physical state only. See top audit entry.
+
 **v0.4.338 ACCEPTED (pending main verification):** qualified candidate 134c7ddf3521cb5423edda21dc4cc5a81277566b, green [required Actions 39082900442](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39082900442) with all ten jobs. Production SHA-256 b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33. Core 2316/2316, focused 1232/1232, Chromium 579/579 x4, Native Acceptance v2 508/508 both immutable reference and candidate. Verified live PC ±3, armed monster, missile hit, RAW/AAE isolation, unchanged natural damage and source-specific attacks, unknown fail-neutral, serialized context, true browser reload. No new minimum-one floor. No graphics. Acceptance metadata and main both separately need green CI.
 
 
@@ -25,7 +28,7 @@ promotion. Inspect main, active work branches, commits and Actions after a freez
 
 **Binding monster-attack rule:** preferred Measure belongs to each attack for positioning/availability/AI, NEVER published natural attack damage. Natural/breath/projectile/special attacks are ineligible for Context Matrix; armed monster weapon attacks are eligible. No inferred Protection from AC/immunity, target Size from provisional rows or restricted Space from adjacency. See design/context-matrix/MONSTER-ATTACK-MEASURE-CONTRACT.md.
 
-**Next:** v0.4.339 authoritative persistent local-scene coordinates/state, no SVG or Smoking Pillar conversion yet. Natural attacks retain RAW damage.
+**Next after v0.4.339 promotion:** v0.4.340 authoritative persistent local-scene coordinates/state, no SVG or Smoking Pillar conversion yet. Natural attacks retain RAW damage.
 
 
 **v0.4.335 accepted**: candidate `d4cfd684f0ad7a7c8be23b31803ae5cd1b076020`, qualifying [Actions run 38961050097](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/38961050097), ten required jobs green. Production SHA-256 `76b726460d98cf2cf49947ba2aba419a12f5d2c481e02d19c508a512778ba7a5`. **2316/2316 core; 1232/1232 focused; Chromium 579/579 ×4; ordered once-only coverage, campaign isolation, syntax, exact-production boot, native command/save-reload and supplemental Context Matrix selection/persistence checks; zero page/runtime/console errors.** Native Acceptance v2: 33 scenarios, **508/508** accepted v0.4.333 and **508/508** v0.4.335. Historical 523-runner not recovered/rerun; that historical result is not the current test count. Exact acceptance metadata commit and merged main must each be green; do not infer success from candidate CI.
@@ -79,7 +82,8 @@ architecture remains deferred. No graphical work is authorized in this run.
 2. **v0.4.336 ACCEPTED:** independently tested pure calculator with all workbook cases, no live damage, natural attacks excluded.
 3. **v0.4.337 ACCEPTED:** 41 source-verified attacks across 19 canonical profiles; 1151 other attack measures unknown; damage/AI/legal movement unchanged.
 4. **v0.4.338 ACCEPTED:** live contextual damage on eligible canonical melee/missile weapons only. Natural attacks, RAW and AAE preserved.
-5. **v0.4.339 NEXT (not started):** persistent local-scene authoritative physical coordinates, separate from player map knowledge, belief, perception and presentation; no graphics in the preceding v0.4.338 checkpoint.
+5. **v0.4.339 ACCEPTANCE-PENDING-PROMOTION:** live symmetric melee Measure resolution qualified by ten-job green candidate CI; accept only after metadata commit and main CI.
+6. **v0.4.340 NEXT (not started):** persistent local-scene authoritative physical coordinates, separate from player map knowledge, belief, perception and presentation; no SVG or Smoking Pillar content.
 
 The ordinary multi-condition Cureall wounds-default fallback and parser closure
 remain separate BECM dependencies. Each checkpoint follows accepted main →
