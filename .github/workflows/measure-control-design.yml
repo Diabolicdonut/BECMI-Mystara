@@ -27,3 +27,5 @@ jobs:
         run: node validation/measure-control-prototype.mjs
       - name: v0.2 calibrated combat scenarios and repeated-round analysis
         run: node validation/measure-control-calibration-v0.2.mjs
+      - name: v0.3 Far-only versus Far-and-Normal with no Handling
+        run: node validation/measure-control-far-only-v0.3.mjs
