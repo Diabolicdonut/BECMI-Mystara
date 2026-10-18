@@ -1,0 +1,28 @@
+name: Inspect v0.4.341 initiative and combat mode
+on:
+  push:
+    branches: ['work/v0.4.341-original-die-size-measure']
+    paths: ['.github/workflows/inspect-v0.4.341.yml']
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Print bounded source inspection without changing production
+        shell: python
+        run: |
+          from pathlib import Path
+          s=Path('index.html').read_text()
+          markers=['function initiativeRollForSide','function meleeControlSizeContext','function resolveMeleeDistanceContests','initiative.rolls=',"initiative={","initiative: {","rolls:{pc:","rolls: {pc:","initRoll","rawInitiative","weaponDamageMode","context_matrix","CONTEXT_MATRIX","combatMode","function beginCombat","function resolveInitiative"]
+          lines=s.splitlines()
+          for needle in markers:
+              hits=[i for i,line in enumerate(lines) if needle in line]
+              print('\\n### MARKER '+repr(needle)+' occurrences '+str(len(hits)),flush=True)
+              for i in hits[:5]:
+                  lo=max(0,i-8);hi=min(len(lines),i+40 if needle.startswith('function ') else i+12)
+                  print('\\n'.join(f'{j+1}: {lines[j][:300]}' for j in range(lo,hi)),flush=True)
+          a=Path('audit.md').read_text().splitlines()
+          print('\\n### AUDIT HEAD\\n'+'\\n'.join(a[:35]),flush=True)
+          print('\\n### HTML SIZE '+str(len(s)),flush=True)
