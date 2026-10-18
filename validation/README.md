@@ -171,3 +171,5 @@ Verified v0.4.336 calculator called only by eligible weapon hits after existing 
 Candidate v0.4.338: required acceptance was requested after the source-pinned production builder commit. This annotation is not a promotion or acceptance record.
 
 Candidate v0.4.338 additional bounded verification: actual ranged weapon band (not guessed from melee), live PC negative modifier hit, real browser save/reload of explicit combat Space; missing missile band/Space remains neutral.
+
+Extended candidate v0.4.338: qualifying complete required CI explicitly requested after verified missile-range integration and the real reload test were committed.
