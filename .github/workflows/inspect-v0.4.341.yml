@@ -15,14 +15,14 @@ jobs:
         run: |
           from pathlib import Path
           s=Path('index.html').read_text()
-          markers=['function initiativeRollForSide','function meleeControlSizeContext','function resolveMeleeDistanceContests','initiative.rolls=',"initiative={","initiative: {","rolls:{pc:","rolls: {pc:","initRoll","rawInitiative","weaponDamageMode","context_matrix","CONTEXT_MATRIX","combatMode","function beginCombat","function resolveInitiative"]
+          markers=['function rollInitiative','function rollSideInitiative','function resolveInitiative','function beginRound','function nextRound','initiative =','initiative=','initiative:', '.initiative =','.initiative=', 'rolls:', 'rolls =', 'rolls=', 'initiativeBonuses','initiativeBonus','initiativeModifier', 'rollDie(6)', 'd6()', 'die(6)', 'rnd(6)', 'randInt(1,6)', 'roll(6)', 'dice(1,6)', 'rollD6()', 'function activeRulesProfile','function rollInitiativeForSide', 'function calculateInitiative','function ensureBecmRuleOptions']
           lines=s.splitlines()
           for needle in markers:
               hits=[i for i,line in enumerate(lines) if needle in line]
               print('\\n### MARKER '+repr(needle)+' occurrences '+str(len(hits)),flush=True)
-              for i in hits[:5]:
-                  lo=max(0,i-8);hi=min(len(lines),i+40 if needle.startswith('function ') else i+12)
-                  print('\\n'.join(f'{j+1}: {lines[j][:300]}' for j in range(lo,hi)),flush=True)
+              for i in hits[:12]:
+                  lo=max(0,i-5);hi=min(len(lines),i+32 if needle.startswith('function ') else i+5)
+                  print('\\n'.join(f'{j+1}: {lines[j][:260]}' for j in range(lo,hi)),flush=True)
           a=Path('audit.md').read_text().splitlines()
           print('\\n### AUDIT HEAD\\n'+'\\n'.join(a[:35]),flush=True)
           print('\\n### HTML SIZE '+str(len(s)),flush=True)
