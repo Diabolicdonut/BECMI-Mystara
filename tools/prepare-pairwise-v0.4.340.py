@@ -141,6 +141,12 @@ edit("        harnessAssert(after.range==='close','Highest-initiative Skeleton s
         harnessAssert(getEngagement(state.party[0],state.combat.monsters[2]).range==='far','Independent Hold opponent did not lose to OPEN');
         harnessAssert(after.range==='mixed','Different paired Measures were lost in a connected melee');""",'multi-side regression')
 p.write_text(s)
+pipeline=Path('pipeline-state.md')
+ps=pipeline.read_text()
+assert 'Current accepted build: **v0.4.339**' in ps
+ps=ps.replace('# Known World / BECMI Text RPG — Pipeline State\n',
+  '# Known World / BECMI Text RPG — Pipeline State\n\n**v0.4.340 CANDIDATE — NOT ACCEPTED:** pairwise Measure and explicit no engagement capacity. Existing main v0.4.339 remains authoritative until full exact-SHA promotion. Next after acceptance: persistent local-scene coordinates.\n',1)
+pipeline.write_text(ps)
 live=Path('validation/measure-control-live-v0.4.339.mjs')
 t=live.read_text()
 assert "const APP_VERSION='0.4.339';" in t
