@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required native pairwise Measure, six-goblin swarm and save reload
+        run: node validation/measure-pairwise-live-v0.4.340.mjs
       - run: npm run validate:native-smoke
       - run: node validation/context-matrix-mode.mjs
       - run: node validation/context-matrix-calculator.mjs

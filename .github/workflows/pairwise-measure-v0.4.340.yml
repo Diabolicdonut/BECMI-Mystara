@@ -1,0 +1,23 @@
+name: Pairwise Measure v0.4.340 focused native gate
+
+on:
+  push:
+    branches: ['work/v0.4.340-pairwise-measure']
+    paths: ['.github/workflows/pairwise-measure-v0.4.340.yml', 'validation/measure-pairwise-live-v0.4.340.mjs', 'validation/fixture-pairwise-v0.4.340.js']
+
+permissions:
+  contents: read
+
+jobs:
+  pairwise:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node validation/measure-pairwise-live-v0.4.340.mjs
+      - run: node validation/measure-control-live-v0.4.339.mjs

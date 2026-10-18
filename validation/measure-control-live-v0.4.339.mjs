@@ -6,7 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
-assert(html.includes("const APP_VERSION='0.4.339';"));
+assert(html.includes("const APP_VERSION='0.4.340';"));
 assert.equal(html.split('  boot();\n})();').length,2);
 const fixture=`window.__kwMeasure339 = function(test){
  const cases={
@@ -29,7 +29,7 @@ const fixture=`window.__kwMeasure339 = function(test){
   far_spell_caster_no_threat:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',pcAction:'spell',expected:'normal'},
   modified_initiative:{weapon:'spear',type:'black_bear',range:'far',pi:7,mi:0,pa:'hold',ma:'press',expected:'far'},
   normal_modified_initiative:{weapon:'pike',type:'black_bear',range:'normal',pi:0,mi:7,pa:'hold',ma:'press',expected:'close'},
-  multi_actor_fallback:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',multi:true,expected:'normal'}
+  multi_actor_fallback:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',multi:true,expected:'far'}
  };
  const t=cases[test];if(!t)throw Error('unknown case '+test);
  installHarnessFixture({distance:0,type:t.type,count:1});
@@ -52,10 +52,10 @@ const fixture=`window.__kwMeasure339 = function(test){
  const first=meleeGroups()[0],before={range:first?.range,participants:first?.pcNames.length+first?.monsterIds.length,
   naturalDamage:foe.naturalDamage,attacks:JSON.stringify(foe.attacks),pcHp:pc.hp,monsterHp:foe.hp,seed:state.seed,round:state.combat.round};
  resolveMeleeDistanceContests();
- const after={range:meleeGroups()[0]?.range,pcHp:pc.hp,monsterHp:foe.hp,seed:state.seed,round:state.combat.round,marker:state.combat.meleeDistanceResolvedRound,
+ const after={range:getEngagement(pc,foe)?.range,pcHp:pc.hp,monsterHp:foe.hp,seed:state.seed,round:state.combat.round,marker:state.combat.meleeDistanceResolvedRound,
   naturalDamage:foe.naturalDamage,attacks:JSON.stringify(foe.attacks)};
  resolveMeleeDistanceContests();
- return {test,expected:t.expected,before,after,afterRepeat:meleeGroups()[0]?.range};
+ return {test,expected:t.expected,before,after,afterRepeat:getEngagement(pc,foe)?.range};
 };`;
 const candidate=html.replace('  boot();\n})();',fixture+'\n  boot();\n})();');
 const server=http.createServer((req,res)=>{

@@ -1,0 +1,38 @@
+name: Prepare v0.4.340 pairwise candidate
+
+on:
+  push:
+    branches: ['work/v0.4.340-pairwise-measure']
+    paths: ['.github/workflows/prepare-pairwise-v0.4.340.yml']
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply exact accepted v0.4.339 to pairwise v0.4.340 patch
+        run: python3 tools/prepare-pairwise-v0.4.340.py
+      - name: Preserve ordered validation names in versioned manifest
+        run: |
+          sed -e 's/"version": "0.4.339"/"version": "0.4.340"/' -e 's/d4bc231245961cc2803326bf4572dbbd71acc115b7676282d555ea1e537e9487/8d30711a555bb16961a9f0548fb32cac2b89ce60cfb6d4a9cfb0be91ddc66992/' validation/manifests/v0.4.339.json > validation/manifests/v0.4.340.json
+          grep -q '"version": "0.4.340"' validation/manifests/v0.4.340.json
+      - name: Syntax and patch scope
+        run: |
+          git diff --check
+          node validation/static-checks.mjs
+          git diff --stat
+      - name: Commit bounded candidate on work branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html pipeline-state.md validation/measure-control-live-v0.4.339.mjs validation/manifests/v0.4.340.json
+          git commit -m "Candidate v0.4.340 — pairwise Measure, no engagement capacity"
+          git push origin HEAD:work/v0.4.340-pairwise-measure

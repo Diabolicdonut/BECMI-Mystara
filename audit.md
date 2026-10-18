@@ -1,10 +1,18 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.339**
+Build: **0.4.340**
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-18
 
+
+## v0.4.340 — Pairwise independent Measure and unrestricted legal engagement (acceptance recorded; final main CI pending)
+
+**Recovery and provenance:** Based solely on accepted production main v0.4.339 at `389c3d928b7a3c61dec546997fca99cd78b8684a`. The existing candidate on `work/v0.4.340-pairwise-measure`, exact implementation commit `7365aeeea814909cf596f59bcea45e44b0c465bb`, was independently qualified by [full ten-job native/browser/deterministic workflow 39144046834](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39144046834) and [pairwise gate 39144046815](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39144046815). Exact production index.html SHA-256 `8d30711a555bb16961a9f0548fb32cac2b89ce60cfb6d4a9cfb0be91ddc66992` from v0.4.340 manifest. The established ordered coverage is 2316/2316 core, 1232/1232 focused, four 579/579 fresh Chromium slices; Native Acceptance v2 508/508 on accepted reference and candidate; dedicated exact-browser six-monster contact/contested-control/barrier/save tests passed. Historical 523 native record remains historical, not rerun.
+
+**Bounded game change:** No shared combat-group Measure; each actual opposing pair independently carries Close, Normal or Far. Group range is a display-only mixed/uniform summary. Six goblins may each physically engage one PC without capacity, slots or attacker limits. Deterministic three-dimensional geometry, Zone of Influence, contact, barriers, independent initiative sides, once-only contests, and one-band changes remain. Save migration retains exact pair ranges and coordinates; no seed consumption from Measure. Source attack identities, published damage, RAW/AAE/Context Matrix and existing action procedures remain unchanged. This checkpoint deliberately retains the pre-approved v0.4.339 formula (modified side initiative plus old +1/+2 Size schedule); it is **not** the newly authorized formula revision.
+
+**Acceptance discipline:** This audit/pipeline record is an *acceptance-metadata candidate*. It does not claim its own CI or merged-main CI have run. Check exact SHA after this commit, promote PR #5 only after required checks pass, then verify the exact resulting main SHA and all ten required jobs before treating v0.4.340 as fully deployed. The next *separate* v0.4.341 checkpoint is the approved existing **unmodified** side-initiative d6 plus capped `min(3, abs(Size difference))` advantage, with no other modifiers, natural melee attack Size 0, uncontested valid engagement from outside defender's Zone of Influence, pairwise isolation and full grid/browser/RAW coverage. Then resume deferred spatial state dependency without graphics.
 
 ## v0.4.339 — Live symmetric melee Measure resolution
 
