@@ -23,7 +23,7 @@ embeddedLibrary.split('\n').map(x=>'    '+x).join('\n'),
 '    return Object.freeze({calculateContextMatrix});',
 '  })();',
 runtime,
-''].join('\n');
+''].join('\n').replace(/[ \t]+$/gm,'');
 html=once(html,'  function rollComparedWeaponDamage(item,target,range,modifier=0,rollerSubject=null){',
  integration+'  function rollComparedWeaponDamage(item,target,range,modifier=0,rollerSubject=null){');
 html=once(html,'const beforeWyrdDamage=dmg.applied;dmg=applyGreaterWyrdVisionDamagePacket(pc,monster,dmg);if(',
