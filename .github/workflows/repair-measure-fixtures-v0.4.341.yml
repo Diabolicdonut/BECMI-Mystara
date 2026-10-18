@@ -1,0 +1,32 @@
+name: Repair inherited v0.4.341 initiative fixtures
+on:
+  push:
+    branches: ['work/v0.4.341-original-die-size-measure']
+    paths: ['.github/workflows/repair-measure-fixtures-v0.4.341.yml']
+permissions:
+  contents: write
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: python3 tools/repair-measure-fixtures-v0.4.341.py
+      - name: Require all static gates and clean diff
+        run: |
+          git diff --check
+          node validation/static-checks.mjs
+          git diff --stat
+      - name: Commit fixture corrections on candidate branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html validation/manifests/v0.4.341.json
+          git diff --cached --check
+          git commit -m "v0.4.341 candidate — supply actual unmodified dice in preserved legacy fixture"
+          git push origin HEAD:work/v0.4.341-original-die-size-measure
