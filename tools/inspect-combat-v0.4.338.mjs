@@ -19,7 +19,10 @@ const ranges={
   'damage-pc':'18390-18495',
   'monsters-runtime':'16070-16140,16255-16375',
   'combat-extras':'17400-17455,17530-17590',
-  'actions':'11605-11648,15708-15758'
+  'actions':'11605-11648,15708-15758',
+  'monster-attack':'20875-21065',
+  'monster-weapon':'18770-18830,18342-18388',
+  'profiles-data':'12420-12540,15065-15145,15488-15512'
 };
 for(const [name,intervals] of Object.entries(ranges)){
  const blocks=['# v0.4.338 '+name+' source snippets',''];
