@@ -503,7 +503,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.340';
+  const APP_VERSION='0.4.341';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -25116,6 +25116,15 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return 0;
   }
 
+  // A missing old-save die is unknown, never reconstructed by subtracting
+  // modifiers or interpreting a modified initiative total as a raw d6.
+  function measureUnmodifiedInitiativeDie(sideId){
+    const dice=state.combat?.initiative?.rawRolls;
+    if(!dice||!Object.prototype.hasOwnProperty.call(dice,sideId))return null;
+    const die=dice[sideId];
+    return Number.isInteger(die)&&die>=1&&die<=6?die:null;
+  }
+
   function meleeGroupNames(group){
     const pcs=compressedMeleePcLabels(group.pcNames);
     const foes=compressedMeleeMonsterLabels(group.monsterIds);
@@ -25161,7 +25170,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(ps===ms)return neutral('same-side actors');
     const a=meleeControlActorRating(pc,null),b=meleeControlActorRating(null,mon);
     if(!a||!b)return neutral('attack Size unresolved');
-    const diff=a.size-b.size,steps=n=>n>=3?2:n>=1?1:0;
+    const diff=a.size-b.size,steps=n=>Math.min(3,Math.abs(n));
     const pi=intents[ps]||'hold',mi=intents[ms]||'hold';
     if(measure==='far'){
       // A neutral natural Size 0 is not itself proof of an active Far
@@ -25208,10 +25217,17 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         [ps]:['press','hold','open'].includes(pcIntent)?pcIntent:'hold',
         [ms]:['press','hold','open'].includes(monIntent)?monIntent:'hold'
       };
-      const rolls=Object.fromEntries(sideIds.map(id=>[id,initiativeRollForSide(id)]));
+      const rolls=Object.fromEntries(sideIds.map(id=>[id,measureUnmodifiedInitiativeDie(id)]));
       if(Number(pair.formedRound)===Number(c.round)){
         void refereeLog('MELEE DISTANCE — new contact '+pc.name+' vs '+mon.name,
           {type:'melee_distance',round:c.round,pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id],before,after:before,newMelee:true});
+        continue;
+      }
+      // Pre-v0.4.341 mid-round saves may lack original dice. Preserve the
+      // existing pair band; the next actual round supplies a new rawRolls map.
+      if(sideIds.some(id=>rolls[id]===null)){
+        void refereeLog('MELEE DISTANCE — unmodified initiative die unavailable',
+          {type:'melee_distance',round:c.round,pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id],before,after:before,missingRawDice:true});
         continue;
       }
       const uniqueIntents=[...new Set(Object.values(intents))];
@@ -25786,15 +25802,20 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function rollCombatInitiativeSides(){
     const sides=combatSideRecords();
-    const rolls={},modifiers={};
-    for(const side of sides){modifiers[side.id]=homunculusInitiativeBonusForSide(side.id)+woodSpiderSluggishInitiativeModifierForSide(side.id);rolls[side.id]=rng(6)+modifiers[side.id];}
+    const rolls={},rawRolls={},modifiers={};
+    for(const side of sides){
+      modifiers[side.id]=homunculusInitiativeBonusForSide(side.id)+woodSpiderSluggishInitiativeModifierForSide(side.id);
+      const die=rng(6); // exactly the previously consumed d6; no additional RNG
+      rawRolls[side.id]=die;
+      rolls[side.id]=die+modifiers[side.id];
+    }
     const order=sides.map(s=>s.id).sort((a,b)=>(rolls[b]-rolls[a])||a.localeCompare(b));
     const high=order.length?rolls[order[0]]:0;
     const winners=order.filter(id=>rolls[id]===high);
     const winner=winners.length===1?winners[0]:null;
     const foeIds=order.filter(id=>!sideIsPc(id));
     return {
-      rolls,modifiers,order,winners,winner,
+      rolls,rawRolls,modifiers,order,winners,winner,
       pc:rolls.pc,
       monster:foeIds.length===1?rolls[foeIds[0]]:undefined,
       monsterSideId:foeIds.length===1?foeIds[0]:null
@@ -38954,7 +38975,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(group?.range==='far','New open melee did not begin at FAR');
         state.combat.monsterOrders[foe.id]={action:'melee',targetName:'Tyree',rangeIntent:'press',preferredRange:'close'};
         state.combat.pcOrders.tyree={action:'melee',targetId:foe.id,rangeIntent:'hold'};
-        state.combat.initiative={pc:1,monster:6,winner:'monster'};
+        state.combat.initiative={pc:1,monster:6,rawRolls:{pc:1,foes:6},winner:'monster'};
         resolveMeleeDistanceContests();
         group=meleeGroupFor(tyree,foe);
         harnessAssert(group?.range==='far','New melee distance was contested before its first attack phase');
@@ -39175,7 +39196,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         for(const pc of state.party) state.combat.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:state.combat.monsters[0].id,rangeIntent:'open'};
         for(const m of monsterGroupMembers(line)) state.combat.monsterOrders[m.id]={action:'melee',targetName:state.party[0].name,rangeIntent:'press',sideId:'skeletons'};
         for(const m of monsterGroupMembers(rear)) state.combat.monsterOrders[m.id]={action:'melee',targetName:state.party[0].name,rangeIntent:'hold',sideId:'wolves'};
-        state.combat.initiative={rolls:{pc:3,skeletons:5,wolves:2},order:['skeletons','pc','wolves'],winners:['skeletons'],winner:'skeletons'};
+        state.combat.initiative={rolls:{pc:3,skeletons:5,wolves:2},rawRolls:{pc:3,skeletons:5,wolves:2},order:['skeletons','pc','wolves'],winners:['skeletons'],winner:'skeletons'};
         state.combat.meleeDistanceResolvedRound=0;
         resolveMeleeDistanceContests();
         const after=meleeGroups()[0];

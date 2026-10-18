@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
-assert(html.includes("const APP_VERSION='0.4.340';"));
+assert(html.includes("const APP_VERSION='0.4.341';"));
 assert(!/engagementCapacity|engagementSlots|engagementPoints|engagementLimit/.test(html));
 const fixture=fs.readFileSync('validation/fixture-pairwise-v0.4.340.js','utf8');
 assert.equal(html.split('  boot();\n})();').length,2);

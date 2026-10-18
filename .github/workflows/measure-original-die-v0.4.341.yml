@@ -1,0 +1,21 @@
+name: Original initiative d6 and Size Measure v0.4.341
+on:
+  push:
+    branches: ['work/v0.4.341-original-die-size-measure']
+    paths: ['index.html', 'validation/manifests/v0.4.341.json', 'validation/measure-trigger-v0.4.341.md', '.github/workflows/measure-original-die-v0.4.341.yml']
+permissions:
+  contents: read
+jobs:
+  measure-matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node validation/measure-original-die-v0.4.341.mjs
+      - run: node validation/measure-pairwise-live-v0.4.340.mjs
+      - run: node validation/measure-control-live-v0.4.339.mjs

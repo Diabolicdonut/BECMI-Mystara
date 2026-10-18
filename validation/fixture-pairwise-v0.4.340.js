@@ -17,7 +17,7 @@ window.__kwPairwise340 = function(mode) {
     :['close','close','close','close','close','close'];
   for(let i=0;i<6;i++)setEngagement(pc,foes[i],bands[i]);
   state.combat.round=2;state.combat.meleeDistanceResolvedRound=0;
-  state.combat.initiative={rolls:{pc:4,foes:5},pc:4,monster:5};
+  state.combat.initiative={rolls:{pc:4,foes:5},rawRolls:{pc:4,foes:5},pc:4,monster:5};
   state.combat.pcOrders={[pc.name.toLowerCase()]:{rangeIntent:'hold',movement:'hold',action:'hold'}};
   state.combat.monsterOrders={};
   for(let i=0;i<6;i++)state.combat.monsterOrders[foes[i].id]={

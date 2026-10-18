@@ -1,0 +1,33 @@
+name: Prepare v0.4.341 raw-die Size Measure candidate
+on:
+  push:
+    branches: ['work/v0.4.341-original-die-size-measure']
+    paths: ['.github/workflows/prepare-measure-v0.4.341.yml', 'tools/prepare-measure-v0.4.341.py']
+permissions:
+  contents: write
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Construct exact-v0.4.340-derived bounded candidate
+        run: python3 tools/prepare-measure-v0.4.341.py
+      - name: Ensure syntax and source scope
+        run: |
+          git diff --check
+          node validation/static-checks.mjs
+          git diff --stat
+      - name: Commit candidate to work branch only
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html pipeline-state.md validation/manifests/v0.4.341.json validation/fixture-pairwise-v0.4.340.js validation/measure-pairwise-live-v0.4.340.mjs validation/measure-control-live-v0.4.339.mjs validation/context-matrix-live.mjs validation/context-matrix-mode.mjs
+          git diff --cached --check
+          git commit -m "Candidate v0.4.341 — original d6 pairwise Measure and capped Size 3"
+          git push origin HEAD:work/v0.4.341-original-die-size-measure
