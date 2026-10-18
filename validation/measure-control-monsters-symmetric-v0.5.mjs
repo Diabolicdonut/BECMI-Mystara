@@ -137,7 +137,11 @@ eq(resolveMonsterControlSize({delivery:'weapon',weaponId:'spear'},weaponIndex),
  {status:'verified',sizeRating:2,verified:true,source:'canonical-weapon-profile',weaponId:'spear'},
  'Monster armed with spear uses actual weapon +2 instead of neutral0');
 eq(resolveMonsterControlSize({delivery:'weapon',weaponId:'unknown-id'},weaponIndex).status,
- 'neutral-fallback','Unknown monster weapon rating not invented');
+ 'unresolved','Unknown armed monster weapon must not receive natural Size0');
+eq(resolveMonsterControlSize(null,weaponIndex).status,'unresolved',
+ 'Absent attack is not silently assigned Size0');
+eq(resolveMonsterControlSize({delivery:'unknown'},weaponIndex).status,'unresolved',
+ 'Unidentified delivery is not silently assigned Size0');
 eq(resolveMonsterGroupControl([plain,plain],weaponIndex,-1).status,
  'unresolved','No fabricated attack selection');
 eq(resolveMonsterGroupControl([{delivery:'breath'}],weaponIndex,0).reason,
@@ -148,8 +152,8 @@ const syntheticVerified={delivery:'natural',controlSizeRating:1,
  controlSizeSourceVerified:true,controlSizeSource:'synthetic-only-verified-attack-contract'};
 eq(resolveMonsterControlSize(syntheticVerified,weaponIndex).sizeRating,1,
  'Explicit hypothetical verified reach override allowed without rewriting catalog');
-eq(resolveMonsterControlSize({...syntheticVerified,controlSizeSourceVerified:false},weaponIndex).sizeRating,0,
- 'Unverified custom reach cannot confer +1');
+eq(resolveMonsterControlSize({...syntheticVerified,controlSizeSourceVerified:false},weaponIndex).status,
+ 'unresolved','Invalid explicit natural reach cannot be silently assumed neutral');
 // Every actual sourced monster natural attack must retain published damage, source
 // provenance, and preference. Any movement eligibility is a separate input.
 for(const mon of monsterAttacks){
