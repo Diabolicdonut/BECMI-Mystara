@@ -2,7 +2,7 @@ name: Original initiative d6 and Size Measure v0.4.341
 on:
   push:
     branches: ['work/v0.4.341-original-die-size-measure']
-    paths: ['index.html', 'validation/manifests/v0.4.341.json']
+    paths: ['index.html', 'validation/manifests/v0.4.341.json', 'validation/measure-trigger-v0.4.341.md', '.github/workflows/measure-original-die-v0.4.341.yml']
 permissions:
   contents: read
 jobs:
