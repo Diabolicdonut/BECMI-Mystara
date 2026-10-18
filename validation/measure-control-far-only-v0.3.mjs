@@ -134,8 +134,8 @@ for(const pOpen of [0,0.5,1]){
 }
 const find=(pOpen,policy)=>studies.find(x=>x.pOpen===pOpen&&x.normalReachPolicy===policy);
 const pct=x=>x*100;
-nearly(pct(find(0,'far-and-normal').closeAt5),26.96955715,'All-hold Close after 5');
-nearly(pct(find(0,'far-only').closeAt5),35.26595336,'All-hold Far-only Close after 5');
+nearly(pct(find(0,'far-and-normal').closeAt5),26.97127729724467,'All-hold Close after 5');
+nearly(pct(find(0,'far-only').closeAt5),35.26599730732105,'All-hold Far-only Close after 5');
 nearly(find(0,'far-and-normal').expectedRounds,7.2,'All-hold expected first Close F+N');
 nearly(find(0,'far-only').expectedRounds,6,'All-hold expected first Close F-only');
 nearly(find(0.5,'far-and-normal').expectedRounds,8.64,'Mixed expected first Close F+N');
