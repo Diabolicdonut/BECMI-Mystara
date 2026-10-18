@@ -1,0 +1,29 @@
+name: Known World measure-control design calibration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/measure-control-prototype.mjs'
+      - 'validation/measure-control-*.mjs'
+      - 'design/context-matrix/MEASURE-CONTROL-*.md'
+      - '.github/workflows/measure-control-design.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pure-design-tests:
+    name: Pure measure-control design checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Existing exhaustive measure-control tests
+        run: node validation/measure-control-prototype.mjs
+      - name: v0.2 calibrated combat scenarios and repeated-round analysis
+        run: node validation/measure-control-calibration-v0.2.mjs
