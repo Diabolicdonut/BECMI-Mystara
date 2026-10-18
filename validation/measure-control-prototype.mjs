@@ -22,9 +22,10 @@ check(r({activeThreatA:false}).reachA===0,'no point threat no reach');
 check(r({activeThreatA:undefined}).status==='unresolved','no invented threat');
 check(r({movement:{A:{Press:true,Open:true},B:{Press:false,Open:true}}}).status==='unresolved','movement check delegated');
 check(r({geometryResult:'Close',movement:undefined,initiativeA:undefined}).measure==='Close','authoritative geometry wins');
-check(r({space:'Restricted',measure:'Close',intentA:'Open',intentB:'Hold',initiativeA:4,initiativeB:4,handlingRelevantA:true,handlingRelevantB:true}).handlingTieBreak===true,'verified restricted handling');
+check(r({space:'Restricted',measure:'Close',intentA:'Open',intentB:'Hold',initiativeA:4,initiativeB:4,handlingRelevantA:true,handlingRelevantB:true,enableHandlingControlExperiment:true}).handlingTieBreak===true,'verified restricted handling');
 check(r({space:'Open',measure:'Close',intentA:'Open',intentB:'Hold',initiativeA:4,initiativeB:4,handlingRelevantA:true,handlingRelevantB:true}).winner==='none','no handling in open');
 check(r({space:'Restricted',measure:'Close',intentA:'Open',intentB:'Hold',initiativeA:4,initiativeB:4}).status==='unresolved','missing restricted evidence fails closed');
+check(r({space:'Restricted',measure:'Close',intentA:'Open',intentB:'Hold',initiativeA:4,initiativeB:4,handlingRelevantA:true,handlingRelevantB:true}).winner==='none','handling stays disabled by default');
 check(r({powerRating:3}).measure==='Far','unrelated metadata ignored');
 function count(input) {
   const totals={A:0,B:0,none:0};
