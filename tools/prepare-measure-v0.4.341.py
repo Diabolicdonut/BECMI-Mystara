@@ -98,4 +98,11 @@ needle='html.includes("const APP_VERSION=\'0.4.340\';")'
 assert needle in t
 t=t.replace(needle,needle+' || html.includes("const APP_VERSION=\'0.4.341\';")')
 f.write_text(t)
+pipeline=Path('pipeline-state.md')
+ledger=pipeline.read_text()
+assert ledger.startswith('# Known World / BECMI Text RPG — Pipeline State\n')
+ledger=ledger.replace('# Known World / BECMI Text RPG — Pipeline State\n',
+  '# Known World / BECMI Text RPG — Pipeline State\n\n'
+  '**v0.4.341 CANDIDATE — NOT ACCEPTED:** Original unmodified initiative d6 now captured separately from modified totals, paired Measure uses only the d6 plus capped Size delta 0/+1/+2/+3. This is a work-branch candidate; accepted main remains v0.4.340. Required exact-SHA native/browser/regression qualification, acceptance metadata and green merged main remain pending. Distinct BECMI RAW versus contextual combat PROCEDURE isolation is explicitly required as a separate next checkpoint; current BECM RAW PROCEDURES preset does not yet bypass the Measure system. Preserve prior defaults and independent RAW/CONTEXT_MATRIX/AAE weapon-damage settings. The persistent local-scene coordinate foundation follows that independent RAW-isolation closure.\n\n',1)
+pipeline.write_text(ledger)
 print('v0.4.341 candidate only',sha)
