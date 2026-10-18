@@ -14,7 +14,7 @@ const library=rd('lib/context-matrix-calculator.mjs');
 assert(library.includes('export function calculateContextMatrix('));
 const embeddedLibrary=library.replace('export const DEFAULT_CONTEXT_CALIBRATION','const DEFAULT_CONTEXT_CALIBRATION').replace('export function calculateContextMatrix(','function calculateContextMatrix(');
 const self=rd('tools/build-context-live-v0.4.338.mjs');
-const runtime=self.split('/* BEGIN_EMBEDDED_RUNTIME */')[1]?.split('/* END_EMBEDDED_RUNTIME */')[0];
+const runtime=self.split('/* BEGIN_'+'EMBEDDED_RUNTIME */')[1]?.split('/* END_'+'EMBEDDED_RUNTIME */')[0];
 assert(runtime,'Missing bounded live runtime source');
 const integration=[
 '  // v0.4.338: exact accepted v0.4.336 pure calculator, never recreated here.',
