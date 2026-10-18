@@ -1,0 +1,30 @@
+name: One-time v0.4.338 candidate generator
+on:
+  push:
+    branches: ['work/v0.4.338']
+    paths: ['.github/workflows/build-context-live-v0.4.338.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Request v0.4.338 bounded candidate build'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Produce source-pinned candidate
+        run: |
+          node tools/build-context-live-v0.4.338.mjs
+          node --check validation/context-matrix-live.mjs
+      - name: Commit bounded candidate
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html validation/context-matrix-mode.mjs validation/monster-attack-context.mjs validation/manifests/v0.4.338.json validation/README.md validation/context-matrix-live.mjs pipeline-state.md .github/workflows/known-world-acceptance.yml
+          git diff --cached --check
+          git commit -m "Build v0.4.338 live contextual weapon damage candidate — NOT ACCEPTED"
+          git push origin HEAD:refs/heads/work/v0.4.338
