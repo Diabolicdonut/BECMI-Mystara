@@ -167,3 +167,5 @@ Candidate 64bc701ea5afa1db3723d61e22d5ab8a5b9d5e5f passed all ten required jobs 
 ## v0.4.338 live Context Matrix candidate — NOT ACCEPTED
 
 Verified v0.4.336 calculator called only by eligible weapon hits after existing damage effects. A canonical source-verified monster physical profile or explicit encounter override supplies Size/Protection; true engagement Measure and explicitly supplied Space are required. Missing facts fail neutral. RAW, AAE, natural/special attacks and RNG unchanged. No new 1-point minimum damage floor is assumed. Required native smoke additionally runs validation/context-matrix-live.mjs; promotion requires separate candidate and ledger/main green CI.
+
+Candidate v0.4.338: required acceptance was requested after the source-pinned production builder commit. This annotation is not a promotion or acceptance record.
