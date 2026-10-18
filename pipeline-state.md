@@ -1,8 +1,8 @@
 # Known World / BECMI Text RPG — Pipeline State
 
 Current accepted build: **v0.4.338**. Newly accepted checkpoints in this Chat continuation: **4**.
-Current candidate: **none**. v0.4.338 source-pinned Context Matrix live weapon candidate qualified and accepted; main merge/CI verification remains required.
-Exact next checkpoint: **v0.4.339 — persistent authoritative local-scene coordinate/state foundation only** (not started).
+Current candidate: **v0.4.339 measure resolution NOT ACCEPTED** — user reprioritized measure control before the previously queued local-scene foundation. v0.4.338 source-pinned Context Matrix live weapon candidate qualified and accepted; main merge/CI verification remains required.
+Exact next checkpoint: **v0.4.339 — user-authorized measure resolution**, candidate only. Previously queued local-scene foundation deferred to **v0.4.340** pending future authorization.
 
 ## Authoritative ledger
 

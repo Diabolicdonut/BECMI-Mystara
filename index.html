@@ -503,7 +503,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.338';
+  const APP_VERSION='0.4.339';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -25117,6 +25117,73 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return `${pcs} vs ${foes}`;
   }
 
+  // v0.4.339 — Longer at Far, neutral at Normal, shorter at Close when
+  // actively pursuing. Existing initiative rolls only. This does NOT affect
+  // attack damage, monster preferred attack measure, Power or Handling.
+  function meleeControlActorRating(pc,monster){
+    if(pc){
+      if(pc.dead||Number(pc.hp)<=0)return null;
+      const item=equippedWeaponItem(pc),p=cmWeaponProfile(item);
+      if(item?.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating))return null;
+      return {size:p.sizeRating,verifiedWeapon:true};
+    }
+    if(!monster||!monsterCanFight(monster))return null;
+    const item=monsterWeaponItem(monster);
+    if(item){
+      const p=cmWeaponProfile(item);
+      if(item.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating))return null;
+      return {size:p.sizeRating,verifiedWeapon:true};
+    }
+    const attacks=Array.isArray(monster.attacks)?monster.attacks:[];
+    // Only identified natural melee attacks get the neutral Size 0 default;
+    // mixed, absent or unresolved attack deliveries confer no Size bonus.
+    if(!attacks.length||attacks.some(a=>a?.attackContext?.delivery!=='natural'||
+      a?.attackContext?.contextualWeaponDamageEligible!==false))return null;
+    return {size:0,verifiedWeapon:false};
+  }
+
+  function meleeControlSizeContext(group,measure,intents){
+    const neutral=why=>({bonus:{},why});
+    if(measure==='normal')return neutral('Normal Size-neutral');
+    if(measure!=='far'&&measure!=='close')return neutral('unknown measure');
+    // A connected melee shares one measure. A single actor's weapon reach
+    // must not propagate to a formation, surround, or multi-side encounter.
+    if(group.pcNames.length!==1||group.monsterIds.length!==1)
+      return neutral('multi-combatant reach unresolved');
+    const pc=state.party.find(p=>p.name.toLowerCase()===group.pcNames[0]);
+    const mon=state.combat.monsters.find(m=>m.id===group.monsterIds[0]);
+    if(!pc||!mon||!atMeleeContact(pc,mon))return neutral('contact not verified');
+    const ps=pcInitiativeSideId(pc),ms=monsterInitiativeSideId(mon);
+    if(ps===ms)return neutral('same-side actors');
+    const a=meleeControlActorRating(pc,null),b=meleeControlActorRating(null,mon);
+    if(!a||!b)return neutral('attack Size unresolved');
+    const diff=a.size-b.size,steps=n=>n>=3?2:n>=1?1:0;
+    const pi=intents[ps]||'hold',mi=intents[ms]||'hold';
+    if(measure==='far'){
+      // A neutral natural Size 0 is not itself proof of an active Far
+      // weapon point; the longer defender must hold a real melee weapon.
+      if(diff>0&&pi==='hold'&&mi==='press'&&a.verifiedWeapon&&
+        !masteryCannotAttack(pc)&&
+        state.combat.pcOrders[pc.name.toLowerCase()]?.action!=='spell')
+        return {bonus:{[ps]:steps(diff)},why:'longer weapon Holds at Far'};
+      if(diff<0&&mi==='hold'&&pi==='press'&&b.verifiedWeapon&&
+        !masteryCannotAttack(mon))
+        return {bonus:{[ms]:steps(-diff)},why:'longer weapon Holds at Far'};
+      return neutral('no verified Far threat');
+    }
+    // Close advantage is ONLY active Press against Open, never passive
+    // grapple, a free grab, or a replacement for actual BECMI withdrawal.
+    if(diff<0&&pi==='press'&&mi==='open'&&!masteryCannotMove(pc)&&
+      !masteryCannotAttack(pc)&&
+      state.combat.pcOrders[pc.name.toLowerCase()]?.action!=='spell')
+      return {bonus:{[ps]:steps(-diff)},why:'shorter attack pursues at Close'};
+    if(diff>0&&mi==='press'&&pi==='open'&&!masteryCannotMove(mon)&&
+      !masteryCannotAttack(mon)&&
+      state.combat.monsterOrders[mon.id]?.action==='melee')
+      return {bonus:{[ms]:steps(diff)},why:'shorter attack pursues at Close'};
+    return neutral('no verified Close pursuit');
+  }
+
   function resolveMeleeDistanceContests(){
     if(!combatActive())return;
     const c=state.combat;
@@ -25133,29 +25200,34 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         continue;
       }
       const uniqueIntents=[...new Set(Object.values(intents))];
-      let applied='hold', reason='all sides hold';
+      let applied='hold', reason='all sides hold',measureBonuses={};
       if(uniqueIntents.length===1){
         applied=uniqueIntents[0];
         reason=applied==='hold'?'all sides hold':`all sides ${applied}`;
       } else {
-        const high=Math.max(...sideIds.map(id=>rolls[id]||0));
-        const leaders=sideIds.filter(id=>(rolls[id]||0)===high);
+        // RAW retains its original side-phase order; use the already
+        // declared range intentions and current authoritative contact.
+        const context=meleeControlSizeContext(group,before,intents);
+        measureBonuses=context.bonus;
+        const score=id=>(rolls[id]||0)+(measureBonuses[id]||0);
+        const high=Math.max(...sideIds.map(score));
+        const leaders=sideIds.filter(id=>score(id)===high);
         const leaderIntents=[...new Set(leaders.map(id=>intents[id]||'hold'))];
         if(leaderIntents.length===1){
           applied=leaderIntents[0];
-          reason=`initiative control: ${leaders.map(sideLabel).join(' + ')}`;
+          reason=`measure control: ${leaders.map(sideLabel).join(' + ')}; ${context.why}`;
         } else {
           applied='hold';
-          reason=`tied initiative leaders want different distances`;
+          reason=`tied measure control; ${context.why}`;
         }
       }
       const idx=RANGE_ORDER.indexOf(before); let next=idx;
       if(applied==='press')next=Math.max(0,idx-1);
       else if(applied==='open')next=Math.min(RANGE_ORDER.length-1,idx+1);
       const after=RANGE_ORDER[next]; setMeleeGroupRange(group,after); syncMeleeGroupPositions(group);
-      const intentText=sideIds.map(id=>`${sideLabel(id)} ${String(intents[id]||'hold').toUpperCase()} (init ${rolls[id]||0})`).join('; ');
+      const intentText=sideIds.map(id=>`${sideLabel(id)} ${String(intents[id]||'hold').toUpperCase()} (init ${rolls[id]||0}${measureBonuses[id]?` + Size ${measureBonuses[id]}`:''})`).join('; ');
       write(`MELEE DISTANCE — ${meleeGroupNames(group)}: ${intentText}. ${reason}; ${before.toUpperCase()}${after!==before?` → ${after.toUpperCase()}`:' holds'}.`,'system');
-      void refereeLog(`MELEE DISTANCE — round ${c.round}: ${meleeGroupNames(group)}; one shared range ${before.toUpperCase()}; ${intentText}; result ${after.toUpperCase()}.`,{type:'melee_distance',round:c.round,pcNames:group.pcNames.slice(),monsterIds:group.monsterIds.slice(),before,intents,rolls,applied,reason,after});
+      void refereeLog(`MELEE DISTANCE — round ${c.round}: ${meleeGroupNames(group)}; one shared range ${before.toUpperCase()}; ${intentText}; result ${after.toUpperCase()}.`,{type:'melee_distance',round:c.round,pcNames:group.pcNames.slice(),monsterIds:group.monsterIds.slice(),before,intents,rolls,measureBonuses,applied,reason,after});
     }
     c.meleeDistanceResolvedRound=c.round;
   }
