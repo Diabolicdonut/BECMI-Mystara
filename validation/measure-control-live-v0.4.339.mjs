@@ -6,19 +6,19 @@ import http from 'node:http';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
-assert(html.includes("const APP_VERSION='0.4.340';"));
+assert(html.includes("const APP_VERSION='0.4.341';"));
 assert.equal(html.split('  boot();\n})();').length,2);
 const fixture=`window.__kwMeasure339 = function(test){
  const cases={
   far_spear_tie:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'far'},
-  far_spear_overcome:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'normal'},
+  far_spear_overcome:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'far'},
   far_pike_tie:{weapon:'pike',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'far'},
   far_sword_neutral:{weapon:'sword_normal',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'normal'},
   far_dagger_no_natural_point:{weapon:'dagger',type:'black_bear',range:'far',pi:5,mi:4,pa:'press',ma:'hold',expected:'normal'},
   normal_pike_neutral:{weapon:'pike',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   normal_dagger_neutral:{weapon:'dagger',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   close_spear_natural_follow:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',expected:'close'},
-  close_spear_escape:{weapon:'spear',type:'black_bear',range:'close',pi:6,mi:4,pa:'open',ma:'press',expected:'normal'},
+  close_spear_escape:{weapon:'spear',type:'black_bear',range:'close',pi:6,mi:4,pa:'open',ma:'press',expected:'close'},
   close_pike_natural_follow_two:{weapon:'pike',type:'black_bear',range:'close',pi:6,mi:4,pa:'open',ma:'press',expected:'close'},
   close_no_passive_grapple:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'hold',expected:'normal'},
   close_monster_not_attacking:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',monsterAction:'hold',expected:'normal'},
@@ -27,8 +27,8 @@ const fixture=`window.__kwMeasure339 = function(test){
   unknown_monster_no_bonus:{weapon:'spear',type:'skeleton',unknownMonster:true,range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'normal'},
   close_unknown_natural_no_bonus:{weapon:'spear',type:'skeleton',unknownMonster:true,range:'close',pi:5,mi:4,pa:'open',ma:'press',expected:'normal'},
   far_spell_caster_no_threat:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',pcAction:'spell',expected:'normal'},
-  modified_initiative:{weapon:'spear',type:'black_bear',range:'far',pi:7,mi:0,pa:'hold',ma:'press',expected:'far'},
-  normal_modified_initiative:{weapon:'pike',type:'black_bear',range:'normal',pi:0,mi:7,pa:'hold',ma:'press',expected:'close'},
+  modified_initiative:{weapon:'spear',type:'black_bear',range:'far',pi:7,mi:0,rawPi:1,rawMi:6,pa:'hold',ma:'press',expected:'normal'},
+  normal_modified_initiative:{weapon:'pike',type:'black_bear',range:'normal',pi:0,mi:7,rawPi:6,rawMi:1,pa:'hold',ma:'press',expected:'normal'},
   multi_actor_fallback:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',multi:true,expected:'far'}
  };
  const t=cases[test];if(!t)throw Error('unknown case '+test);
@@ -45,7 +45,8 @@ const fixture=`window.__kwMeasure339 = function(test){
  if(t.multi)setEngagement(state.party[1],foe,t.range);
  state.combat.round=2;
  state.combat.meleeDistanceResolvedRound=0;
- state.combat.initiative={rolls:{pc:t.pi,foes:t.mi},pc:t.pi,monster:t.mi};
+ state.combat.initiative={rolls:{pc:t.pi,foes:t.mi},
+  rawRolls:{pc:t.rawPi??t.pi,foes:t.rawMi??t.mi},pc:t.pi,monster:t.mi};
  state.combat.pcOrders={[pc.name.toLowerCase()]:{rangeIntent:t.pa,movement:'hold',action:t.pcAction||'hold'}};
  if(t.multi)state.combat.pcOrders[state.party[1].name.toLowerCase()]={rangeIntent:'hold',movement:'hold',action:'hold'};
  state.combat.monsterOrders={[foe.id]:{rangeIntent:t.ma,movement:'hold',action:t.monsterAction||'melee',targetName:pc.name}};
