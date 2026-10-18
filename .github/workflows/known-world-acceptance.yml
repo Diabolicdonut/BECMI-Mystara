@@ -75,6 +75,7 @@ jobs:
       - run: npm run validate:native-smoke
       - run: node validation/context-matrix-mode.mjs
       - run: node validation/context-matrix-calculator.mjs
+      - run: node validation/context-matrix-live.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
