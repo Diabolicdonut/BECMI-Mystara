@@ -1,0 +1,45 @@
+name: Build measure control v0.4.339 candidate
+
+on:
+  push:
+    branches: ['work/v0.4.339-measure-resolution']
+    paths:
+      - '.github/workflows/build-measure-candidate-v0.4.339.yml'
+      - 'tools/patch-measure-candidate-v0.4.339.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-candidate:
+    name: Apply exact bounded candidate patch and push unaccepted work
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify candidate patch syntax
+        run: python3 -m py_compile tools/patch-measure-candidate-v0.4.339.py
+      - name: Apply versioned measure-control candidate
+        run: python3 tools/patch-measure-candidate-v0.4.339.py
+      - name: Verify candidate HTML, accepted baseline and exact checksum
+        run: |
+          npm ci --ignore-scripts
+          npm run validate:syntax
+          node --check validation/context-matrix-live.mjs
+          node --check validation/measure-control-live-v0.4.339.mjs
+          sha256sum index.html
+      - name: Commit candidate only to this branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html pipeline-state.md validation/manifests/v0.4.339.json validation/context-matrix-live.mjs
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "Candidate v0.4.339: implement live symmetric measure control (NOT ACCEPTED)"
+          git push origin HEAD:work/v0.4.339-measure-resolution
