@@ -2,7 +2,7 @@ name: Prepare v0.4.341 raw-die Size Measure candidate
 on:
   push:
     branches: ['work/v0.4.341-original-die-size-measure']
-    paths: ['.github/workflows/prepare-measure-v0.4.341.yml']
+    paths: ['.github/workflows/prepare-measure-v0.4.341.yml', 'tools/prepare-measure-v0.4.341.py']
 permissions:
   contents: write
 jobs:
@@ -27,7 +27,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html validation/manifests/v0.4.341.json validation/fixture-pairwise-v0.4.340.js validation/measure-pairwise-live-v0.4.340.mjs validation/measure-control-live-v0.4.339.mjs validation/context-matrix-live.mjs validation/context-matrix-mode.mjs
+          git add index.html pipeline-state.md validation/manifests/v0.4.341.json validation/fixture-pairwise-v0.4.340.js validation/measure-pairwise-live-v0.4.340.mjs validation/measure-control-live-v0.4.339.mjs validation/context-matrix-live.mjs validation/context-matrix-mode.mjs
           git diff --cached --check
           git commit -m "Candidate v0.4.341 — original d6 pairwise Measure and capped Size 3"
           git push origin HEAD:work/v0.4.341-original-die-size-measure
