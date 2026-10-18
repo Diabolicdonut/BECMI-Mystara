@@ -14,3 +14,24 @@ for(const [group,pattern] of groups){const hits=[];for(let i=0;i<ls.length;i++)i
 fs.mkdirSync('validation/candidate-v0.4.338',{recursive:true});
 fs.writeFileSync('validation/candidate-v0.4.338/source-inspection.md',out.join('\n').slice(0,120000)+'\n');
 console.log('Combat inspection prepared: '+ls.length+' lines; wrote source-inspection.md');
+const ranges={
+  'damage-weapon':'17390-17545',
+  'damage-pc':'18390-18495',
+  'monsters-runtime':'16070-16140,16255-16375',
+  'combat-extras':'17400-17455,17530-17590',
+  'actions':'11605-11648,15708-15758'
+};
+for(const [name,intervals] of Object.entries(ranges)){
+ const blocks=['# v0.4.338 '+name+' source snippets',''];
+ for(const part of intervals.split(',')){const [start,end]=part.split('-').map(Number);
+ blocks.push('## Production HTML lines '+start+'-'+end,'');
+ for(let n=start;n<=end;n++){const line=ls[n-1]??'';blocks.push(n+': '+line.slice(0,1800));}
+ blocks.push('');}
+ fs.writeFileSync('validation/candidate-v0.4.338/'+name+'.md',blocks.join('\n').trimEnd()+'\n');
+}
+const targeted=[];
+for(let i=0;i<ls.length;i++){
+ const l=ls[i];
+ if(l.length<5000&&/(?:function\s+\w+(?:Attack|Damage|Combat|Strike|Turn|Weapon)\w*\s*\(|function\s+(?:perform|resolve|execute|apply|roll)\w*(?:attack|weapon|damage|combat)\w*\s*\()/i.test(l))targeted.push((i+1)+': '+l.slice(0,500));
+}
+fs.writeFileSync('validation/candidate-v0.4.338/attack-function-index.md',['# Attack-related function declarations','',...targeted].join('\n').trimEnd()+'\n');
