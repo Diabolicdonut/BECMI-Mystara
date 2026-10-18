@@ -30,6 +30,8 @@ jobs:
         run: node validation/measure-control-calibration-v0.2.mjs
       - name: v0.3 Far-only versus Far-and-Normal with no Handling
         run: node validation/measure-control-far-only-v0.3.mjs
+      - name: v0.5 Symmetric measure and neutral monster attack Size
+        run: node validation/measure-control-monsters-symmetric-v0.5.mjs
 
   native-integration-boundary:
     name: Existing production combat boundary probes
