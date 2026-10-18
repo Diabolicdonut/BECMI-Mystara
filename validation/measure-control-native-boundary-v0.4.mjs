@@ -115,6 +115,18 @@ try{
                 {sideId:'foes',intent:'Press',weapon:sword,kind:'weapon'}],
   sideRolls:Object.fromEntries(modifier.sideRolls),movement
  }).status,'resolved','Modified 7 and 0 initiative side totals are valid');
+ const phased=await run('phased_handoff');
+ equal(phased.mode,'PHASED','Actual phased-mode handoff fixture');
+ equal(phased.before.records[0].range,'far','Phased handoff starts Far');
+ equal(phased.after.records[0].range,'normal','Phased movement -> contest -> combat phases retains baseline');
+ check(phased.after.round===3&&!phased.afterAwaiting,
+   'Phased complete round reaches next round with weapon window resolved');
+ const raw=await run('raw_handoff');
+ equal(raw.mode,'RAW','Actual RAW-side handoff fixture');
+ equal(raw.before.records[0].range,'far','RAW handoff starts Far');
+ equal(raw.after.records[0].range,'normal','RAW turn contest keeps existing one-band baseline');
+ check(raw.after.round===3&&!raw.afterAwaiting,
+   'RAW side movement and remainder complete one round');
  equal(errors,[],'No page, console or network errors');
  console.log(JSON.stringify({result:'PASS',
   scope:'actual accepted production integration boundary, NOT live rule integration',
@@ -127,6 +139,7 @@ try{
   connectedPCs:connected.snapshot.records[0].pcNames.length,
   mixedSameSideIntent:connected.snapshot.records[0].sideIntents.pc,
   retreat:{flag:retreat.retreating,separation:retreat.separation},
-  modifiedSideInitiative:modifier.sideRolls},null,2));
+  modifiedSideInitiative:modifier.sideRolls,
+  phaseHandoffs:{PHASED:{mid:phased.mid,round:phased.after.round},RAW:{mid:raw.mid,round:raw.after.round}}},null,2));
 }catch(e){console.error(String(e.stack||e));process.exitCode=1;}
 finally{await browser?.close();await new Promise(done=>server.close(done));}
