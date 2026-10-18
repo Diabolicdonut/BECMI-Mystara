@@ -17,7 +17,7 @@ assert.equal(manifest.core.length,2316);assert.equal(manifest.focused.length,123
 manifest.acceptedVersion='0.4.338';
 write('validation/manifests/v0.4.338.json',JSON.stringify(manifest,null,2)+'\n');
 let audit=read('audit.md');
-audit=once(audit,'Build: **0.4.337**','Build: **0.4.338**');
+audit=once(audit,'Build: **0.4.337**  \n','Build: **0.4.338**\n');
 const entry=[
  '## v0.4.338 — Live Context Matrix weapon damage only (visual/spatial work deferred)',
  '',
