@@ -1,6 +1,6 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.340**
+Build: **0.4.339**
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-18
