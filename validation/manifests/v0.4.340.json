@@ -3556,7 +3556,7 @@
   "expectedNativeChecks": 508,
   "establishedNativeScript": "validation/native-v2.mjs",
   "nativeBlocker": null,
-  "acceptedVersion": "0.4.339",
+  "acceptedVersion": "0.4.340",
   "productionSha256": "8d30711a555bb16961a9f0548fb32cac2b89ce60cfb6d4a9cfb0be91ddc66992",
   "nativeAcceptanceBaseline": "Native Acceptance v2; 33 scenarios; 508 on v0.4.333 and 508 on v0.4.335",
   "historical523Rerun": false
