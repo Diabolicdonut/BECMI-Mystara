@@ -48,13 +48,15 @@ window.__kwPairwise340 = function(mode) {
     const coords=foes.map(m=>({id:m.id,...combatMonsterVector(m)}));
     const before={bands:states(),coords,pc:combatPcVector(pc),seed:state.seed,
       round:state.combat.round,version:state.combat.pairwiseMeasureVersion};
-    persistStateSilently();load();
+    persistStateSilently();
+    const savedSeed=JSON.parse(localStorage.getItem(STORAGE.save)).seed;
+    load();
     const restoredPc=state.party.find(p=>p.name===pc.name);
     const after={bands:foes.map(m=>state.combat.engagements?.[engagementKey(pc.name,m.id)]?.range??null),
       coords:foes.map(m=>({id:m.id,...combatMonsterVector(state.combat.monsters.find(x=>x.id===m.id))})),
       pc:combatPcVector(restoredPc),seed:state.seed,round:state.combat.round,
       version:state.combat.pairwiseMeasureVersion};
-    return {before,after};
+    return {before,after,savedSeed};
   }
   throw Error('Unknown pairwise mode '+mode);
 };
