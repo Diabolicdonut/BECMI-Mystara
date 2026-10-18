@@ -3,7 +3,7 @@ name: Pairwise Measure v0.4.340 focused native gate
 on:
   push:
     branches: ['work/v0.4.340-pairwise-measure']
-    paths: ['.github/workflows/pairwise-measure-v0.4.340.yml']
+    paths: ['.github/workflows/pairwise-measure-v0.4.340.yml', 'validation/measure-pairwise-live-v0.4.340.mjs', 'validation/fixture-pairwise-v0.4.340.js']
 
 permissions:
   contents: read
