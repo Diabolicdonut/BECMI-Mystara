@@ -78,6 +78,8 @@ jobs:
       - run: node validation/context-matrix-live.mjs
       - name: Required live symmetrical measure and monster resolution checks
         run: node validation/measure-control-live-v0.4.339.mjs
+      - name: Required native pairwise Measure, six-goblin swarm and save reload
+        run: node validation/measure-pairwise-live-v0.4.340.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
