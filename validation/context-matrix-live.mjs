@@ -18,7 +18,7 @@ assert(html.includes('applyLiveContextMatrixDamage({applied:damage,rawExpr:maste
 const digest=createHash('sha256').update(html).digest('hex');
 const manifest=JSON.parse(fs.readFileSync(`validation/manifests/v${html.match(/const APP_VERSION='([^']+)'/)[1]}.json`,'utf8'));
 assert.equal(manifest.productionSha256,digest);
-assert(['0.4.337','0.4.338','0.4.339'].includes(manifest.acceptedVersion));
+assert(['0.4.337','0.4.338','0.4.339','0.4.340'].includes(manifest.acceptedVersion));
 const anchor='  boot();\n})();';
 assert.equal(html.split(anchor).length,2);
 const self=fs.readFileSync('validation/context-matrix-live.mjs','utf8');
