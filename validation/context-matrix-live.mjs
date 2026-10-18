@@ -92,10 +92,10 @@ if(false){ /* BEGIN_BROWSER_FIXTURE */
     const noSpace=cmWeaponAdjustment(spear,pc,monster,'melee');
     check(!noSpace.eligible&&noSpace.modifier===0,'Unknown Space did not fail neutral');
     state.combat.contextMatrixSpace='Open';
-    const pair=getEngagement(pc,monster);
-    const oldMeasure=pair.range;pair.range=null;
-    const noMeasure=cmWeaponAdjustment(spear,pc,monster,'melee');
-    pair.range=oldMeasure;
+    // A nonexistent engagement supplies no fighting measure. Do not erase a
+    // real melee group: its authoritative range is correctly reconstructed.
+    const outOfContact={...monster,id:'unengaged-context-probe'};
+    const noMeasure=cmWeaponAdjustment(spear,pc,outOfContact,'melee');
     check(!noMeasure.eligible&&noMeasure.modifier===0,'Unknown Measure did not fail neutral');
     monster.contextMatrixTarget={size:'Large',protection:'Hard'};
     monster.ac=0;monster.immuneMagic=true;
