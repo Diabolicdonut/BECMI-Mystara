@@ -101,5 +101,37 @@
       r.sideIDs=combatSideRecords().map(row=>row.id);
       return r;
     }
+    if(caseId==='phased_handoff'||caseId==='raw_handoff'){
+      const {pc,foe}=setup();
+      setEngagement(pc,foe,'far');
+      state.combat.round=2;
+      state.combat.initiative={
+        rolls:{pc:4,foes:5},pc:4,monster:5,order:['foes','pc'],
+        winner:'foes',winners:['foes']
+      };
+      state.combat.pcOrders={[pc.name.toLowerCase()]:{
+        rangeIntent:'hold',movement:'hold',action:'hold'
+      }};
+      state.combat.monsterOrders={[foe.id]:{
+        rangeIntent:'press',movement:'hold',action:'hold'
+      }};
+      r.before=snapshot();r.mode=caseId==='phased_handoff'?'PHASED':'RAW';
+      if(r.mode==='PHASED'){
+        state.combat.moveOrder=['foes','pc'];
+        resolvePhasedRoundAfterMovementChoice();
+      }else{
+        beginRawSideTurn('pc',['foes']);
+      }
+      r.mid={
+        round:state.combat.round,
+        distanceResolvedRound:state.combat.meleeDistanceResolvedRound,
+        range:snapshot().records?.[0]?.range,
+        awaitingWeaponChanges:state.combat.awaitingWeaponChanges,
+        pending:state.combat.pendingResolution?.mode??null
+      };
+      if(state.combat.awaitingWeaponChanges)continueCombatAfterWeaponChanges(true);
+      r.after=snapshot();r.afterAwaiting=state.combat.awaitingWeaponChanges;
+      return r;
+    }
     throw new Error('Unknown native test '+caseId);
   };
