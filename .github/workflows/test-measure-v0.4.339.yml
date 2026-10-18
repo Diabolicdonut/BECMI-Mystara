@@ -1,0 +1,28 @@
+name: v0.4.339 candidate measure integration
+
+on:
+  push:
+    branches: ['work/v0.4.339-measure-resolution']
+    paths:
+      - 'index.html'
+      - 'validation/measure-control-live-v0.4.339.mjs'
+      - '.github/workflows/test-measure-v0.4.339.yml'
+      - 'validation/measure-trigger-v0.4.339.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-measure:
+    name: Real browser v0.4.339 measure scenarios
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node validation/measure-control-live-v0.4.339.mjs
