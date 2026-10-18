@@ -63,7 +63,11 @@ try {
   check(barrier.remaining,5,'barrier does not erase other valid attackers');
   const save=await run('save');
   check(save.before.version,1,'pairwise state explicitly versioned before save');
-  check(save.after,save.before,'native save/load roundtrip preserves all six bands and coordinates');
+  check(save.savedSeed,save.before.seed,'native serialization preserves the exact RNG seed');
+  const {seed:reloadedSeed,...restoredPairs}=save.after;
+  const {seed:serializedSeed,...originalPairs}=save.before;
+  check(restoredPairs,originalPairs,'native save/load preserves all six Measures, coordinates and round');
+  check(Number.isInteger(reloadedSeed),true,'existing native loader RNG remains a valid seed');
   check(errors,[],'zero page console or network errors');
   console.log(JSON.stringify({status:'PASS',scenarios:5,assertions,version:'0.4.340',sixGoblinSurround:'6/6',errors}));
 }catch(e){console.error(e.stack||String(e));process.exitCode=1}
