@@ -105,7 +105,7 @@ try{
    const advantage=Math.min(3,t.diff);
    let expected;
    if(t.band==='far')expected=(t.longPc?t.a+advantage>=t.b:t.b+advantage>=t.a)?'far':'normal';
-   else if(t.band==='normal')expected=t.a>=t.b?'normal':'close';
+   else if(t.band==='normal')expected=t.longPc?(t.a>=t.b?'normal':'close'):(t.a>t.b?'close':'normal');
    else expected=(t.longPc?t.b+advantage>=t.a:t.a+advantage>=t.b)?'close':'normal';
    const label=[t.diff,t.longPc,t.band,t.a,t.b].join('/');
    check(t.result,expected,'pair Measure '+label);
