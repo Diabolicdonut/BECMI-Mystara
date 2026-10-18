@@ -1,5 +1,7 @@
 # Known World / BECMI Text RPG — Pipeline State
 
+**v0.4.340 CANDIDATE — NOT ACCEPTED:** pairwise Measure and explicit no engagement capacity. Existing main v0.4.339 remains authoritative until full exact-SHA promotion. Next after acceptance: persistent local-scene coordinates.
+
 Current accepted build: **v0.4.339** (acceptance record staged for promotion; treat v0.4.338 as deployed until full required exact-SHA main CI is green).
 Latest qualified build: **v0.4.339 live Measure resolution** (acceptance recorded here for exact candidate bytes; not finally accepted until metadata-commit CI, promotion to main, and main CI are green). Previous accepted main baseline: **v0.4.338**. Checkpoints v0.4.335–v0.4.338 were previously accepted.
 Current candidate for promotion: **v0.4.339** at `ae2c791102103f2dbeda49da78450b5e2d743e63`; [all ten required jobs green](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39101362322). Production SHA-256 `d4bc231245961cc2803326bf4572dbbd71acc115b7676282d555ea1e537e9487`. The metadata-only acceptance commit and subsequently promoted main must each independently have green exact-SHA CI; only then consider this build accepted.
