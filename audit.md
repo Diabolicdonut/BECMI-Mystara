@@ -1,6 +1,6 @@
 # Known World BECMI Engine Audit
 
-Build on accepted main: **0.4.341**; **0.4.342 work-branch acceptance metadata staged, not yet promoted**
+Build: **0.4.342** (acceptance-staged work branch ONLY, not merged or accepted main; fully accepted main remains **0.4.341**)
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-19 (v0.4.342 staging; older checkpoint records retain their historical evidence)
