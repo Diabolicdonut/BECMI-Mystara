@@ -249,6 +249,12 @@
         <div class="collapse-body">
           <h3>RULES OPTIONS</h3>
           <div id="rulesProfileState" class="rule-state"></div>
+          <div id="combatProcedureState" class="rule-state" aria-live="polite"></div>
+          <div class="button-row" style="margin-bottom:8px">
+            <button type="button" id="rawCombatButton">PURE BECMI RAW COMBAT</button>
+            <button type="button" id="contextCombatButton">CONTEXTUAL TACTICAL COMBAT</button>
+          </div>
+          <p class="tiny">Combat procedure is independent from configured weapon damage and initiative. Pure BECMI RAW enforces original RAW initiative, damage and melee procedures; contextual Measure and influence restrictions are inactive. Your contextual damage and initiative preferences remain saved for when you return. Changes require combat to end.</p>
           <div class="button-row" style="margin-bottom:8px">
             <button type="button" id="rawProfileButton">APPLY BECM RAW PROCEDURES</button>
             <button type="button" id="houseProfileButton">APPLY HOUSE PROCEDURES</button>
@@ -503,7 +509,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.341';
+  const APP_VERSION='0.4.342';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -526,6 +532,9 @@
   const aiHelp = document.getElementById('aiHelp');
   const createPartyButton = document.getElementById('createPartyButton');
   const rulesProfileState = document.getElementById('rulesProfileState');
+  const combatProcedureState = document.getElementById('combatProcedureState');
+  const rawCombatButton = document.getElementById('rawCombatButton');
+  const contextCombatButton = document.getElementById('contextCombatButton');
   const rawProfileButton = document.getElementById('rawProfileButton');
   const houseProfileButton = document.getElementById('houseProfileButton');
   const rawSpellModeButton = document.getElementById('rawSpellModeButton');
@@ -2480,7 +2489,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
       updatedAt:null
     },
     combat:null,
-    rules:{weaponDamageMode:'RAW',weaponAudit:true,fighterCombatOptions:true,unarmedCombat:true,weaponMastery:false,generalSkills:false,warMachine:true,siegeMachine:true,touchDispel:false,initiativeMode:'PHASED',gettingLostMode:'RAW',spellResolutionMode:'RAW_STRICT',retainerXpShare:0.5,developerMode:true},
+    rules:{weaponDamageMode:'RAW',combatProcedureMode:'CONTEXTUAL',weaponAudit:true,fighterCombatOptions:true,unarmedCombat:true,weaponMastery:false,generalSkills:false,warMachine:true,siegeMachine:true,touchDispel:false,initiativeMode:'PHASED',gettingLostMode:'RAW',spellResolutionMode:'RAW_STRICT',retainerXpShare:0.5,developerMode:true},
     party:[]
   });
 
@@ -5843,11 +5852,14 @@ ${lines.length?lines.join('\n'):'No Chaotic monster hirelings have been persuade
     if(!rules.initiativeMode) rules.initiativeMode='PHASED';
     rules.retainerXpShare=0.5; // Mentzer BECMI: NPC retainers count as half an XP share. Fixed campaign rule.
     if(rulesProfileState) rulesProfileState.innerHTML=`<strong>Procedure profile:</strong> ${activeRulesProfile()}<br><strong>Spell resolution:</strong> ${spellResolutionMode()==='RAW_STRICT'?'RAW STRICT — missing handlers refuse without spending':'LEGACY FALLBACK — generic tracked placeholders allowed'}`;
-    weaponRuleState.innerHTML = `<strong>Weapon damage:</strong> ${esc(rules.weaponDamageMode)}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Initiative:</strong> ${rules.initiativeMode==='PHASED'?'PHASE-BASED':'RC RAW SIDE-BASED'}<br><strong>Weapon Mastery:</strong> ${rules.weaponMastery?'ON':'OFF (data preserved)'}<br><strong>Retainer XP:</strong> ½ share (Mentzer BECMI)`;
+    weaponRuleState.innerHTML = `<strong>Weapon damage configured:</strong> ${esc(rules.weaponDamageMode)} · <strong>effective:</strong> ${esc(effectiveWeaponDamageMode())}<br><strong>Weapon audit:</strong> ${rules.weaponAudit ? 'ON — compare both systems' : 'OFF'}<br><strong>Initiative:</strong> ${rules.initiativeMode==='PHASED'?'PHASE-BASED':'RC RAW SIDE-BASED'}<br><strong>Weapon Mastery:</strong> ${rules.weaponMastery?'ON':'OFF (data preserved)'}<br><strong>Retainer XP:</strong> ½ share (Mentzer BECMI)`;
     if(becmFeatureState) becmFeatureState.innerHTML=`<strong>BECM systems:</strong> Fighter Options ${rules.fighterCombatOptions?'ON':'OFF'} · Unarmed ${rules.unarmedCombat?'ON':'OFF'} · General Skills ${rules.generalSkills?'ON':'OFF'} · War Machine ${rules.warMachine?'ON':'OFF'} · War Tactics ${rules.warMachineTactics?'ON':'OFF'} · Siege Machine ${rules.siegeMachine?'ON':'OFF'} · Touch Dispel ${rules.touchDispel?'ON':'OFF'}`;
     for(const [button,key,label] of [[fighterOptionsButton,'fighterCombatOptions','FIGHTER OPTIONS'],[unarmedCombatButton,'unarmedCombat','UNARMED'],[weaponMasteryButton,'weaponMastery','WEAPON MASTERY'],[generalSkillsButton,'generalSkills','GENERAL SKILLS'],[warMachineButton,'warMachine','WAR MACHINE'],[siegeMachineButton,'siegeMachine','SIEGE MACHINE']]) if(button) button.textContent=`${label}: ${rules[key]?'ON':'OFF'}`;
-    if(rawProfileButton) rawProfileButton.disabled=activeRulesProfile()==='BECM RAW PROCEDURES';
-    if(houseProfileButton) houseProfileButton.disabled=activeRulesProfile()==='HOUSE PROCEDURES';
+    if(combatProcedureState) combatProcedureState.innerHTML=`<strong>Combat procedures:</strong> ${pureBecmiRawCombat()?'PURE MENTZER BECMI RAW':'CONTEXTUAL TACTICAL'} · <strong>Effective initiative:</strong> ${effectiveInitiativeMode()} · <strong>Effective weapon damage:</strong> ${effectiveWeaponDamageMode()} · <strong>Configured damage:</strong> ${esc(rules.weaponDamageMode)}`;
+    if(rawCombatButton) rawCombatButton.disabled=pureBecmiRawCombat()||combatActive();
+    if(contextCombatButton) contextCombatButton.disabled=!pureBecmiRawCombat()||combatActive();
+    if(rawProfileButton) rawProfileButton.disabled=activeRulesProfile()==='BECM RAW PROCEDURES'||combatActive();
+    if(houseProfileButton) houseProfileButton.disabled=activeRulesProfile()==='HOUSE PROCEDURES'||combatActive();
     if(rawSpellModeButton) rawSpellModeButton.disabled=spellResolutionMode()==='RAW_STRICT';
     if(legacySpellModeButton) legacySpellModeButton.disabled=spellResolutionMode()==='LEGACY_FALLBACK';
     rawWeaponsButton.disabled = rules.weaponDamageMode === 'RAW';
@@ -11919,7 +11931,7 @@ ${lines.length?lines.join('\n'):'No Chaotic monster hirelings have been persuade
     if(combatActive()){pc.weaponSwitchedThisRound=true;}
     if(announce){write(`${pc.name} uses the bastard sword ${two?'two-handed':'one-handed'}${two?' and cannot use a shield; under Mentzer RAW this mode loses individual initiative when RAW weapon timing is in force':''}.`,'system');updatePanels();}return true;
   }
-  function mentzerBastardInitiativeLoss(pc){const item=equippedWeaponItem(pc);return Boolean(['RAW','CONTEXT_MATRIX'].includes(state.rules?.weaponDamageMode)&&item?.itemId==='sword_bastard'&&item?.masteryUseMode==='twohanded');}
+  function mentzerBastardInitiativeLoss(pc){const item=equippedWeaponItem(pc);return Boolean(['RAW','CONTEXT_MATRIX'].includes(effectiveWeaponDamageMode())&&item?.itemId==='sword_bastard'&&item?.masteryUseMode==='twohanded');}
 
   function equipCommand(text) {
     const match=/^equip\s+([^ ]+)\s+(?:with\s+)?(.+)$/i.exec(text.trim());
@@ -15719,11 +15731,28 @@ Original gap rationale: ${gap.preImplementationSummary}`;}).join('\n\n'),'system
     if(!['RAW_STRICT','LEGACY_FALLBACK'].includes(String(rules.spellResolutionMode||'').toUpperCase())) rules.spellResolutionMode='RAW_STRICT';
     const selectedWeaponMode=String(rules.weaponDamageMode??'').toUpperCase();
     rules.weaponDamageMode=['RAW','CONTEXT_MATRIX','AAE','MATRIX'].includes(selectedWeaponMode)?selectedWeaponMode:'RAW';
+    // Existing saves were contextual tactical; absent/invalid mode cannot silently change gameplay.
+    rules.combatProcedureMode=String(rules.combatProcedureMode||'').toUpperCase()==='RAW'?'RAW':'CONTEXTUAL';
     if(!['RAW','PHASED'].includes(String(rules.initiativeMode||'').toUpperCase())) rules.initiativeMode='PHASED';
     if(!['RAW','LOST_TIME'].includes(String(rules.gettingLostMode||'').toUpperCase())) rules.gettingLostMode='RAW';
     return rules;
   }
 
+  function pureBecmiRawCombat(){return state.rules?.combatProcedureMode==='RAW';}
+  function effectiveWeaponDamageMode(){return pureBecmiRawCombat()?'RAW':state.rules?.weaponDamageMode||'RAW';}
+  function effectiveInitiativeMode(){return pureBecmiRawCombat()?'RAW':state.rules?.initiativeMode||'RAW';}
+  function setCombatProcedureMode(mode,{announce=true}={}){
+    const value=String(mode||'').trim().toUpperCase();
+    if(!['RAW','CONTEXTUAL'].includes(value)){if(announce)write('Choose pure RAW or contextual tactical combat.','warning');return false;}
+    if(combatActive()){if(announce)write('Finish the current combat before changing combat procedures. No settings were changed.','warning');return false;}
+    const rules=ensureBecmRuleOptions();
+    if(rules.combatProcedureMode===value)return true;
+    rules.combatProcedureMode=value;
+    if(announce){addEvent('Combat procedures switched to '+value+'.');
+      write(value==='RAW'?'PURE BECMI RAW combat selected: contextual Measure, influence constraints and Context Matrix damage are inactive; saved contextual preferences remain unchanged.':'CONTEXTUAL TACTICAL combat selected: your separately configured weapon damage and initiative preferences are restored without changing them.','system');
+      updatePanels();}
+    return true;
+  }
   function spellResolutionMode(){
     const rules=ensureBecmRuleOptions();
     return rules.spellResolutionMode==='LEGACY_FALLBACK'?'LEGACY_FALLBACK':'RAW_STRICT';
@@ -15737,14 +15766,15 @@ Original gap rationale: ${gap.preImplementationSummary}`;}).join('\n\n'),'system
   }
   function activeRulesProfile(){
     const rules=ensureBecmRuleOptions();
-    if(rules.weaponDamageMode==='RAW'&&rules.initiativeMode==='RAW'&&rules.gettingLostMode==='RAW'&&spellResolutionMode()==='RAW_STRICT')return 'BECM RAW PROCEDURES';
-    if(['MATRIX','AAE'].includes(rules.weaponDamageMode)&&rules.initiativeMode==='PHASED'&&rules.gettingLostMode==='LOST_TIME'&&spellResolutionMode()==='RAW_STRICT')return 'HOUSE PROCEDURES';
+    if(rules.combatProcedureMode==='RAW'&&rules.weaponDamageMode==='RAW'&&rules.initiativeMode==='RAW'&&rules.gettingLostMode==='RAW'&&spellResolutionMode()==='RAW_STRICT')return 'BECM RAW PROCEDURES';
+    if(rules.combatProcedureMode==='CONTEXTUAL'&&['MATRIX','AAE'].includes(rules.weaponDamageMode)&&rules.initiativeMode==='PHASED'&&rules.gettingLostMode==='LOST_TIME'&&spellResolutionMode()==='RAW_STRICT')return 'HOUSE PROCEDURES';
     return 'CUSTOM MIX';
   }
   function applyRulesProfile(profile){
     const value=String(profile||'').toUpperCase().replace(/[ -]+/g,'_'),rules=ensureBecmRuleOptions();
-    if(value==='RAW'||value==='BECM_RAW'||value==='BECM_RAW_PROCEDURES'){rules.weaponDamageMode='RAW';rules.initiativeMode='RAW';rules.gettingLostMode='RAW';rules.spellResolutionMode='RAW_STRICT';write('BECM RAW procedure profile applied: RAW weapon damage, RAW side initiative, RAW getting-lost displacement, and strict source-bounded spell resolution. Optional BECM systems retain their current ON/OFF choices.','system');}
-    else if(value==='HOUSE'||value==='HOUSE_PROCEDURES'){rules.weaponDamageMode='MATRIX';rules.initiativeMode='PHASED';rules.gettingLostMode='LOST_TIME';rules.spellResolutionMode='RAW_STRICT';write('House procedure profile applied: contextual weapon matrix, phase initiative, and map-safe lost time. Strict RAW spell resolution remains active; optional BECM systems retain their current ON/OFF choices.','system');}
+    if(combatActive()){write('Finish combat before changing the procedure profile; no options changed.','warning');return false;}
+    if(value==='RAW'||value==='BECM_RAW'||value==='BECM_RAW_PROCEDURES'){rules.combatProcedureMode='RAW';rules.weaponDamageMode='RAW';rules.initiativeMode='RAW';rules.gettingLostMode='RAW';rules.spellResolutionMode='RAW_STRICT';write('BECM RAW procedure profile applied: RAW weapon damage, RAW side initiative, RAW getting-lost displacement, and strict source-bounded spell resolution. Optional BECM systems retain their current ON/OFF choices.','system');}
+    else if(value==='HOUSE'||value==='HOUSE_PROCEDURES'){rules.combatProcedureMode='CONTEXTUAL';rules.weaponDamageMode='MATRIX';rules.initiativeMode='PHASED';rules.gettingLostMode='LOST_TIME';rules.spellResolutionMode='RAW_STRICT';write('House procedure profile applied: contextual weapon matrix, phase initiative, and map-safe lost time. Strict RAW spell resolution remains active; optional BECM systems retain their current ON/OFF choices.','system');}
     else {write('Unknown rules profile.','warning');return false;}
     addEvent(`Rules profile changed to ${activeRulesProfile()}.`);updatePanels();return true;
   }
@@ -16534,26 +16564,48 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     c.spatialBarriers=Array.isArray(c.spatialBarriers)?c.spatialBarriers:[];
     return c;
   }
+  // RAW uses a separate encounter-position record. Contextual x/y/z may still
+  // be retained for legacy saves and presentation but no longer controls RAW
+  // melee eligibility or movement after encounter setup.
+  function ensureRawCombatPositions(c){
+    if(!pureBecmiRawCombat()||!c)return null;
+    c.rawPositions3d=c.rawPositions3d&&typeof c.rawPositions3d==='object'?c.rawPositions3d:{pcs:{},monsters:{}};
+    const row=c.rawPositions3d;
+    row.pcs=row.pcs&&typeof row.pcs==='object'?row.pcs:{};
+    row.monsters=row.monsters&&typeof row.monsters==='object'?row.monsters:{};
+    for(const pc of state.party){
+      const key=pc.name.toLowerCase();
+      if(!row.pcs[key]||typeof row.pcs[key]!=='object')
+        row.pcs[key]=normalizedSpatialVector(c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
+    }
+    for(const mon of c.monsters||[]){
+      if(!row.monsters[mon.id]||typeof row.monsters[mon.id]!=='object')
+        row.monsters[mon.id]=normalizedSpatialVector(c.positions3d.monsters[mon.id],combatUnitsToFeet(Number(c.positions.monsters[mon.id])||0));
+    }
+    return row;
+  }
   function combatPcVector(pc){
     if(!combatActive()||!pc) return {x:0,y:0,z:0};
     const c=ensureCombatSpatialState(),key=pc.name.toLowerCase();
-    return normalizedSpatialVector(c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
+    return normalizedSpatialVector(pureBecmiRawCombat()?ensureRawCombatPositions(c).pcs[key]:c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
   }
   function combatMonsterVector(monster){
     if(!combatActive()||!monster) return {x:0,y:0,z:0};
     const c=ensureCombatSpatialState();
-    return normalizedSpatialVector(c.positions3d.monsters[monster.id],combatUnitsToFeet(Number(c.positions.monsters[monster.id])||0));
+    return normalizedSpatialVector(pureBecmiRawCombat()?ensureRawCombatPositions(c).monsters[monster.id]:c.positions3d.monsters[monster.id],combatUnitsToFeet(Number(c.positions.monsters[monster.id])||0));
   }
   function setCombatPcVector(pc,value){
     if(!combatActive()||!pc) return;
     const c=ensureCombatSpatialState(),key=pc.name.toLowerCase(),before=combatPcVector(pc),after=normalizedSpatialVector(value,before.x);
     if(before.x!==after.x||before.y!==after.y||before.z!==after.z){if(pc.stealthState?.skill==='halflingHide')delete pc.stealthState;rawBreakPhantasmalForce(pc,'caster moved');rawBreakFifthLevelConcentration(pc,'caster moved',{movementFeet:vectorDistanceFt(before,after)});}
+    if(pureBecmiRawCombat())ensureRawCombatPositions(c).pcs[key]={...after};
     c.positions3d.pcs[key]=after;
     c.positions.pcs[key]=feetToCombatUnits(after.x);
   }
   function setCombatMonsterVector(monster,value){
     if(!combatActive()||!monster) return;
     const c=ensureCombatSpatialState(),after=normalizedSpatialVector(value,combatMonsterVector(monster).x);
+    if(pureBecmiRawCombat())ensureRawCombatPositions(c).monsters[monster.id]={...after};
     c.positions3d.monsters[monster.id]=after;
     c.positions.monsters[monster.id]=feetToCombatUnits(after.x);
   }
@@ -16615,14 +16667,15 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
   function combatSeparation(pc,monster){
     if(!pc||!monster||!combatActive()) return Infinity;
-    const centerFt=combatCenterDistanceFt(pc,monster),influenceFt=combatantInfluenceRadiusFt(pc)+combatantInfluenceRadiusFt(monster);
+    // The fixed RAW hand-to-hand distance is not the contextual weapon/creature ZOI.
+    const centerFt=combatCenterDistanceFt(pc,monster),influenceFt=pureBecmiRawCombat()?5:combatantInfluenceRadiusFt(pc)+combatantInfluenceRadiusFt(monster);
     return feetToCombatUnits(Math.max(0,centerFt-influenceFt));
   }
   function atMeleeContact(pc,monster){
     if(!pc||!monster||!combatActive()) return false;
     if(phantomEthereal(monster)||monsterBurrowed(monster))return false;
     const a=combatPcVector(pc),b=combatMonsterVector(monster);
-    return combatCenterDistanceFt(pc,monster)<=combatantInfluenceRadiusFt(pc)+combatantInfluenceRadiusFt(monster)+1e-6 && !spatialInteractionBlocked(a,b);
+    return combatCenterDistanceFt(pc,monster)<=(pureBecmiRawCombat()?5:combatantInfluenceRadiusFt(pc)+combatantInfluenceRadiusFt(monster))+1e-6 && !spatialInteractionBlocked(a,b);
   }
 
   function initialMeleeRangeForContact(pc,monster){
@@ -17071,6 +17124,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function movementHostileBlockers(kind,mover){
+    // RAW movement cannot be stopped by contextual Zones of Influence.
+    if(pureBecmiRawCombat())return [];
     if(kind==='pc')return livingHostiles().filter(target=>!monsterBurrowUntargetable(target)&&!phantomEthereal(target)).map(target=>({kind:'monster',target,center:combatMonsterVector(target),radius:combatantInfluenceRadiusFt(target)}));
     if(monsterBurrowed(mover)||phantomEthereal(mover))return [];
     return livingParty().filter(target=>target.carriedBy?.monsterId!==mover?.id).map(target=>({kind:'pc',target,center:combatPcVector(target),radius:combatantInfluenceRadiusFt(target)}));
@@ -17333,7 +17388,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       return `Melee ${i+1}: ${pcs} vs ${foes} — ${String(g.range).toUpperCase()}`;
     }).join('\n')||'none';
     const loadout=state.party.map(combatLoadoutLine).join('\n\n');
-    write(`COMBAT — ROUND ${c.round}\nInitiative mode: ${state.rules.initiativeMode||'RAW'}\nInitiative: ${init}\nEncounter scale: ${combatDistanceUnit()==='yd'?'outdoor yards':'indoor feet'}\n\n${renderCombatAsciiMap()}\n\nPARTY READY REFERENCE\n${loadout}\n\nHOSTILES — DESCRIPTION / MATRIX CLASSIFICATION\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}\n\n${combatNextStepText()}`,'system');
+    write(`COMBAT — ROUND ${c.round}\nCombat procedures: ${pureBecmiRawCombat()?'PURE BECMI RAW':'CONTEXTUAL TACTICAL'}\nInitiative mode: ${effectiveInitiativeMode()}\nInitiative: ${init}\nEncounter scale: ${combatDistanceUnit()==='yd'?'outdoor yards':'indoor feet'}\n\n${renderCombatAsciiMap()}\n\nPARTY READY REFERENCE\n${loadout}\n\nHOSTILES — DESCRIPTION / MATRIX CLASSIFICATION\n${c.monsters.map(combatMonsterLabel).join('\n')}\n\nORDERS\n${orders}\n\nMELEE ENGAGEMENTS\n${engagements}\n\n${combatNextStepText()}`,'system');
   }
 
   function combatOrderText(o){
@@ -17659,7 +17714,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       targetSource:targetFacts.source,measure:combatFacts.measure,space:combatFacts.space};
   }
   function applyLiveContextMatrixDamage(packet,item,attacker,target,kind='melee',attackSpec=null,rangeMeasure=null){
-    if(state.rules?.weaponDamageMode!=='CONTEXT_MATRIX')return packet;
+    if(effectiveWeaponDamageMode()!=='CONTEXT_MATRIX')return packet;
     const context=cmWeaponAdjustment(item,attacker,target,kind,attackSpec,rangeMeasure);
     const before=packet.applied,after=Math.max(0,before+context.modifier);
     const trace={mode:'CONTEXT_MATRIX',attackKind:kind,attacker:attacker?.name||null,target:target?.name||null,
@@ -17674,7 +17729,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   function rollComparedWeaponDamage(item,target,range,modifier=0,rollerSubject=null){
     modifier+=artifactBlightPenalty(rollerSubject);
-    const expr={...weaponDamageExpressions(item,target,range)}; const mastery=masteryDamageExpression(item,target); if(mastery)expr.raw=mastery; const active=state.rules.weaponDamageMode||'RAW';
+    const expr={...weaponDamageExpressions(item,target,range)}; const mastery=masteryDamageExpression(item,target); if(mastery)expr.raw=mastery; const active=effectiveWeaponDamageMode();
     const seedBefore=state.seed>>>0;
     let rawRoll,matrixRoll,activeRoll;
     if(active==='RAW'||active==='CONTEXT_MATRIX'){
@@ -18605,7 +18660,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(order.action==='mastery_disarm'){resolveMasteryDisarm(pc,monster,item,masteryRank);return;}
     if(order.action==='mastery_hook'){
       const damageMod=abilityAdjustment(pc.abilities?.str??10)+effectiveMagicWeaponBonus(pc,item)+artifactBlessBonus(pc)+longDistanceTravelPenalty(),band=rangeBand||'normal',expr=weaponDamageExpressions(item,monster,band),rawExpr=masteryDamageExpression(item,monster)||expr.raw;
-      const rawBase=minimumDamageExpression(rawExpr),matrixBase=minimumDamageExpression(expr.matrix),active=state.rules.weaponDamageMode||'RAW',appliedBase=(active==='RAW'||active==='CONTEXT_MATRIX')?rawBase:matrixBase;let dmg={active,rawBase,matrixBase,appliedBase,rawExpr,matrixExpr:expr.matrix,raw:Math.max(0,rawBase+damageMod),matrix:Math.max(0,matrixBase+damageMod),applied:Math.max(0,appliedBase+damageMod)};dmg=applyArtifactWeaponDamageEffect(dmg,pc,damageMod);const strikingBonus=artifactStrikingBonusDamage(pc,item)+rawStrikingBonusDamage(pc,item);if(strikingBonus)dmg={...dmg,raw:dmg.raw+strikingBonus,matrix:dmg.matrix+strikingBonus,applied:dmg.applied+strikingBonus};
+      const rawBase=minimumDamageExpression(rawExpr),matrixBase=minimumDamageExpression(expr.matrix),active=effectiveWeaponDamageMode(),appliedBase=(active==='RAW'||active==='CONTEXT_MATRIX')?rawBase:matrixBase;let dmg={active,rawBase,matrixBase,appliedBase,rawExpr,matrixExpr:expr.matrix,raw:Math.max(0,rawBase+damageMod),matrix:Math.max(0,matrixBase+damageMod),applied:Math.max(0,appliedBase+damageMod)};dmg=applyArtifactWeaponDamageEffect(dmg,pc,damageMod);const strikingBonus=artifactStrikingBonusDamage(pc,item)+rawStrikingBonusDamage(pc,item);if(strikingBonus)dmg={...dmg,raw:dmg.raw+strikingBonus,matrix:dmg.matrix+strikingBonus,applied:dmg.applied+strikingBonus};
       dmg=applyGreaterWyrdVisionDamagePacket(pc,monster,dmg);dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,'melee');writeWeaponAudit(pc,monster,dmg);write(`${pc.name}'s hook inflicts the minimum ${item.name} damage${strikingBonus?` plus ${strikingBonus} Striking damage`:''}${dmg.greaterWyrdVisionPenalty?' after the Greater Wyrd -3 damage penalty':''}: ${dmg.applied}.`,'system');damageMonster(monster,dmg.applied,`${pc.name}'s ${item.name} hook`,weaponDamageContext(pc,item,kind));if(monsterStillPresent(monster))resolveMasteryHook(pc,monster,item,masteryRank);return;
     }
     if(order.action==='mastery_entangle'&&masteryKey==='whip'){
@@ -25199,7 +25254,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
   // v0.4.340: opponent relationships, not attacker slots or capacity.
   function resolveMeleeDistanceContests(){
-    if(!combatActive())return;
+    // The RAW system never runs Press/Hold/Open Measure, not even on loaded legacy engagements.
+    if(pureBecmiRawCombat()||!combatActive())return;
     const c=state.combat;
     if(c.meleeDistanceResolvedRound===c.round)return;
     refreshMeleeRecords();
@@ -25262,6 +25318,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
   }
 
   function shiftEngagement(pc,monster,intent){
+    if(pureBecmiRawCombat())return;
     // No pair transition can occupy a slot or move an unrelated opponent.
     const pair=getEngagement(pc,monster);
     if(!pair){
@@ -26064,7 +26121,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
 
     if(!c.initiative.winner){ resolveTiedRound(sideIds); return; }
 
-    if((state.rules.initiativeMode||'RAW')==='RAW'){
+    if(effectiveInitiativeMode()==='RAW'){
       beginRawSideTurn(sideIds[0],sideIds.slice(1));
     } else if(sideIds.length>2){
       resolvePhasedMultiRound(sideIds);
@@ -31692,6 +31749,8 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     let repairNet=/^(.+?)\s+repairs?\s+(?:a\s+|the\s+)?net$/i.exec(input.trim());
     if(repairNet){const pc=findPc(repairNet[1]);if(!pc){write('Which adventurer is repairing the net?','warning');return;}repairDamagedNet(pc);return;}
     if (normalized.startsWith('equip ')) return equipCommand(input);
+    if (['combat procedures raw','combat mode raw','pure becmi combat','pure becmi raw combat'].includes(normalized)) return setCombatProcedureMode('RAW');
+    if (['combat procedures contextual','combat mode contextual','contextual tactical combat'].includes(normalized)) return setCombatProcedureMode('CONTEXTUAL');
     if (normalized === 'weapon mode raw' || normalized === 'weapons raw' || normalized === 'raw weapon damage') return setWeaponMode('RAW');
     if (normalized === 'weapon mode matrix' || normalized === 'weapons matrix' || normalized === 'contextual weapon damage') return setWeaponMode('MATRIX');
     if (['weapon mode context matrix','weapon mode context','weapons context matrix','context matrix mode'].includes(normalized)) return setWeaponMode('CONTEXT_MATRIX');
@@ -41181,6 +41240,8 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   });
 
   createPartyButton.addEventListener('click',()=>openPartyCreator(false));
+  if(rawCombatButton) rawCombatButton.addEventListener('click',()=>setCombatProcedureMode('RAW'));
+  if(contextCombatButton) contextCombatButton.addEventListener('click',()=>setCombatProcedureMode('CONTEXTUAL'));
   if(rawProfileButton) rawProfileButton.addEventListener('click',()=>applyRulesProfile('RAW'));
   if(houseProfileButton) houseProfileButton.addEventListener('click',()=>applyRulesProfile('HOUSE'));
   if(rawSpellModeButton) rawSpellModeButton.addEventListener('click',()=>setSpellResolutionMode('RAW_STRICT'));

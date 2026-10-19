@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required v0.4.342 RAW/contextual native combat mode and full original Measure matrix
+        run: node validation/combat-procedure-native-v0.4.342.mjs
       - name: Required native pairwise Measure, six-goblin swarm and save reload
         run: node validation/measure-pairwise-live-v0.4.340.mjs
       - run: npm run validate:native-smoke
