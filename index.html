@@ -509,7 +509,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.342';
+  const APP_VERSION='0.4.343';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -16510,7 +16510,13 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const automaticFoeSurpriseRound=burrowOpening?Boolean(state.combat.surprise?.pcsSurprised&&!state.combat.surprise?.foesSurprised):Boolean(((whiteFangOpening?.success||woodImpOpening?.success)&&!state.combat.surprise?.foesSurprised)||phantomOpening?.shadeSurpriseSuccess||opts.automaticFoeSurpriseRound);
     if(automaticFoeSurpriseRound){
       write('The party was surprised. The creatures receive one free surprise round before normal initiative begins.','error');
-      chooseMonsterOrders(); movementPhase('foes'); if(!combatConcluded()){ missilePhase('foes'); magicPhase('foes'); meleePhase('foes'); }
+      state.combat.surpriseRoundActive='foes';
+      try{
+        chooseMonsterOrders(); movementPhase('foes'); resolveMeleeDistanceContests(); if(!combatConcluded()){ missilePhase('foes'); magicPhase('foes'); meleePhase('foes'); }
+      }finally{
+        delete state.combat.surpriseRoundActive;
+        state.combat.meleeDistanceResolvedRound=0;
+      }
       state.combat.monsterOrders={};
       if(finishCombatIfConcluded()) return true;
     }
@@ -16678,8 +16684,24 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return combatCenterDistanceFt(pc,monster)<=(pureBecmiRawCombat()?5:combatantInfluenceRadiusFt(pc)+combatantInfluenceRadiusFt(monster))+1e-6 && !spatialInteractionBlocked(a,b);
   }
 
+  // Surprise is a bounded action period, not the encounter's historical flags.
+  // The automatic foe period is synchronous; the pending PC period is saved.
+  function contextualSurpriseActingSide(){
+    if(pureBecmiRawCombat())return null;
+    const side=state.combat?.surpriseRoundActive||state.combat?.surpriseRoundPending;
+    return side==='pc'||side==='foes'?side:null;
+  }
+
   function initialMeleeRangeForContact(pc,monster){
     const c=state.combat||{};
+    const acting=contextualSurpriseActingSide();
+    if(acting){
+      const order=acting==='pc'?c.pcOrders?.[pc.name.toLowerCase()]:c.monsterOrders?.[monster.id];
+      const preferred=String(order?.preferredRange||'').toLowerCase();
+      if(RANGE_ORDER.includes(preferred))return preferred;
+      if(order?.rangeIntent==='press')return 'close';
+      if(order?.rangeIntent==='open')return 'far';
+    }
     const explicit=String(c.contactContext?.initialMeleeRange||c.initialMeleeRange||'').toLowerCase();
     if(RANGE_ORDER.includes(explicit)) return explicit;
     return 'far';
@@ -16692,7 +16714,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     for(const pc of livingParty()) for(const monster of livingHostiles()){
       if(!atMeleeContact(pc,monster)) continue;
       const key=engagementKey(pc.name,monster.id),old=previous[key]||{};
-      next[key]={pcName:pc.name,monsterId:monster.id,range:RANGE_ORDER.includes(old.range)?old.range:'far',meleeId:old.meleeId||null,formedRound:Number(old.formedRound)||c.round};
+      next[key]={pcName:pc.name,monsterId:monster.id,range:RANGE_ORDER.includes(old.range)?old.range:initialMeleeRangeForContact(pc,monster),meleeId:old.meleeId||null,formedRound:Number(old.formedRound)||c.round};
     }
     c.engagements=next;
     return next;
@@ -25273,6 +25295,20 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         [ps]:['press','hold','open'].includes(pcIntent)?pcIntent:'hold',
         [ms]:['press','hold','open'].includes(monIntent)?monIntent:'hold'
       };
+      const surpriseSide=contextualSurpriseActingSide();
+      if(surpriseSide){
+        // No opposed roll exists during surprise, including old saves without
+        // initiative dice. New legal contact already chose its desired band.
+        const intent=intents[surpriseSide==='pc'?ps:ms];
+        const idx=RANGE_ORDER.indexOf(before);
+        const next=intent==='press'?Math.max(0,idx-1):intent==='open'?Math.min(RANGE_ORDER.length-1,idx+1):idx;
+        const actor=surpriseSide==='pc'?pc:mon;
+        if(Number(pair.formedRound)===Number(c.round))pair.range=initialMeleeRangeForContact(pc,mon);
+        else if(intent==='hold'||!masteryCannotMove(actor))pair.range=RANGE_ORDER[next];
+        void refereeLog('MELEE DISTANCE — surprised opponent cannot contest',
+          {type:'melee_distance',round:c.round,pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id],before,after:pair.range,surpriseSide,unopposed:true});
+        continue;
+      }
       const rolls=Object.fromEntries(sideIds.map(id=>[id,measureUnmodifiedInitiativeDie(id)]));
       if(Number(pair.formedRound)===Number(c.round)){
         void refereeLog('MELEE DISTANCE — new contact '+pc.name+' vs '+mon.name,
@@ -26094,8 +26130,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const missing=livingParty().filter(pc=>!c.pcOrders?.[pc.name.toLowerCase()]);
       if(missing.length){ write(`The party has a free surprise round. Give orders for ${missing.map(pc=>pc.name).join(', ')} before resolving it.`,'warning'); return; }
       write('SURPRISE ROUND — only the player characters act.','system');
-      movementPhase('pc'); if(!combatConcluded()){ missilePhase('pc'); magicPhase('pc'); meleePhase('pc'); }
+      movementPhase('pc'); resolveMeleeDistanceContests(); if(!combatConcluded()){ missilePhase('pc'); magicPhase('pc'); meleePhase('pc'); }
       c.surpriseRoundPending=null; c.pcOrders={}; c.monsterOrders={};
+      c.meleeDistanceResolvedRound=0;
       if(finishCombatIfConcluded()) return;
       write('The surprise round ends. Normal combat now begins with round 1 and initiative.','system'); updatePanels(); return;
     } if(c.awaitingMoveChoice){write('Choose movement order first: “move us first” or “make them move first”.','warning');return;}
@@ -32324,8 +32361,98 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     const {caster,subject}=harnessInstallPoisonSaveFixture295();state.combat=harnessCombatFixture({distance:0,type:'baldandar',count:1});normalizeCombatState();const monster=state.combat.monsters[0];monster.attacks=[{name:'bite',damage:'1d4'}];monster.thac0=1;subject.ac=9;subject.hp=subject.maxHp=100;subject.saves={...(subject.saves||{}),death:99};for(const pc of state.party)setCombatPcVector(pc,{x:0,y:0,z:0});setCombatMonsterVector(monster,{x:0,y:0,z:0});state.seed=0;monsterAttack(monster,subject,true,false);harnessAssert(subject.baldandarPoisonSleep&&subject.sleeping&&subject.hp<100,'Actual Baldandar bite/poison-sleep fixture failed');const rec=createArtifactRecord({id:'baldandar_venom_relic',name:'Baldandar Venom Relic',magnitude:'major',powerLevel:300});for(const power of ['neutralize_poison','heal']){addArtifactTablePower(rec,power);discoverArtifactPower(rec,caster,power);}possessArtifact(rec,caster);return {caster,subject,monster,rec:artifactRecord(rec.id)};
   }
 
+  function harnessSurpriseMeasureFixture343({side='pc',band='normal',distance=4,count=1}={}){
+    installHarnessFixture({distance:0,type:'goblin',count});
+    state.party=state.party.slice(0,1);
+    const pc=state.party[0],mon=state.combat.monsters[0],c=state.combat;
+    state.rules.combatProcedureMode='CONTEXTUAL';
+    pc.hp=pc.maxHp=500;
+    setCombatPcVector(pc,{x:0,y:0,z:0});
+    c.monsters.forEach(m=>{m.influenceRadiusFt=2.5;m.hp=m.maxHp=500;setCombatMonsterVector(m,{x:distance,y:0,z:0});});
+    refreshSpatialEngagements();
+    c.round=2;
+    for(const p of Object.values(c.engagements)){p.range=band;p.formedRound=1;}
+    c.surprise={pcsSurprised:side==='foes',foesSurprised:side==='pc'};
+    if(side==='pc')c.surpriseRoundPending='pc';else c.surpriseRoundActive='foes';
+    c.pcOrders={[pc.name.toLowerCase()]:{action:'hold',movement:'hold',rangeIntent:'hold',targetId:mon.id}};
+    c.monsterOrders=Object.fromEntries(c.monsters.map(m=>[m.id,{action:'melee',movement:'hold',rangeIntent:'hold',targetName:pc.name}]));
+    c.initiative={rawRolls:{pc:1,foes:6},rolls:{pc:101,foes:-94}};
+    return {pc,mon,c};
+  }
+
   function coreHarnessTestDefinitions(){
     return [
+      {name:'v0.4.343 surprise control ignores every opposed d6 and inactive intent in both directions',run:()=>{
+        for(const side of ['pc','foes'])for(const band of ['close','normal','far']){
+          const {pc,mon,c}=harnessSurpriseMeasureFixture343({side,band});
+          for(const intent of ['press','hold','open'])for(let a=1;a<=6;a++)for(let b=1;b<=6;b++){
+            const pair=getEngagement(pc,mon);pair.range=band;pair.formedRound=1;c.meleeDistanceResolvedRound=0;
+            c.pcOrders[pc.name.toLowerCase()].rangeIntent=side==='pc'?intent:'press';
+            c.monsterOrders[mon.id].rangeIntent=side==='foes'?intent:'open';
+            c.initiative.rawRolls={pc:a,foes:b};
+            const before=harnessFingerprint({seed:state.seed,minute:state.minutes,pcHp:pc.hp,monHp:mon.hp,positions:c.positions3d,initiative:c.initiative,round:c.round});
+            resolveMeleeDistanceContests();
+            const expected={close:{press:'close',hold:'close',open:'normal'},normal:{press:'close',hold:'normal',open:'far'},far:{press:'normal',hold:'far',open:'far'}}[band][intent];
+            harnessAssert(getEngagement(pc,mon).range===expected,'Surprised side contested or transition exceeded one band');
+            resolveMeleeDistanceContests();
+            harnessAssert(getEngagement(pc,mon).range===expected&&before===harnessFingerprint({seed:state.seed,minute:state.minutes,pcHp:pc.hp,monHp:mon.hp,positions:c.positions3d,initiative:c.initiative,round:c.round}),'Surprise control repeated or changed physical state, action economy, damage, RNG or initiative');
+          }
+        }
+      }},
+      {name:'v0.4.343 legal surprise first contact establishes each declared Measure without extra movement',run:()=>{
+        for(const side of ['pc','foes'])for(const preferredRange of ['close','normal','far']){
+          const {pc,mon,c}=harnessSurpriseMeasureFixture343({side,distance:20});
+          const order=side==='pc'?c.pcOrders[pc.name.toLowerCase()]:c.monsterOrders[mon.id];order.preferredRange=preferredRange;order.rangeIntent='press';
+          const seed=state.seed;
+          const moved=side==='pc'?moveSpatialCombatant('pc',pc,{x:20,y:0,z:0}):moveSpatialCombatant('monster',mon,{x:0,y:0,z:0});
+          harnessAssert(moved.contact&&getEngagement(pc,mon)?.range===preferredRange&&moved.distanceMovedFt===15&&state.seed===seed,'Surprise contact invented movement or failed to establish desired Measure');
+          resolveMeleeDistanceContests();
+          harnessAssert(getEngagement(pc,mon)?.range===preferredRange,'New surprise contact received a second band transition');
+        }
+      }},
+      {name:'v0.4.343 surprise never creates contact through walls distance or elevation',run:()=>{
+        for(const mode of ['wall','distance','elevation']){
+          const {pc,mon,c}=harnessSurpriseMeasureFixture343({distance:mode==='distance'?50:4});
+          if(mode==='wall')c.spatialBarriers=[{minX:1,maxX:2,minY:-10,maxY:10,minZ:-10,maxZ:10}];
+          if(mode==='elevation')setCombatMonsterVector(mon,{x:4,y:0,z:30});
+          c.pcOrders[pc.name.toLowerCase()].rangeIntent='press';const seed=state.seed;
+          resolveMeleeDistanceContests();
+          harnessAssert(!getEngagement(pc,mon)&&!atMeleeContact(pc,mon)&&state.seed===seed,'Surprise invented a legal engagement');
+        }
+      }},
+      {name:'v0.4.343 surprise controls six opponent pairs independently without engagement capacity',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343({side:'foes',count:6});
+        const intents=['press','hold','open','open','press','hold'],expected=['close','normal','far','far','close','normal'];
+        c.monsters.forEach((m,i)=>c.monsterOrders[m.id].rangeIntent=intents[i]);
+        resolveMeleeDistanceContests();
+        harnessAssert(harnessFingerprint(c.monsters.map(m=>getEngagement(pc,m)?.range))===harnessFingerprint(expected)&&Object.keys(c.engagements).length===6,'Surprise forced shared Measure or limited attackers');
+      }},
+      {name:'v0.4.343 surprise expires independently of historical surprise flags and resumes ordinary contest',run:()=>{
+        const {pc,mon,c}=harnessSurpriseMeasureFixture343({side:'pc'});c.pcOrders[pc.name.toLowerCase()].rangeIntent='hold';c.monsterOrders[mon.id].rangeIntent='press';
+        resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='normal','Surprised monster acted');
+        c.surpriseRoundPending=null;c.meleeDistanceResolvedRound=0;resolveMeleeDistanceContests();
+        harnessAssert(c.surprise.foesSurprised&&getEngagement(pc,mon).range==='close','Historical surprise flag prevented later ordinary opposed contest');
+      }},
+      {name:'v0.4.343 missing original dice permit surprise control but remain unknown after surprise',run:()=>{
+        const {pc,mon,c}=harnessSurpriseMeasureFixture343();delete c.initiative.rawRolls;c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';
+        resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='far','Unknown raw dice blocked unopposed surprise');
+        c.surpriseRoundPending=null;c.meleeDistanceResolvedRound=0;c.pcOrders[pc.name.toLowerCase()].rangeIntent='press';resolveMeleeDistanceContests();
+        harnessAssert(getEngagement(pc,mon).range==='far'&&!Object.hasOwn(c.initiative,'rawRolls'),'Missing original dice fabricated after surprise');
+      }},
+      {name:'v0.4.343 pure RAW surprise bypasses every contextual control and contact preference',run:()=>{
+        const {pc,mon,c}=harnessSurpriseMeasureFixture343();state.rules.combatProcedureMode='RAW';
+        const before=harnessFingerprint({pairs:c.engagements,initiative:c.initiative,seed:state.seed});
+        c.pcOrders[pc.name.toLowerCase()].rangeIntent='press';resolveMeleeDistanceContests();
+        harnessAssert(contextualSurpriseActingSide()===null&&initialMeleeRangeForContact(pc,mon)==='far'&&before===harnessFingerprint({pairs:c.engagements,initiative:c.initiative,seed:state.seed}),'Optional surprise control leaked into pure RAW');
+      }},
+      {name:'v0.4.343 pending surprise and old sparse dice preserve Measure through save migration',run:()=>{
+        const {pc,mon,c}=harnessSurpriseMeasureFixture343();delete c.initiative.rawRolls;c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';
+        migrateSave(harnessClone(state)); // Native first-load initializes weather/RNG before the saved baseline.
+        const saved=harnessClone(state),seed=state.seed;
+        migrateSave(saved);const loaded=state.party.find(p=>p.name===pc.name),foe=state.combat.monsters.find(m=>m.id===mon.id);
+        harnessAssert(state.combat.surpriseRoundPending==='pc'&&!Object.hasOwn(state.combat.initiative,'rawRolls')&&getEngagement(loaded,foe).range==='normal'&&state.seed===seed,'Pending surprise or sparse dice changed in migration');
+        resolveMeleeDistanceContests();harnessAssert(getEngagement(loaded,foe).range==='far'&&state.seed===seed,'Reloaded surprise could not act unopposed');
+      }},
       {name:'v0.4.334 ordinary sole-condition Cureall discovers actual Baldandar source poison without a generic flag',run:()=>{
         const {caster,subject}=harnessInstallBaldandarPoisonFixture328();subject.hp=subject.maxHp;const row=harnessClone(subject.baldandarPoisonSleep),hp=subject.hp,seed=state.seed,now=absoluteCampaignMinute();harnessAssert(row.saveModifier===-4&&row.turns>=1&&row.turns<=4&&!Object.hasOwn(subject,'poisoned')&&!Object.hasOwn(subject,'fatalPoisonDueMinute'),'Actual source-only fixture changed production or acquired generic markers');harnessAssert(resolveBecmiSpellEffect(caster,'Cureall',{combat:true,order:{target:subject.name},antiMagicChecked:true})&&!Object.hasOwn(subject,'baldandarPoisonSleep')&&subject.sleeping===false&&subject.hp===hp&&subject.maxHp===100&&!subject.dead&&state.seed===seed&&absoluteCampaignMinute()===now,'Ordinary sole-condition Cureall missed source-only venom or changed HP, death, clock or RNG');
       }},
