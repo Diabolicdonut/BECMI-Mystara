@@ -36,7 +36,7 @@ const fixture=`window.__kwOriginal341=function(mode){
     const afterRanges=Object.fromEntries(Object.entries(state.combat.engagements).map(([k,v])=>[k,v.range]));
     const farBefore=combatSeparation(pc,mon);setCombatMonsterVector(mon,{x:15,y:0,z:0});
     mon.influenceRadiusFt=100;
-    const farRaw=combatSeparation(pc,mon),blockedRaw=atMeleeContact(pc,mon);
+    const farRaw=combatUnitsToFeet(combatSeparation(pc,mon)),blockedRaw=atMeleeContact(pc,mon);
     const blockers=movementHostileBlockers('pc',pc).length;
     const refused=setCombatProcedureMode('CONTEXTUAL',{announce:false});
     const retained=state.rules.combatProcedureMode;
