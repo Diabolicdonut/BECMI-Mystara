@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required directional weapon coverage and native facing save/reload
+        run: node validation/weapon-coverage-native-v0.4.344.mjs
       - name: Required surprise Measure native commands and real save/reload
         run: node validation/surprise-measure-native-v0.4.343.mjs
       - name: Required v0.4.342 RAW/contextual native combat mode and full original Measure matrix

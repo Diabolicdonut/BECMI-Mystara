@@ -1,12 +1,12 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.343** — acceptance metadata staged; exact-metadata and merged-main CI plus Pages remain required. Main remains fully accepted v0.4.342 until promotion.
+Build: **0.4.343** — fully accepted and deployed on main `bace6307ba3d81847ff28da3c86a74f214cdb8ec` after exact-main CI and Pages passed.
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-19 (v0.4.342 accepted main promotion; historical candidate records preserved)
 
 
-## v0.4.343 — Surprise-period contextual Measure control (qualified; exact acceptance-metadata and main checks pending)
+## v0.4.343 — Surprise-period contextual Measure control (fully accepted and deployed on main)
 
 **Recovery:** Branched only from fully accepted/deployed v0.4.342 main `eae9950d918843e14e15b196054970ecb356b5a2`; all 46 canonical weapon profiles and existing published attack damage remain unchanged. Source inspection found that the existing surprise procedure already prevents inactive-side actions, but new legal contact always started at Far and could not establish the acting combatant's desired Measure. The formerly unused contact-initialization helper is now connected to actual engagement creation. This is a necessary bounded correction, not a rewrite of RAW surprise.
 
@@ -19,6 +19,8 @@ Audit date: 2026-10-19 (v0.4.342 accepted main promotion; historical candidate r
 **Authority and later work:** Mentzer BECM remains primary. The supplied compatible Rules Cyclopedia surprise section was reviewed only as secondary confirmation of the existing one-sided free round; it does not authorize extra actions. The full new user continuation is preserved in `design/context-matrix/CONTEXTUAL-COMBAT-COMPLETION-2026-10-19.md`. Direction-independent Size, Ferocity and separate natural proximity damage are authorized future dependencies and are NOT implemented or accepted here. Independent source inspection found only body-sphere coverage and no governing oversized rigid-weapon clearance gate in current production. Next separately verify/correct directional ZOI, then oversized dungeon transport/deployment/attack clearance, then the newly authorized combat rules in their own checkpoints. Persistent authoritative local-scene physical state remains after combat dependencies; no graphics. Maximum three newly accepted checkpoints per session remains in force.
 
 **Promotion boundary:** This acceptance-metadata commit must independently pass all required checks on its exact SHA. Merge [PR #8](https://github.com/Diabolicdonut/BECMI-Mystara/pull/8) only after that pass; independently verify exact merged main and Pages deployment before closing promotion. Candidate green alone is not accepted main.
+
+**Final v0.4.343 promotion:** Metadata `548d54ef528e91d9077b9661dafb7967ff24984d` passed all ten required jobs on push 39302984957 and PR 39303006410. PR #8 merged to `bace6307ba3d81847ff28da3c86a74f214cdb8ec`; exact-main acceptance 39304201961 and Pages 39304200987 both succeeded. This supersedes the historical pending boundary above. Game SHA-256 remains `a9366a2fc45a6b11ef4f6f977aebd2b65962cdd581c22a29259d4d1838cc5b42`.
 
 ## v0.4.342 — Independent pure BECMI RAW versus contextual tactical procedures (fully accepted and deployed)
 
