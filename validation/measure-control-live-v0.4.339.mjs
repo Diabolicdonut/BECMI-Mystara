@@ -6,7 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
-assert(html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || html.includes("const APP_VERSION='0.4.344';"))));
+assert(html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || (html.includes("const APP_VERSION='0.4.344';") || html.includes("const APP_VERSION='0.4.345';")))));
 assert.equal(html.split('  boot();\n})();').length,2);
 const fixture=`window.__kwMeasure339 = function(test){
  const cases={
