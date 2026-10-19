@@ -3,7 +3,7 @@ on:
   push:
     branches: ['work/v0.4.342-pure-becmi-raw-combat']
     paths:
-      - 'validation/apply-v0.4.342.mjs'
+      - 'validation/refine-v0.4.342.mjs'
       - '.github/workflows/apply-v0.4.342.yml'
   workflow_dispatch:
 permissions:
@@ -20,11 +20,11 @@ jobs:
         with:
           node-version: '24'
       - name: Apply exact source-pinned v0.4.342 production edit
-        run: node validation/apply-v0.4.342.mjs
+        run: node validation/refine-v0.4.342.mjs
       - name: Commit bounded candidate production HTML
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add index.html
-          git commit -m 'v0.4.342 candidate: independently selectable pure RAW combat mechanics'
+          git add index.html validation/manifests/v0.4.342.json
+          git commit -m 'v0.4.342 candidate: RAW distance state isolated from contextual coordinates'
           git push origin HEAD:work/v0.4.342-pure-becmi-raw-combat
