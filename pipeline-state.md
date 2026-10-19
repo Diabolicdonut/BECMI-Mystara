@@ -10,7 +10,7 @@ Current accepted build: **v0.4.343** — **FULLY ACCEPTED AND DEPLOYED** on main
 
 ## Active bounded candidate
 
-**v0.4.344 — NOT ACCEPTED:** directional weapon coverage only, branched from exact fully accepted v0.4.343 main. Declared primary target fixes facing before movement; presented point fronts, frontal/lateral polearm coverage, and surrounding two-handed sword coverage in explicitly Open space determine whether a legal new approach is unopposed. Unknown facing/clearance stays neutral. Body contact, actual positions, attacks, damage, weapon Size and the old accepted contest formula remain separate. Six new dedicated deterministic/Chromium regressions and an exact-production native facing/Measure save/reload gate are required. After acceptance, v0.4.345 is oversized rigid weapon transport/deployment/use clearance only; new Size/Ferocity/natural policies remain later separate checkpoints.
+**v0.4.344 — NOT ACCEPTED:** directional weapon coverage only, branched from exact fully accepted v0.4.343 main. Declared primary target fixes facing before movement; presented point fronts, frontal/lateral polearm coverage, and surrounding two-handed sword coverage in explicitly Open space determine whether a legal new approach is unopposed. Unknown facing/clearance stays neutral. Body contact, actual positions, attacks, damage, weapon Size and the old accepted contest formula remain separate. Eight new dedicated deterministic/Chromium regressions and an exact-production native facing/Measure save/reload gate are required. After acceptance, v0.4.345 is oversized rigid weapon transport/deployment/use clearance only; new Size/Ferocity/natural policies remain later separate checkpoints.
 
 ## Historical v0.4.342 recovery and prior pipeline records
 

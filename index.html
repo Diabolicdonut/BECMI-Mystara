@@ -17317,8 +17317,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const rendezvous=vectors[0];for(let i=1;i<active.length;i++){const start=vectors[i],d={x:rendezvous.x-start.x,y:rendezvous.y-start.y,z:rendezvous.z-start.z},len=Math.hypot(d.x,d.y,d.z),step=Math.min(combatUnitsToFeet(speeds[i]),len),scale=len?step/len:0;setCombatMonsterVector(active[i],{x:start.x+d.x*scale,y:start.y+d.y*scale,z:start.z+d.z*scale});}
       write(`${name} ×${active.length} regroup into formation instead of advancing independently.`,'system');refreshMeleeRecords();return;
     }
+    const priorCoveragePairs=pureBecmiRawCombat()?new Set():new Set(Object.keys(refreshSpatialEngagements()));
     const end=directMovementEndVector(active[0],anchorTarget,combatUnitsToFeet(groupSpeed),'monster'),result=moveSpatialCombatant('monster',active[0],end);
     for(const monster of active.slice(1))setCombatMonsterVector(monster,result.final);
+    for(let i=1;i<active.length;i++)establishUncontestedApproachMeasures('monster',active[i],vectors[i],priorCoveragePairs);
     for(const monster of active)if(isWoodImpMonster(monster))syncWoodImpMountPosition(monster);
     const moved=feetToCombatUnits(result.distanceMovedFt),chargeThreshold=combatDistanceUnit()==='yd'?20:60;
     for(const monster of active)if(orders.get(monster.id)?.charge&&moved>=chargeThreshold)monster.chargedThisRound=true;
@@ -24525,8 +24527,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       }
       write(`${active.map(pc=>pc.name).join(', ')} regroup toward one shared formation point; they do not advance independently.`,'system');refreshMeleeRecords();return;
     }
+    const priorCoveragePairs=pureBecmiRawCombat()?new Set():new Set(Object.keys(refreshSpatialEngagements()));
     const leaderEnd=directMovementEndVector(first,target,combatUnitsToFeet(groupSpeed),'pc'),result=moveSpatialCombatant('pc',first,leaderEnd);
-    for(const pc of active.slice(1)){const start=combatPcVector(pc),end={...result.final};setCombatPcVector(pc,end);processStrangleVineMovementSegment(pc,start,end);}
+    for(const pc of active.slice(1)){const start=combatPcVector(pc),end={...result.final};setCombatPcVector(pc,end);processStrangleVineMovementSegment(pc,start,end);establishUncontestedApproachMeasures('pc',pc,start,priorCoveragePairs);}
     refreshMeleeRecords();
     const moved=feetToCombatUnits(result.distanceMovedFt),remain=combatSeparation(first,target),contact=result.contact?` Movement is stopped by ${result.contact.name}'s hostile Influence Sphere.`:'';
     write(`${active.map(pc=>pc.name).join(', ')} move as one formation at the slowest member's pace (${combatDistanceLabel(groupSpeed)}/round); shared displacement ${combatDistanceLabel(moved)}; ${combatDistanceLabel(remain)} remain before contact with ${target.name}.${contact}`,'system');
@@ -32465,6 +32468,25 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function coreHarnessTestDefinitions(){
     return [
+      {name:'v0.4.344 a moving six-monster formation establishes every followers own uncovered Measure',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343({count:7,distance:20});c.surpriseRoundPending=null;
+        pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+        c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:c.monsters[0].id,rangeIntent:'hold'};
+        const movers=c.monsters.slice(1),expected=['close','normal','far','close','normal','far'];
+        movers.forEach((m,i)=>{setCombatMonsterVector(m,{x:-20,y:0,z:0});c.monsterOrders[m.id]={action:'melee',targetName:pc.name,rangeIntent:'press',preferredRange:expected[i]};});
+        const seed=state.seed;
+        moveMonsterGroupTowardPc(movers,new Map(movers.map(m=>[m.id,c.monsterOrders[m.id]])),{id:'coverage_rear_group',name:'Rear group'});
+        harnessAssert(harnessFingerprint(movers.map(m=>getEngagement(pc,m)?.range))===harnessFingerprint(expected)&&Object.keys(c.engagements).length===6&&state.seed===seed,'Formation applied uncovered control only to its leader or forced a shared band');
+      }},
+      {name:'v0.4.344 moving party formation followers retain independent uncovered contact Measures',run:()=>{
+        installHarnessFixture({distance:0,type:'goblin',count:1});state.party=state.party.slice(0,3);state.rules.combatProcedureMode='CONTEXTUAL';
+        const c=state.combat,anchor=state.party[0],movers=state.party.slice(1),mon=c.monsters[0];c.round=2;c.surpriseRoundPending=null;
+        setCombatPcVector(anchor,{x:20,y:0,z:0});movers.forEach(pc=>setCombatPcVector(pc,{x:-20,y:0,z:0}));setCombatMonsterVector(mon,{x:0,y:0,z:0});mon.influenceRadiusFt=2.5;mon.noWeapons=false;mon.weaponId='spear';mon.attacks=null;mon.naturalDamage=null;
+        c.monsterOrders[mon.id]={action:'melee',targetName:anchor.name,rangeIntent:'hold'};
+        const expected=['close','normal'];movers.forEach((pc,i)=>c.pcOrders[pc.name.toLowerCase()]={action:'melee',movement:'approach',targetId:mon.id,rangeIntent:'press',preferredRange:expected[i]});refreshSpatialEngagements();
+        const seed=state.seed;movePcGroupTowardTarget(movers,new Map(movers.map(pc=>[pc.name.toLowerCase(),c.pcOrders[pc.name.toLowerCase()]])));
+        harnessAssert(harnessFingerprint(movers.map(pc=>getEngagement(pc,mon)?.range))===harnessFingerprint(expected)&&Object.keys(c.engagements).length===2&&state.seed===seed,'Party formation follower did not receive its own legal uncovered contact ruling');
+      }},
       {name:'v0.4.344 spear front and rear contact differ without Size damage or RNG changes',run:()=>{
         for(const rear of [false,true]){
           const {pc,c}=harnessSurpriseMeasureFixture343({count:2,distance:20});c.surpriseRoundPending=null;c.initiative=null;

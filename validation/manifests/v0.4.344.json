@@ -1,6 +1,8 @@
 {
   "version": "0.4.344",
   "core": [
+    "v0.4.344 a moving six-monster formation establishes every followers own uncovered Measure",
+    "v0.4.344 moving party formation followers retain independent uncovered contact Measures",
     "v0.4.344 spear front and rear contact differ without Size damage or RNG changes",
     "v0.4.344 two-handed sword surrounding coverage requires explicit Open clearance",
     "v0.4.344 polearm lateral coverage differs from spear point and never grants an attack",
@@ -2333,6 +2335,8 @@
     "v0.4.112 dagger-cut net becomes a persistent damaged net and repairs in 1d3 undisturbed turns when rope or cord is available"
   ],
   "focused": [
+    "v0.4.344 a moving six-monster formation establishes every followers own uncovered Measure",
+    "v0.4.344 moving party formation followers retain independent uncovered contact Measures",
     "v0.4.344 spear front and rear contact differ without Size damage or RNG changes",
     "v0.4.344 two-handed sword surrounding coverage requires explicit Open clearance",
     "v0.4.344 polearm lateral coverage differs from spear point and never grants an attack",
@@ -3585,7 +3589,7 @@
   "establishedNativeScript": "validation/native-v2.mjs",
   "nativeBlocker": null,
   "acceptedVersion": "0.4.343",
-  "productionSha256": "f891f9260a0d55d846db34dc80506a95b25b8b447def12f1214c177671a61be4",
+  "productionSha256": "85620091262906746133628eaf5f71d7cff0600d39fa2736b85a958bace54e84",
   "nativeAcceptanceBaseline": "Native Acceptance v2; established v0.4.333/v0.4.334; current required 33 scenarios / 508 assertions on immutable v0.4.333 and v0.4.343",
   "historical523Rerun": false
 }

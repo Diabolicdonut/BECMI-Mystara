@@ -30,7 +30,7 @@ contests resume under the separately accepted rules. Switching weapons never
 changes an existing band or grants an action.
 
 Coverage grants no extra attacks, automatic defense, hit/damage modifier,
-engagement slots or capacity. Every actual opposing pair remains independent.
+engagement slots or capacity. Every actual opposing pair remains independent. Formed party and monster group followers each receive their own new-contact ruling; no leader band is copied across a formation.
 Natural attack damage, specials, RNG, initiative, RAW and AAE damage choices and
 pure RAW procedures remain unchanged. Retreat and fighting withdrawal use their
 existing procedures, with no compulsory Measure escape contest.
