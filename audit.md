@@ -1,12 +1,12 @@
 # Known World BECMI Engine Audit
 
-Build: **0.4.344** — acceptance metadata staged; exact-metadata, merged-main and Pages checks remain required. Deployed main remains fully accepted v0.4.343 until promotion.
+Build: **0.4.344** — fully accepted and deployed on main `696d5e7ca453ef5393e3d58b489c2af816fdd075`; exact-main CI 39309419726 and Pages 39309419242 passed.
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
 Audit date: 2026-10-19 (v0.4.342 accepted main promotion; historical candidate records preserved)
 
 
-## v0.4.344 — Directional weapon approach coverage (qualified; exact-metadata and main checks pending)
+## v0.4.344 — Directional weapon approach coverage (fully accepted and deployed on main)
 
 **Recovery and exact qualification:** Branched from fully accepted/deployed v0.4.343 main `bace6307ba3d81847ff28da3c86a74f214cdb8ec`. Final candidate `70a72d88fb6bfa5ffc70451e6a49a1fb4729008c` passed every one of the ten required jobs on [Actions 39306990895](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39306990895). Exact production SHA-256 `85620091262906746133628eaf5f71d7cff0600d39fa2736b85a958bace54e84`. **2332/2332 core, 1248/1248 focused, 583/583 in each of four fresh Chromium processes**, ordered once-only coverage and isolation, exact-production native boot/save-reload, and Native Acceptance v2 **33 scenarios / 508/508 on immutable v0.4.333 and candidate**. Historical 523 evidence remains historical and was not rerun.
 
@@ -19,6 +19,8 @@ Audit date: 2026-10-19 (v0.4.342 accepted main promotion; historical candidate r
 **Data boundaries:** The 46 source profiles and all Size/Power/Handling/base-damage values are unchanged. The pre-existing shop label One-/Two-Handed versus canonical 1H/2H bastard identity is resolved only for coverage, without changing live damage calculations. Natural attacks stay outside the weapon calculator and retain printed damage. This optional contextual geometry is documented in `design/context-matrix/WEAPON-COVERAGE-CONTRACT.md`; it is not claimed as a printed RAW rule or as proof of gameplay balance.
 
 **Next / promotion boundary:** Exact acceptance-metadata SHA must pass full CI before merge, followed by exact merged-main acceptance and Pages verification. Next bounded checkpoint is v0.4.345 oversized rigid-weapon dungeon transport/deployment/use only. Direction-independent current-Measure Size, optional source-reviewed Ferocity and the separate physical natural proximity policy remain later independently accepted dependencies, as authorized by the 2026-10-19 contract. No graphical work.
+
+**Final v0.4.344 promotion:** Metadata `dc24cf9e85b8a77422d9a73149291b55c6de2d3d` passed ten-job push 39308225177 and PR 39308230789 before PR #9 merged to `696d5e7ca453ef5393e3d58b489c2af816fdd075`. Exact-main acceptance 39309419726 and Pages 39309419242 passed. This supersedes the historical pending boundary above. Production remains SHA-256 `85620091262906746133628eaf5f71d7cff0600d39fa2736b85a958bace54e84`.
 
 ## v0.4.343 — Surprise-period contextual Measure control (fully accepted and deployed on main)
 

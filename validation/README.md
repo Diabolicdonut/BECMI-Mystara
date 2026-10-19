@@ -223,3 +223,23 @@ required gates and immutable-reference Native Acceptance v2 stay in force.
 See `design/context-matrix/WEAPON-COVERAGE-CONTRACT.md`. This is optional contextual
 approach geometry, not RAW, not a new Size bonus, no weapon damage change and no
 claim of gameplay balance. Oversized clearance remains a separate dependency.
+
+
+## v0.4.345 — oversized rigid-weapon physical clearance
+
+Eight new embedded regressions test dungeon pike PC/NPC attack and Measure/ZOI
+refusal, exact and interval-length spacious exceptions, 10-foot benchmark and
+explicit long lances/poleaxes independent from Size, separate transport/deploy/use
+facts, ordinary entry refusal with no cost/equipment mutation, pure RAW and
+usable contextual damage/RNG equality, natural exclusion and fighting withdrawal,
+and literal missing/null/false/zero facts and old/repeat migration. Totals:
+2340 core, 1256 focused, 585 names in each of four fresh Chromium slices.
+
+`node validation/rigid-weapon-native-v0.4.345.mjs` additionally runs all eight
+definitions plus three exact-production native command scenarios: ordinary entry
+refusal, explicit referee physical-fact recording and save/reload followed by a
+permitted entry, and an unusable pike attack refusal. 11 scenarios / 26 outer
+assertions, plus embedded assertions; no browser/console/network errors. Earlier
+gates and Native Acceptance v2 remain required unchanged. New physical facts are
+separate from damage mode, player knowledge and the later scene-coordinate work.
+See `design/context-matrix/OVERSIZED-WEAPON-CLEARANCE-CONTRACT.md`.

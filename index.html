@@ -509,7 +509,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.344';
+  const APP_VERSION='0.4.345';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -2357,6 +2357,7 @@ ${lines.join('\n')}`,{type:'developer_audit',query:question});
   const initialState = () => ({
     version:APP_VERSION,
     campaignId:newCampaignId(),
+    weaponClearanceBySite:{},
     region:'kai_besil',
     mode:'wilderness',
     hex:{q:6,r:11},
@@ -10493,6 +10494,7 @@ ${lines.length?lines.join('\n'):'No Chaotic monster hirelings have been persuade
     if(!dest){ write(`There is no known way ${direction} from here.`,'warning'); return false; }
     if(dest==='sorrowful_gull_deck'&&!pirateCampShipAccess()){ write('Harshaw’s pirates block the way onto the Sorrowful Gull. The party needs permission, a successful bargain, or control of the camp before boarding the beached ship.','warning'); return false; }
     const blocked=doorBetween(state.location,dest); if(blocked){ state.pendingDoor={...blocked,direction}; if(blocked.wizardLocked)write(`The door ${direction} is held by Wizard Lock. The original caster, a magic-using character at least 3 levels higher, Knock, or Dispel Magic can open it without erasing the lock's permanent magic unless dispelled.`,'warning');else if(blocked.magicHeld)write(`The door ${direction} is held shut by a Hold Portal spell. Knock or sufficient magical/physical force under the spell's RAW exception can defeat it.`,'warning');else if(blocked.braced) write(`The door ${direction} is physically braced shut. The brace must be removed, broken, or otherwise defeated before passage.`,'warning'); else write(`A locked door bars the way ${direction}. A thief may try to pick the lock; an appropriate key, Knock spell, or a physically destructive approach could also defeat the barrier.`,'warning'); return false; }
+    if(!contextualRigidTransportAllowed(dest))return false;
     if(state.pendingTempleHazard?.kind==='geyser' && state.location==='temple_14'){ state.pendingTempleHazard=null; write('The party scrambles clear just as boiling water blasts through the bathing chamber behind them.','system'); }
     for(const pc of livingParty()) if(pc.stealthState?.skill==='halflingHide') delete pc.stealthState;
     const old=state.location; state.location=dest; state.pendingDoor=null; advanceExploration(10,`Party moved ${direction} from ${sites[old].name} to ${sites[dest].name}.`); look(); handleTempleRoomEntry(); handleGeneratedRoomEntry(); return true;
@@ -10729,6 +10731,7 @@ ${lines.length?lines.join('\n'):'No Chaotic monster hirelings have been persuade
       write('There is no obvious settlement or keyed site to enter in this hex.','warning');
       return false;
     }
+    if(!contextualRigidTransportAllowed(hex.site))return false;
     state.mode = 'site';
     state.location = hex.site;
     learnPlace(hex.site);
@@ -10920,6 +10923,7 @@ ${lines.length?lines.join('\n'):'No Chaotic monster hirelings have been persuade
   function enterLocalSite(siteId) {
     const site = sites[siteId];
     if (!site) return false;
+    if(!contextualRigidTransportAllowed(siteId))return false;
     state.mode = 'site';
     state.location = siteId;
     advanceClock(10,`Party went to ${site.name}.`);
@@ -17145,6 +17149,95 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return {handled:false};
   }
 
+  // Optional physical feasibility, separate from Context Matrix damage/Size.
+  function rigidWeaponLengthFacts(item){
+    if(!item)return {oversized:false,requiredFt:0,reason:'no rigid item'};
+    const p=cmWeaponProfile(item),isPike=p?.id==='pike'||item.itemId==='pike';
+    if(Object.prototype.hasOwnProperty.call(item,'rigidLengthFt')){
+      const n=item.rigidLengthFt;
+      if(typeof n!=='number'||!Number.isFinite(n)||n<=0)
+        return {oversized:isPike,requiredFt:null,reason:'explicit rigid length unresolved'};
+      return {oversized:n>10,requiredFt:n,reason:'explicit physical rigid length'};
+    }
+    // Compatible RC p.65 describes a pike's rigid pole as 12-18 feet. The
+    // interval proves oversize without inventing one exact weapon length.
+    if(isPike)return {oversized:true,requiredFt:18,minimumFt:12,maximumFt:18,reason:'source pike 12-18 ft; upper bound used only to prove clearance'};
+    return {oversized:false,requiredFt:0,reason:'no verified oversized rigid length'};
+  }
+
+  function contextualRigidWeaponStatus(actor,item,operation='attack',{siteId=state.mode==='site'?state.location:null}={}){
+    if(pureBecmiRawCombat())return {allowed:true,reason:'pure RAW preserves its existing restrictions'};
+    const id=item?.itemId;
+    const lengths=actor?.rigidWeaponLengths;
+    const physicalItem=item&&!Object.prototype.hasOwnProperty.call(item,'rigidLengthFt')&&lengths&&typeof lengths==='object'&&Object.prototype.hasOwnProperty.call(lengths,id)?{...item,rigidLengthFt:lengths[id]}:item;
+    const length=rigidWeaponLengthFacts(physicalItem);
+    if(!length.oversized)return {allowed:true,...length};
+    const c=state.combat,site=siteId?sites[siteId]:null;
+    let facts=siteId&&state.weaponClearanceBySite&&typeof state.weaponClearanceBySite==='object'
+      ?state.weaponClearanceBySite[siteId]:undefined;
+    const encounterFacts=c?.rigidWeaponClearance;
+    if(encounterFacts&&typeof encounterFacts==='object'&&encounterFacts.siteId===siteId)facts=encounterFacts;
+    const object=facts!==null&&typeof facts==='object'&&!Array.isArray(facts);
+    const confined=site?.outdoor===false||(object&&facts.confined===true);
+    const known=key=>object&&Object.prototype.hasOwnProperty.call(facts,key)&&typeof facts[key]==='number'&&Number.isFinite(facts[key])&&facts[key]>=0?facts[key]:null;
+    const field=operation==='transport'?'transportFt':operation==='deploy'?'deployFt':'attackFt';
+    const capacity=known(field),deployment=known('deployFt');
+    // No guessed room dimensions: 10 feet is the user-authorized practical
+    // ordinary-dungeon benchmark, not a statement of actual ceiling height.
+    if(!confined&&capacity===null&&(operation!=='attack'||deployment===null))return {allowed:true,...length,reason:'no verified confined/insufficient space'};
+    const fits=value=>length.requiredFt!==null&&value!==null&&value>=length.requiredFt;
+    const supported=value=>value===null?!confined:fits(value);
+    const allowed=supported(capacity)&&(operation!=='attack'||supported(deployment));
+    return {allowed,...length,operation,capacityFt:capacity,reason:allowed?'explicit physical clearance supports the rigid weapon':'rigid weapon cannot be transported/deployed/used normally in this space'};
+  }
+
+  function rigidWeaponAttackUsesItem(monster,spec,weapon){
+    if(!weapon||spec?.hephaestonFist)return false;
+    const delivery=spec?.attackContext?.delivery;
+    if(['natural','breath','projectile','special'].includes(delivery))return false;
+    if(delivery==='weapon')return true;
+    const name=String(spec?.name||'').trim().toLowerCase();
+    return name==='weapon'||name===String(weapon.name).trim().toLowerCase()||(!name&&!monster?.naturalDamage);
+  }
+
+  function contextualRigidTransportAllowed(destinationId){
+    if(pureBecmiRawCombat())return true;
+    const carried=[];
+    for(const pc of livingParty()){
+      const equipped=equippedWeaponItem(pc);
+      for(const rec of pc.inventory||[])if(Number(rec.qty)>0){
+        const item={...(SHOP_ITEMS[rec.itemId]||{}),...rec};
+        if(Number(rec.qty)===1&&equipped?.itemId===rec.itemId&&!Object.prototype.hasOwnProperty.call(rec,'rigidLengthFt')&&Object.prototype.hasOwnProperty.call(equipped,'rigidLengthFt'))item.rigidLengthFt=equipped.rigidLengthFt;
+        carried.push({owner:pc,item});
+      }
+      if(equipped&&!(pc.inventory||[]).some(r=>r.itemId===equipped.itemId&&Number(r.qty)>0))carried.push({owner:pc,item:equipped});
+    }
+    for(const rec of state.partyInventory||[])if(Number(rec.qty)>0)carried.push({owner:null,item:{...(SHOP_ITEMS[rec.itemId]||{}),...rec}});
+    for(const {owner,item} of carried){
+      const result=contextualRigidWeaponStatus(owner,item,'transport',{siteId:destinationId});
+      if(!result.allowed){write(`${owner?.name||'The party'} cannot carry ${item.name||item.itemId} through this ordinary dungeon approach. Leave or store it, or establish an actually clear route.`,'warning');return false;}
+    }
+    return true;
+  }
+
+  function recordRigidWeaponClearance(siteId,{transportFt,deployFt,attackFt,sourceNote}){
+    if(!Object.prototype.hasOwnProperty.call(sites,siteId)||typeof sourceNote!=='string'||!sourceNote.trim())return {ok:false,reason:'A known keyed site and explicit physical source note are required.'};
+    const facts={transportFt,deployFt,attackFt,sourceNote:sourceNote.trim()};
+    for(const key of ['transportFt','deployFt','attackFt']){
+      if(facts[key]!==null&&(typeof facts[key]!=='number'||!Number.isFinite(facts[key])||facts[key]<0))return {ok:false,reason:'Clearance must be a nonnegative distance or explicit unknown.'};
+    }
+    if(!state.weaponClearanceBySite||typeof state.weaponClearanceBySite!=='object'||Array.isArray(state.weaponClearanceBySite))state.weaponClearanceBySite={};
+    state.weaponClearanceBySite[siteId]=facts;
+    return {ok:true,siteId,facts};
+  }
+
+  function developerRigidWeaponClearance(match){
+    const distance=value=>value.toLowerCase()==='unknown'?null:Number(value);
+    const result=recordRigidWeaponClearance(match[1],{transportFt:distance(match[2]),deployFt:distance(match[3]),attackFt:distance(match[4]),sourceNote:match[5]});
+    write(result.ok?`Physical rigid-weapon clearance recorded for ${sites[result.siteId].name}.`:result.reason,result.ok?'system':'warning');
+    return result.ok;
+  }
+
   // Optional weapon coverage is independent from body contact and weapon Size.
   // Facing follows the declared primary target, captured once before movement.
   function captureContextualWeaponFacings(){
@@ -17183,6 +17276,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       ?CONTEXT_MATRIX_DATA.weapons.find(w=>w.id===(item.twoHanded?'sword-bastard-2h':'sword-bastard-1h'))
       :cmWeaponProfile(item);
     if(!profile||profile.category!=='Melee')return {covered:null,reason:'weapon coverage unresolved'};
+    if(!contextualRigidWeaponStatus(defender,item).allowed)return {covered:false,reason:'rigid weapon cannot be deployed in this space'};
     const c=state.combat,space=cmCanonical(c.contextMatrixSpace,CM_SPACES);
     const broadSword=['sword-two-handed','sword-bastard-2h'].includes(profile.id);
     // A two-handed sword can influence surrounding approaches when the actual
@@ -18724,6 +18818,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(kind==='melee'&&transformedProfile&&(transformedNonHumanoid||!equippedWeaponItem(pc))){artifactTransformedNaturalAttacks(pc,monster,transformedProfile);return;}
     const baseItem=equippedWeaponItem(pc);
     const item=baseItem ? {...baseItem,itemId:pc.equippedWeapon.itemId} : null;
+    if(item&&!contextualRigidWeaponStatus(pc,item,'attack').allowed){write(`${pc.name} cannot deploy ${item.name} for this attack in the available space.`,'warning');return;}
     if(!item && kind==='missile'){ write(`${pc.name} has no equipped missile weapon.`,'warning'); return; }
     if(kind==='missile'){
       if(!missileCapable(item)){ write(`${pc.name}'s ${item.name} is not currently being treated as a missile weapon in this core pass.`, 'warning'); return; }
@@ -21304,6 +21399,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       let masteryDamageAudit=null;
       if(spec.hephaestonFist&&!hephaestonClaimSecondaryAction(monster,'fist',{announce:false}))continue;
       const weapon=spec.hephaestonFist?null:monsterWeaponItem(monster),attackName=monster.specialAttack==='centipede_poison'?'bite':(spec.name||weapon?.name||'attack'),subtypeAttackBonus=homunculusAttackBonus(monster,attackName);
+      const ordinaryWeapon=rigidWeaponAttackUsesItem(monster,spec,weapon);
+      if(ordinaryWeapon&&!contextualRigidWeaponStatus(monster,weapon,'attack').allowed){write(`${monster.name} cannot deploy ${weapon.name} for this attack in the available space.`,'system');continue;}
       const result=paralysisAwareAttackRoll(monster,pc,'melee',(pc.retreatingThisRound?2:0)+subtypeAttackBonus);
       shieldWeaponBreakCheck(pc,monster,result,{foeIsAttacker:true,attackSpec:spec});
       const swoopContext=!sourceSwoopUsed?monsterSwoopContext(monster,pc,attackName):null;if(swoopContext)sourceSwoopUsed=true;
@@ -25301,14 +25398,14 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     if(pc){
       if(pc.dead||Number(pc.hp)<=0)return null;
       const item=equippedWeaponItem(pc),p=cmWeaponProfile(item);
-      if(item?.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating))return null;
+      if(item?.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating)||!contextualRigidWeaponStatus(pc,item).allowed)return null;
       return {size:p.sizeRating,verifiedWeapon:true};
     }
     if(!monster||!monsterCanFight(monster))return null;
     const item=monsterWeaponItem(monster);
     if(item){
       const p=cmWeaponProfile(item);
-      if(item.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating))return null;
+      if(item.missile||p?.category!=='Melee'||!Number.isInteger(p.sizeRating)||!contextualRigidWeaponStatus(monster,item).allowed)return null;
       return {size:p.sizeRating,verifiedWeapon:true};
     }
     const attacks=Array.isArray(monster.attacks)?monster.attacks:[];
@@ -30053,6 +30150,7 @@ ${a.zones.map(zone=>{const c=antiMagicZoneCenter(zone),shape=normalizeAntiMagicS
   }
   function developerAntiMagicClear(){const count=removeAllAntiMagicZones();write(`ANTI-MAGIC — cleared ${count} active zone${count===1?'':'s'}.`,'system');return true;}
   const DEVELOPER_COMMAND_SPECS=[
+    {category:'Encounters and Combat',usage:'dev weapon clearance <site-id> transport=<ft|unknown> deploy=<ft|unknown> attack=<ft|unknown> source=<physical source>',summary:'Record actual rigid-weapon transport, deployment and attack clearance at a keyed site; no weapon rating, damage or rule change.',pattern:/^dev\s+weapon\s+clearance\s+(\S+)\s+transport=(\d+(?:\.\d+)?|unknown)\s+deploy=(\d+(?:\.\d+)?|unknown)\s+attack=(\d+(?:\.\d+)?|unknown)\s+source=(.+)$/i,execute:developerRigidWeaponClearance},
     {category:'Master Artifacts',usage:'dev artifact status',summary:'Show full referee-only Master artifact state, powers, PP, vessel HP, adverse-effect queue, damage losses, and recall state.',pattern:/^dev\s+artifact\s+status$/i,execute:()=>write(artifactStatus({developer:true}),'system')},
     {category:'Master Artifacts',usage:'dev artifact known [name]',summary:'List the 16 published Mentzer Master Known Artifact templates or inspect one complete referee-only source record.',pattern:/^dev\s+artifact\s+known(?:\s+(.+))?$/i,execute:m=>developerArtifactKnown((m[1]||'').trim())},
     {category:'Master Artifacts',usage:'dev artifact load <Known Artifact name>',summary:'Clone one published Known Artifact sample into campaign state without automatically spawning it in the world or inventing a destruction method.',pattern:/^dev\s+artifact\s+load\s+(.+)$/i,execute:m=>developerArtifactLoadKnown(m[1].trim())},
@@ -32468,6 +32566,92 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function coreHarnessTestDefinitions(){
     return [
+      {name:'v0.4.345 unusable dungeon pikes provide no attacks Size or directional coverage',run:()=>{
+        const {pc,mon,c}=harnessSurpriseMeasureFixture343();c.surpriseRoundPending=null;c.rigidWeaponClearance={siteId:null,confined:true};
+        pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};
+        mon.noWeapons=false;mon.weaponId='pike';mon.attacks=null;mon.naturalDamage=null;
+        const seed=state.seed,hp=[pc.hp,mon.hp],round=c.round;
+        pcWeaponAttack(pc,mon);
+        for(const attacks of [null,[{name:'weapon',damage:'1d10'}],[{name:'Pike',damage:'1d10',attackContext:{delivery:'weapon',contextualWeaponDamageEligible:true}}]]){mon.attacks=attacks;monsterAttack(mon,pc);}
+        harnessAssert(state.seed===seed&&pc.hp===hp[0]&&mon.hp===hp[1]&&c.round===round,'An unusable pike rolled an attack, dealt damage or advanced combat');
+        harnessAssert(meleeControlActorRating(pc,null)===null&&meleeControlActorRating(null,mon)===null&&contextualWeaponApproachCoverage('pc',pc,{x:20,y:0,z:0}).covered===false,'Unusable pike retained Measure or ZOI advantages');
+        harnessAssert(cmWeaponProfile(equippedWeaponItem(pc)).sizeRating===3&&cmWeaponProfile(equippedWeaponItem(pc)).rcDamage==='1d10','Physical refusal rewrote the canonical pike profile');
+      }},
+      {name:'v0.4.345 pike cavern exceptions require actual clearance not a spacious label',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343();pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};
+        for(const ft of [0,10,12,17,18,30]){
+          c.rigidWeaponClearance={siteId:null,confined:true,transportFt:ft,deployFt:ft,attackFt:ft};
+          for(const operation of ['transport','deploy','attack'])harnessAssert(contextualRigidWeaponStatus(pc,equippedWeaponItem(pc),operation).allowed===(ft>=18),'Unspecified source-length pike received invented clearance');
+        }
+        c.rigidWeaponClearance={siteId:null,confined:true,label:'large cavern'};
+        harnessAssert(!contextualRigidWeaponStatus(pc,equippedWeaponItem(pc)).allowed,'A cavern label fabricated geometric clearance');
+        pc.equippedWeapon.rigidLengthFt=12;c.rigidWeaponClearance={siteId:null,confined:true,transportFt:12,deployFt:12,attackFt:12};
+        harnessAssert(contextualRigidWeaponStatus(pc,equippedWeaponItem(pc)).allowed,'Explicit actual 12-foot pike could not use verified 12-foot rigid handling clearance');
+        pc.equippedWeapon.rigidLengthFt=24;c.rigidWeaponClearance={siteId:null,confined:true,transportFt:30,deployFt:30,attackFt:30};
+        harnessAssert(contextualRigidWeaponStatus(pc,equippedWeaponItem(pc)).allowed,'An explicitly established oversized variant could not use genuinely sufficient cavern clearance');
+      }},
+      {name:'v0.4.345 ten-foot transport benchmark is independent of weapon Size and handedness',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343();c.rigidWeaponClearance={siteId:null,confined:true};
+        for(const [id,ft,allowed] of [['spear',10,true],['poleaxe',8,true],['poleaxe',15,false],['lance',14,false],['dagger',1,true]]){
+          const item={...SHOP_ITEMS[id],itemId:id,rigidLengthFt:ft};
+          harnessAssert(contextualRigidWeaponStatus(pc,item,'transport').allowed===allowed,'Rigid transport followed Size/handedness instead of actual length');
+        }
+        harnessAssert(contextualRigidWeaponStatus(pc,{itemId:'fixture_ten_foot_pole',name:'10-foot pole',rigidLengthFt:10},'transport').allowed,'The benchmark pole was incorrectly oversized');
+        const armed=c.monsters[0];armed.noWeapons=false;armed.weaponId='lance';armed.rigidWeaponLengths={lance:14};
+        harnessAssert(!contextualRigidWeaponStatus(armed,monsterWeaponItem(armed)).allowed,'An explicitly long armed-humanoid lance bypassed physical clearance');
+        const original=harnessFingerprint(armed.rigidWeaponLengths),id=armed.id;migrateSave(harnessClone(state));const loaded=state.combat.monsters.find(m=>m.id===id);
+        harnessAssert(loaded.weaponId==='lance'&&harnessFingerprint(loaded.rigidWeaponLengths)===original&&!contextualRigidWeaponStatus(loaded,monsterWeaponItem(loaded)).allowed,'Armed NPC physical weapon facts changed during migration');
+      }},
+      {name:'v0.4.345 transport deployment and attack clearance remain independent physical facts',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343();const item={...SHOP_ITEMS.pike,itemId:'pike'};
+        c.rigidWeaponClearance={siteId:null,confined:true,transportFt:30,deployFt:8,attackFt:30};
+        harnessAssert(contextualRigidWeaponStatus(pc,item,'transport').allowed&&!contextualRigidWeaponStatus(pc,item,'deploy').allowed&&!contextualRigidWeaponStatus(pc,item,'attack').allowed,'Transport permission fabricated deployment/use');
+        c.rigidWeaponClearance={siteId:null,confined:true,transportFt:8,deployFt:30,attackFt:30};
+        harnessAssert(!contextualRigidWeaponStatus(pc,item,'transport').allowed&&contextualRigidWeaponStatus(pc,item,'deploy').allowed&&contextualRigidWeaponStatus(pc,item,'attack').allowed,'A currently clear chamber was invalidated by a separate transport bottleneck');
+      }},
+      {name:'v0.4.345 ordinary keyed dungeon entry refuses carried pikes without cost or inventory mutation',run:()=>{
+        for(const actualLength of [null,12]){
+          const {pc}=harnessSurpriseMeasureFixture343();state.combat=null;state.mode='site';state.location='temple_flame';
+          pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};pc.inventory=[{...memberItemRecord('pike'),qty:1}];
+          if(actualLength!==null)pc.equippedWeapon.rigidLengthFt=actualLength;
+          const inventory=harnessFingerprint(pc.inventory),seed=state.seed,minutes=state.minutes;
+          harnessAssert(!enterLocalSite('temple_5')&&state.location==='temple_flame'&&state.minutes===minutes&&state.seed===seed&&harnessFingerprint(pc.inventory)===inventory,'Oversized entry silently moved, spent time, rolled RNG or removed equipment');
+          const capacity=actualLength===null?30:12;
+          const record=recordRigidWeaponClearance('temple_5',{transportFt:capacity,deployFt:capacity,attackFt:capacity,sourceNote:'Synthetic source-verified clearance fixture'});
+          harnessAssert(record.ok&&enterLocalSite('temple_5')&&state.location==='temple_5'&&state.minutes===minutes+10,'A verified clear keyed approach ignored the equipped actual length or ordinary travel cost');
+        }
+      }},
+      {name:'v0.4.345 pure RAW and usable contextual weapons preserve identical weapon damage and RNG',run:()=>{
+        const outcomes=[];
+        for(const mode of ['RAW','CONTEXTUAL']){
+          const {pc,mon,c}=harnessSurpriseMeasureFixture343();c.surpriseRoundPending=null;state.rules.combatProcedureMode=mode;state.rules.weaponDamageMode='RAW';state.rules.weaponMastery=false;
+          c.rigidWeaponClearance={siteId:null,confined:true,transportFt:30,deployFt:30,attackFt:30};
+          pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};pc.thac0=1;mon.ac=9;state.seed=100000;
+          pcWeaponAttack(pc,mon);outcomes.push({hp:mon.hp,seed:state.seed});
+          if(mode==='RAW'){c.rigidWeaponClearance={siteId:null,confined:true};harnessAssert(contextualRigidWeaponStatus(pc,equippedWeaponItem(pc)).allowed&&contextualRigidTransportAllowed('temple_5'),'Contextual clearance leaked into pure RAW');}
+        }
+        harnessAssert(harnessFingerprint(outcomes[0])===harnessFingerprint(outcomes[1])&&outcomes[0].hp<500,'Usable pike changed printed damage or consumed additional dice');
+      }},
+      {name:'v0.4.345 natural attacks and ordinary fighting withdrawal never require oversized Measure escape',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343();c.surpriseRoundPending=null;c.rigidWeaponClearance={siteId:null,confined:true};
+        const wolf=createCombatMonster('wolf',7);c.monsters=[wolf];setCombatMonsterVector(wolf,{x:4,y:0,z:0});wolf.inventory=[{itemId:'pike',qty:1}];
+        harnessAssert(!monsterWeaponItem(wolf)&&contextualRigidWeaponStatus(wolf,null).allowed,'A natural attacker was classified as an unusable carried weapon');
+        harnessAssert(!rigidWeaponAttackUsesItem(wolf,{name:'bite',damage:'1d6',attackContext:{delivery:'natural'}},{...SHOP_ITEMS.pike,itemId:'pike'}),'An explicit natural hit was mistaken for the carried manufactured weapon');
+        pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};setEngagement(pc,wolf,'normal');
+        c.pcOrders[pc.name.toLowerCase()]={action:'hold',movement:'withdraw',rangeIntent:'open',targetId:wolf.id};const seed=state.seed;
+        movementPhase('pc');harnessAssert(pc.withdrewThisRound&&!atMeleeContact(pc,wolf)&&state.seed===seed,'An unusable pike imposed a compulsory escape contest or prevented ordinary fighting withdrawal');
+      }},
+      {name:'v0.4.345 sparse physical facts and literal weapon lengths survive migration without inference',run:()=>{
+        for(const literal of [undefined,null,false,0]){
+          const {pc,c}=harnessSurpriseMeasureFixture343();c.surpriseRoundPending=null;state.mode='site';state.location='temple_5';
+          pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};
+          if(literal===undefined)delete state.weaponClearanceBySite;else state.weaponClearanceBySite=literal;
+          pc.equippedWeapon.rigidLengthFt=literal===undefined?null:literal;
+          migrateSave(harnessClone(state));const loaded=state.party[0],before=harnessFingerprint(loaded.equippedWeapon.rigidLengthFt),facts=harnessFingerprint(state.weaponClearanceBySite),seed=state.seed;
+          harnessAssert(!contextualRigidWeaponStatus(loaded,equippedWeaponItem(loaded)).allowed&&harnessFingerprint(loaded.equippedWeapon.rigidLengthFt)===before&&harnessFingerprint(state.weaponClearanceBySite)===facts&&state.seed===seed,'Unknown/false/zero physical facts were inferred, coerced or rewritten');
+          const saved=harnessClone(state);migrateSave(saved);harnessAssert(state.seed===seed&&harnessFingerprint(state.weaponClearanceBySite)===facts,'Saved clearance changed on repeat migration');
+        }
+      }},
       {name:'v0.4.344 a moving six-monster formation establishes every followers own uncovered Measure',run:()=>{
         const {pc,c}=harnessSurpriseMeasureFixture343({count:7,distance:20});c.surpriseRoundPending=null;
         pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};

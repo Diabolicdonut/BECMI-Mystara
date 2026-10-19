@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required rigid-weapon entry attack refusal and physical-fact save/reload
+        run: node validation/rigid-weapon-native-v0.4.345.mjs
       - name: Required directional weapon coverage and native facing save/reload
         run: node validation/weapon-coverage-native-v0.4.344.mjs
       - name: Required surprise Measure native commands and real save/reload
