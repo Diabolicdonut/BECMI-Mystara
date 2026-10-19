@@ -146,6 +146,18 @@ try{
  check(await page.evaluate(()=>document.querySelector('#combatProcedureState').textContent.includes('Effective weapon damage: CONTEXT_MATRIX')),true,'return restores previously configured Context Matrix');
  await page.reload({waitUntil:'load'});
  check(await page.evaluate(()=>JSON.parse(localStorage.getItem('knownWorldRefereeSave')).rules.combatProcedureMode),'CONTEXTUAL','contextual procedure survives reload');
+ const oldSave=await page.evaluate(()=>{
+   const key='knownWorldRefereeSave',s=JSON.parse(localStorage.getItem(key));
+   const preserved={weaponDamageMode:s.rules.weaponDamageMode,initiativeMode:s.rules.initiativeMode};
+   delete s.rules.combatProcedureMode;
+   localStorage.setItem(key,JSON.stringify(s));
+   return preserved;
+ });
+ await page.reload({waitUntil:'load'});
+ const migratedRules=await page.evaluate(()=>window.KnownWorldTestHarness.getDebugPayload().campaign.fullState.rules);
+ check(migratedRules.combatProcedureMode,'CONTEXTUAL','real legacy save without procedure field retains previously accepted contextual semantics');
+ check(migratedRules.weaponDamageMode,oldSave.weaponDamageMode,'legacy save preserves separately configured damage');
+ check(migratedRules.initiativeMode,oldSave.initiativeMode,'legacy save preserves initiative preference');
  await page.goto(origin+'/__fixture',{waitUntil:'load'});
  await page.waitForFunction(()=>typeof window.__kwOriginal341==='function');
  const testRoll=await page.evaluate(()=>window.__kwOriginal341('roll'));
