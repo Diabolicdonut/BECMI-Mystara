@@ -32432,6 +32432,11 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='normal','Surprised monster acted');
         c.surpriseRoundPending=null;c.meleeDistanceResolvedRound=0;resolveMeleeDistanceContests();
         harnessAssert(c.surprise.foesSurprised&&getEngagement(pc,mon).range==='close','Historical surprise flag prevented later ordinary opposed contest');
+        // Exercise the real synchronous foe surprise lifecycle, not only its helper.
+        installHarnessFixture();state.party=state.party.slice(0,1);state.party[0].hp=state.party[0].maxHp=500;state.combat=null;
+        harnessAssert(startCampaignEncounter(1,'wolf',{distanceOverride:20,distanceUnit:'ft',pcsSurprised:true,foesSurprised:false,automaticFoeSurpriseRound:true}),'Automatic foe surprise encounter failed');
+        const foe=state.combat.monsters[0];
+        harnessAssert(getEngagement(state.party[0],foe)?.range==='close'&&!Object.hasOwn(state.combat,'surpriseRoundActive')&&state.combat.meleeDistanceResolvedRound===0&&state.combat.initiative===null&&state.combat.round===1,'Automatic foe surprise failed preferred contact or left its period active');
       }},
       {name:'v0.4.343 missing original dice permit surprise control but remain unknown after surprise',run:()=>{
         const {pc,mon,c}=harnessSurpriseMeasureFixture343();delete c.initiative.rawRolls;c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';
