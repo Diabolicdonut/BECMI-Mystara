@@ -202,3 +202,24 @@ shell if the workspace cannot obtain the pinned browser. Such local evidence is
 not the pinned GitHub acceptance run; promotion still requires every exact-SHA
 CI job using the repository's unchanged Playwright dependency. Native Acceptance
 v2 and the immutable v0.4.333 reference continue unchanged.
+
+## v0.4.344 — directional weapon coverage
+
+Eight dedicated embedded regressions test presented point fronts and actual rear
+approaches, lateral polearm coverage, surrounding two-handed sword/bastard-2H
+coverage only with explicitly Open clearance, unknown/null/zero/false facts,
+spellcasting, six independent attackers, actual weapon changes and pure RAW.
+Inherited test bodies are preserved. Required totals: 2332 core, 1248 focused;
+fresh ordered Chromium slices contain 583 names each.
+
+`node validation/weapon-coverage-native-v0.4.344.mjs` is an additional required
+native-smoke step. It executes the eight dedicated definitions in Chromium and one
+exact-production public save/reload scenario: 9 scenarios / 13 assertions, plus
+the assertions inside the eight definitions, zero browser or network errors.
+Declared facing snapshots and independent Measure survive native boot and reload;
+RNG/time, rule choices and planning-only contracts remain unchanged. All earlier
+required gates and immutable-reference Native Acceptance v2 stay in force.
+
+See `design/context-matrix/WEAPON-COVERAGE-CONTRACT.md`. This is optional contextual
+approach geometry, not RAW, not a new Size bonus, no weapon damage change and no
+claim of gameplay balance. Oversized clearance remains a separate dependency.

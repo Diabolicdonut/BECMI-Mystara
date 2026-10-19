@@ -509,7 +509,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.343';
+  const APP_VERSION='0.4.344';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -17145,6 +17145,86 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return {handled:false};
   }
 
+  // Optional weapon coverage is independent from body contact and weapon Size.
+  // Facing follows the declared primary target, captured once before movement.
+  function captureContextualWeaponFacings(){
+    if(pureBecmiRawCombat()||!combatActive())return null;
+    const c=state.combat;
+    if(c.weaponCoverageFacings?.round===c.round)return c.weaponCoverageFacings;
+    const rows={round:c.round,pcs:{},monsters:{}};
+    const direction=(a,b)=>{
+      if(!b)return null;
+      const d={x:b.x-a.x,y:b.y-a.y,z:b.z-a.z},n=Math.hypot(d.x,d.y,d.z);
+      return n>1e-9?{x:d.x/n,y:d.y/n,z:d.z/n}:null;
+    };
+    for(const pc of livingParty()){
+      const o=c.pcOrders?.[pc.name.toLowerCase()];
+      const target=c.monsters.find(m=>m.id===o?.targetId)||null;
+      rows.pcs[pc.name.toLowerCase()]=direction(combatPcVector(pc),target?combatMonsterVector(target):null);
+    }
+    for(const m of livingHostiles()){
+      const o=c.monsterOrders?.[m.id],target=state.party.find(p=>p.name.toLowerCase()===String(o?.targetName||'').toLowerCase())||null;
+      rows.monsters[m.id]=direction(combatMonsterVector(m),target?combatPcVector(target):null);
+    }
+    c.weaponCoverageFacings=rows;
+    return rows;
+  }
+
+  function contextualWeaponApproachCoverage(defenderKind,defender,start){
+    if(pureBecmiRawCombat())return {covered:null,reason:'pure RAW'};
+    if(!combatActive()||!defender)return {covered:null,reason:'no defender'};
+    if(masteryCannotAttack(defender))return {covered:false,reason:'defender cannot present an attack'};
+    const order=defenderKind==='pc'?state.combat.pcOrders?.[defender.name.toLowerCase()]:state.combat.monsterOrders?.[defender.id];
+    if(order?.action==='spell')return {covered:false,reason:'casting rather than presenting a weapon'};
+    const item=defenderKind==='pc'?equippedWeaponItem(defender):monsterWeaponItem(defender);
+    // Existing shop grip labels use One-/Two-Handed; the accepted roster uses 1H/2H.
+    // Resolve this physical identity here without changing the damage calculator.
+    const profile=item?.kind==='weapon'&&item.itemId==='sword_bastard'
+      ?CONTEXT_MATRIX_DATA.weapons.find(w=>w.id===(item.twoHanded?'sword-bastard-2h':'sword-bastard-1h'))
+      :cmWeaponProfile(item);
+    if(!profile||profile.category!=='Melee')return {covered:null,reason:'weapon coverage unresolved'};
+    const c=state.combat,space=cmCanonical(c.contextMatrixSpace,CM_SPACES);
+    const broadSword=['sword-two-handed','sword-bastard-2h'].includes(profile.id);
+    // A two-handed sword can influence surrounding approaches when the actual
+    // chamber has sufficient open handling space. No Size-to-coverage conversion.
+    if(broadSword&&space===null)return {covered:null,reason:'surrounding clearance unknown'};
+    if(broadSword&&space==='Open')return {covered:true,reason:'surrounding sword coverage in verified Open space'};
+    const point=['spear','javelin','trident','pike','lance'].includes(profile.id);
+    const frontal=item.polearm===true||broadSword;
+    if(!point&&!frontal)return {covered:null,reason:'ordinary body contact only'};
+    const facing=defenderKind==='pc'?c.weaponCoverageFacings?.pcs?.[defender.name.toLowerCase()]:c.weaponCoverageFacings?.monsters?.[defender.id];
+    if(!facing||typeof facing!=='object'||!['x','y','z'].every(k=>typeof facing[k]==='number'&&Number.isFinite(facing[k])))return {covered:null,reason:'facing unknown'};
+    const n=Math.hypot(facing.x,facing.y,facing.z);
+    if(n<1e-9)return {covered:null,reason:'facing unknown'};
+    if(!start||typeof start!=='object'||!['x','y','z'].every(k=>typeof start[k]==='number'&&Number.isFinite(start[k])))return {covered:null,reason:'approach unknown'};
+    const center=defenderKind==='pc'?combatPcVector(defender):combatMonsterVector(defender);
+    const d={x:start.x-center.x,y:start.y-center.y,z:start.z-center.z};
+    if(!Object.values(d).every(Number.isFinite)||Math.hypot(d.x,d.y,d.z)<1e-9)return {covered:null,reason:'approach unknown'};
+    const dot=d.x*facing.x+d.y*facing.y+d.z*facing.z;
+    // Thrusting points control the presented front. Cutting/hooked polearms
+    // additionally cover their lateral boundary, but not the unpresented rear.
+    return {covered:point?dot>1e-9:dot>=-1e-9,reason:point?'presented point front':'frontal and lateral polearm coverage'};
+  }
+
+  function establishUncontestedApproachMeasures(kind,mover,start,priorPairs){
+    if(pureBecmiRawCombat()||!combatActive())return;
+    const c=state.combat;
+    refreshSpatialEngagements();
+    for(const [key,pair] of Object.entries(c.engagements)){
+      if(priorPairs.has(key))continue;
+      const pc=state.party.find(p=>p.name.toLowerCase()===String(pair.pcName).toLowerCase()),mon=c.monsters.find(m=>m.id===pair.monsterId);
+      if(!pc||!mon||(kind==='pc'?pc!==mover:mon!==mover))continue;
+      const coverage=contextualWeaponApproachCoverage(kind==='pc'?'monster':'pc',kind==='pc'?mon:pc,start);
+      if(coverage.covered!==false)continue; // Unknown is not evidence of a flank.
+      const order=kind==='pc'?c.pcOrders?.[pc.name.toLowerCase()]:c.monsterOrders?.[mon.id];
+      const preferred=String(order?.preferredRange||'').toLowerCase();
+      const desired=RANGE_ORDER.includes(preferred)?preferred:order?.rangeIntent==='press'?'close':order?.rangeIntent==='open'?'far':'far';
+      pair.range=desired;
+      void refereeLog('MELEE CONTACT — approach outside presented weapon coverage',
+        {type:'melee_contact_coverage',round:c.round,pcName:pc.name,monsterId:mon.id,range:desired,unopposed:true,reason:coverage.reason});
+    }
+  }
+
   function movementHostileBlockers(kind,mover){
     // RAW movement cannot be stopped by contextual Zones of Influence.
     if(pureBecmiRawCombat())return [];
@@ -17153,6 +17233,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return livingParty().filter(target=>target.carriedBy?.monsterId!==mover?.id).map(target=>({kind:'pc',target,center:combatPcVector(target),radius:combatantInfluenceRadiusFt(target)}));
   }
   function moveSpatialCombatant(kind,mover,endVector){
+    const priorCoveragePairs=pureBecmiRawCombat()?new Set():new Set(Object.keys(refreshSpatialEngagements()));
+    captureContextualWeaponFacings();
     const start=kind==='pc'?combatPcVector(mover):combatMonsterVector(mover),radius=combatantInfluenceRadiusFt(mover);let end=normalizedSpatialVector(endVector,start.x);
     if(kind==='monster'&&phantomVisionRule(mover)){const row=phantomVisionState(mover,{create:true});if(row.fixedAreaKey!==phantomFearAreaKey()){write(`${mover.name} is confined to its source-defined Vision site and cannot move into another area.`,'warning');return {start,end,final:start,contact:null,strangleVineContacts:[],strangleweedContacts:[],prismaticContacts:[],prismaticStopped:false,distanceMovedFt:0};}const requested=vectorDistanceFt(start,end);end=constrainPhantomVisionMovement(mover,start,end);if(vectorDistanceFt(start,end)+1e-9<requested)write(`${mover.name}'s movement is capped by the printed 40-foot-per-round Vision allowance.`,'system');}
     if(kind==='monster'&&monsterBurrowed(mover)&&!monsterBurrowRule(mover)?.mobileWhileBurrowed&&vectorDistanceFt(start,end)>1e-9){write(`${mover.name} is concealed just below the surface, but its governing entry gives no combat-rate subsurface movement. It must emerge before relocating.`,'system');return {start,end,final:start,contact:null,strangleVineContacts:[],strangleweedContacts:[],prismaticContacts:[],prismaticStopped:false,distanceMovedFt:0};}
@@ -17178,6 +17260,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const strangleweedContacts=kind==='pc'&&!prismaticStop&&mover.grabbedBy?.kind!=='strangle_vine'?processStrangleweedMovementSegment(mover,start,final):[];
     if(kind==='pc'&&mover.grabbedBy?.kind==='strangleweed'){final=combatPcVector(mover);const weed=state.combat?.monsters?.find(m=>m.id===mover.grabbedBy.monsterId);if(weed)contact=weed;}
     if(contact){if(kind==='pc')setEngagement(mover,contact);else setEngagement(contact,mover);}
+    establishUncontestedApproachMeasures(kind,mover,start,priorCoveragePairs);
     processApparitionMistMovementBoundary(kind,mover);
     const distanceMovedFt=vectorDistanceFt(start,final);if(kind==='monster'&&phantomVisionRule(mover))recordPhantomVisionMovement(mover,distanceMovedFt);
     refreshMeleeRecords();
@@ -17234,8 +17317,10 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const rendezvous=vectors[0];for(let i=1;i<active.length;i++){const start=vectors[i],d={x:rendezvous.x-start.x,y:rendezvous.y-start.y,z:rendezvous.z-start.z},len=Math.hypot(d.x,d.y,d.z),step=Math.min(combatUnitsToFeet(speeds[i]),len),scale=len?step/len:0;setCombatMonsterVector(active[i],{x:start.x+d.x*scale,y:start.y+d.y*scale,z:start.z+d.z*scale});}
       write(`${name} ×${active.length} regroup into formation instead of advancing independently.`,'system');refreshMeleeRecords();return;
     }
+    const priorCoveragePairs=pureBecmiRawCombat()?new Set():new Set(Object.keys(refreshSpatialEngagements()));
     const end=directMovementEndVector(active[0],anchorTarget,combatUnitsToFeet(groupSpeed),'monster'),result=moveSpatialCombatant('monster',active[0],end);
     for(const monster of active.slice(1))setCombatMonsterVector(monster,result.final);
+    for(let i=1;i<active.length;i++)establishUncontestedApproachMeasures('monster',active[i],vectors[i],priorCoveragePairs);
     for(const monster of active)if(isWoodImpMonster(monster))syncWoodImpMountPosition(monster);
     const moved=feetToCombatUnits(result.distanceMovedFt),chargeThreshold=combatDistanceUnit()==='yd'?20:60;
     for(const monster of active)if(orders.get(monster.id)?.charge&&moved>=chargeThreshold)monster.chargedThisRound=true;
@@ -24442,8 +24527,9 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       }
       write(`${active.map(pc=>pc.name).join(', ')} regroup toward one shared formation point; they do not advance independently.`,'system');refreshMeleeRecords();return;
     }
+    const priorCoveragePairs=pureBecmiRawCombat()?new Set():new Set(Object.keys(refreshSpatialEngagements()));
     const leaderEnd=directMovementEndVector(first,target,combatUnitsToFeet(groupSpeed),'pc'),result=moveSpatialCombatant('pc',first,leaderEnd);
-    for(const pc of active.slice(1)){const start=combatPcVector(pc),end={...result.final};setCombatPcVector(pc,end);processStrangleVineMovementSegment(pc,start,end);}
+    for(const pc of active.slice(1)){const start=combatPcVector(pc),end={...result.final};setCombatPcVector(pc,end);processStrangleVineMovementSegment(pc,start,end);establishUncontestedApproachMeasures('pc',pc,start,priorCoveragePairs);}
     refreshMeleeRecords();
     const moved=feetToCombatUnits(result.distanceMovedFt),remain=combatSeparation(first,target),contact=result.contact?` Movement is stopped by ${result.contact.name}'s hostile Influence Sphere.`:'';
     write(`${active.map(pc=>pc.name).join(', ')} move as one formation at the slowest member's pace (${combatDistanceLabel(groupSpeed)}/round); shared displacement ${combatDistanceLabel(moved)}; ${combatDistanceLabel(remain)} remain before contact with ${target.name}.${contact}`,'system');
@@ -32382,6 +32468,89 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function coreHarnessTestDefinitions(){
     return [
+      {name:'v0.4.344 a moving six-monster formation establishes every followers own uncovered Measure',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343({count:7,distance:20});c.surpriseRoundPending=null;
+        pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+        c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:c.monsters[0].id,rangeIntent:'hold'};
+        const movers=c.monsters.slice(1),expected=['close','normal','far','close','normal','far'];
+        movers.forEach((m,i)=>{setCombatMonsterVector(m,{x:-20,y:0,z:0});c.monsterOrders[m.id]={action:'melee',targetName:pc.name,rangeIntent:'press',preferredRange:expected[i]};});
+        const seed=state.seed;
+        moveMonsterGroupTowardPc(movers,new Map(movers.map(m=>[m.id,c.monsterOrders[m.id]])),{id:'coverage_rear_group',name:'Rear group'});
+        harnessAssert(harnessFingerprint(movers.map(m=>getEngagement(pc,m)?.range))===harnessFingerprint(expected)&&Object.keys(c.engagements).length===6&&state.seed===seed,'Formation applied uncovered control only to its leader or forced a shared band');
+      }},
+      {name:'v0.4.344 moving party formation followers retain independent uncovered contact Measures',run:()=>{
+        installHarnessFixture({distance:0,type:'goblin',count:1});state.party=state.party.slice(0,3);state.rules.combatProcedureMode='CONTEXTUAL';
+        const c=state.combat,anchor=state.party[0],movers=state.party.slice(1),mon=c.monsters[0];c.round=2;c.surpriseRoundPending=null;
+        setCombatPcVector(anchor,{x:20,y:0,z:0});movers.forEach(pc=>setCombatPcVector(pc,{x:-20,y:0,z:0}));setCombatMonsterVector(mon,{x:0,y:0,z:0});mon.influenceRadiusFt=2.5;mon.noWeapons=false;mon.weaponId='spear';mon.attacks=null;mon.naturalDamage=null;
+        c.monsterOrders[mon.id]={action:'melee',targetName:anchor.name,rangeIntent:'hold'};
+        const expected=['close','normal'];movers.forEach((pc,i)=>c.pcOrders[pc.name.toLowerCase()]={action:'melee',movement:'approach',targetId:mon.id,rangeIntent:'press',preferredRange:expected[i]});refreshSpatialEngagements();
+        const seed=state.seed;movePcGroupTowardTarget(movers,new Map(movers.map(pc=>[pc.name.toLowerCase(),c.pcOrders[pc.name.toLowerCase()]])));
+        harnessAssert(harnessFingerprint(movers.map(pc=>getEngagement(pc,mon)?.range))===harnessFingerprint(expected)&&Object.keys(c.engagements).length===2&&state.seed===seed,'Party formation follower did not receive its own legal uncovered contact ruling');
+      }},
+      {name:'v0.4.344 spear front and rear contact differ without Size damage or RNG changes',run:()=>{
+        for(const rear of [false,true]){
+          const {pc,c}=harnessSurpriseMeasureFixture343({count:2,distance:20});c.surpriseRoundPending=null;c.initiative=null;
+          const [anchor,attacker]=c.monsters;pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+          c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:anchor.id,rangeIntent:'hold'};
+          setCombatMonsterVector(attacker,{x:rear?-20:20,y:0,z:0});c.monsterOrders[attacker.id].rangeIntent='press';
+          const seed=state.seed,hp=pc.hp;moveSpatialCombatant('monster',attacker,{x:0,y:0,z:0});
+          harnessAssert(getEngagement(pc,attacker)?.range===(rear?'close':'far')&&state.seed===seed&&pc.hp===hp&&cmWeaponProfile(equippedWeaponItem(pc)).sizeRating===2,'Facing coverage changed Size/damage/RNG or failed the legal flank');
+        }
+      }},
+      {name:'v0.4.344 two-handed sword surrounding coverage requires explicit Open clearance',run:()=>{
+        for(const id of ['sword_twohanded','sword_bastard'])for(const space of ['Open','Restricted',null]){
+          const {pc,c}=harnessSurpriseMeasureFixture343({count:2,distance:20});c.surpriseRoundPending=null;
+          pc.equippedWeapon={itemId:id,name:SHOP_ITEMS[id].name,matrixId:SHOP_ITEMS[id].matrixId,grip:'two'};
+          c.contextMatrixSpace=space;c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:c.monsters[0].id,rangeIntent:'hold'};
+          const attacker=c.monsters[1];setCombatMonsterVector(attacker,{x:-20,y:0,z:0});c.monsterOrders[attacker.id].rangeIntent='press';
+          moveSpatialCombatant('monster',attacker,{x:0,y:0,z:0});
+          harnessAssert(getEngagement(pc,attacker)?.range===(space==='Restricted'?'close':'far'),'Sword coverage ignored actual handling space');
+        }
+      }},
+      {name:'v0.4.344 polearm lateral coverage differs from spear point and never grants an attack',run:()=>{
+        for(const id of ['spear','halberd','poleaxe','pike']){
+          const {pc,c}=harnessSurpriseMeasureFixture343({count:2,distance:20});c.surpriseRoundPending=null;
+          pc.equippedWeapon={itemId:id,name:SHOP_ITEMS[id].name,matrixId:SHOP_ITEMS[id].matrixId};
+          c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:c.monsters[0].id,rangeIntent:'hold'};
+          const attacker=c.monsters[1];setCombatMonsterVector(attacker,{x:0,y:20,z:0});c.monsterOrders[attacker.id].rangeIntent='press';
+          const hp=pc.hp,seed=state.seed;moveSpatialCombatant('monster',attacker,{x:0,y:0,z:0});
+          harnessAssert(getEngagement(pc,attacker)?.range===(['halberd','poleaxe'].includes(id)?'far':'close')&&pc.hp===hp&&state.seed===seed,'Weapon coverage invented an attack or equated a shaft point with lateral head coverage');
+        }
+      }},
+      {name:'v0.4.344 six approaches retain independent Measures and unlimited physical contacts',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343({count:6,distance:20});c.surpriseRoundPending=null;
+        pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+        c.pcOrders[pc.name.toLowerCase()]={action:'melee',targetId:c.monsters[0].id,rangeIntent:'hold'};
+        c.monsters.forEach((m,i)=>{const a=2*Math.PI*i/6;setCombatMonsterVector(m,{x:20*Math.cos(a),y:20*Math.sin(a),z:0});c.monsterOrders[m.id].rangeIntent='press';});
+        c.monsters.forEach(m=>moveSpatialCombatant('monster',m,{x:0,y:0,z:0}));
+        harnessAssert(harnessFingerprint(c.monsters.map(m=>getEngagement(pc,m)?.range))===harnessFingerprint(['far','far','close','close','close','far'])&&Object.keys(c.engagements).length===6,'Coverage forced a shared band or an engagement cap');
+      }},
+      {name:'v0.4.344 unknown facing stays unknown and a weapon change grants no Measure transition',run:()=>{
+        for(const facing of [undefined,null,false,0,{x:0,y:0,z:0}]){
+          const {pc,c}=harnessSurpriseMeasureFixture343({distance:20});c.surpriseRoundPending=null;
+          pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+          c.weaponCoverageFacings={round:c.round,pcs:{},monsters:{}};
+          if(facing!==undefined)c.weaponCoverageFacings.pcs[pc.name.toLowerCase()]=facing;
+          const foe=c.monsters[0];setCombatMonsterVector(foe,{x:-20,y:0,z:0});c.monsterOrders[foe.id].rangeIntent='press';
+          moveSpatialCombatant('monster',foe,{x:0,y:0,z:0});const before=getEngagement(pc,foe).range;
+          pc.equippedWeapon={itemId:'dagger',name:SHOP_ITEMS.dagger.name,matrixId:SHOP_ITEMS.dagger.matrixId};
+          harnessAssert(before==='far'&&getEngagement(pc,foe).range===before&&harnessFingerprint(c.weaponCoverageFacings.pcs[pc.name.toLowerCase()])===harnessFingerprint(facing),'Unknown facing inferred or sidearm switch granted a free band change');
+        }
+        const {pc,c}=harnessSurpriseMeasureFixture343({distance:20});
+        pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+        captureContextualWeaponFacings();
+        for(const start of [undefined,null,false,0,{x:null,y:0,z:0}])harnessAssert(contextualWeaponApproachCoverage('pc',pc,start).covered===null,'Missing or malformed approach became a verified flank');
+        c.pcOrders[pc.name.toLowerCase()].action='spell';
+        harnessAssert(contextualWeaponApproachCoverage('pc',pc,{x:20,y:0,z:0}).covered===false,'Casting granted an extra presented weapon defense');
+      }},
+      {name:'v0.4.344 pure RAW and published natural attacks ignore contextual weapon coverage',run:()=>{
+        const {pc,c}=harnessSurpriseMeasureFixture343({distance:20});state.rules.combatProcedureMode='RAW';
+        const before=harnessFingerprint(c.engagements),seed=state.seed;
+        captureContextualWeaponFacings();establishUncontestedApproachMeasures('pc',pc,{x:0,y:0,z:0},new Set());
+        harnessAssert(!Object.hasOwn(c,'weaponCoverageFacings')&&harnessFingerprint(c.engagements)===before&&state.seed===seed&&contextualWeaponApproachCoverage('pc',pc,{x:-20,y:0,z:0}).covered===null,'Optional coverage changed pure RAW');
+        state.rules.combatProcedureMode='CONTEXTUAL';const wolf=createCombatMonster('wolf',7),damage=harnessFingerprint(wolf.attacks);
+        harnessAssert(contextualWeaponApproachCoverage('monster',wolf,{x:10,y:0,z:0}).covered===null&&harnessFingerprint(wolf.attacks)===damage,'Natural attacks entered the canonical weapon coverage policy');
+      }},
       {name:'v0.4.343 surprise control ignores every opposed d6 and inactive intent in both directions',run:()=>{
         for(const side of ['pc','foes'])for(const band of ['close','normal','far']){
           const {pc,mon,c}=harnessSurpriseMeasureFixture343({side,band});
