@@ -179,3 +179,26 @@ Extended candidate v0.4.338: qualifying complete required CI explicitly requeste
 Qualified candidate 134c7ddf3521cb5423edda21dc4cc5a81277566b passed all ten required checks on https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/39082900442. Core 2316/2316, focused 1232/1232, Chromium 579/579 x4, Native Acceptance v2 508/508 on reference and candidate, ordered coverage green. Exact production SHA-256 b47b9828c657e01cfbef25df3711b9da46931220e5a68a2467262bb86160af33. The unchanged accepted calculator is embedded verbatim. Mode isolation, natural exclusion, live PC positive and negative hits, armed monster, canonical missile, unknown neutrality, trace and true Space/mode save-reload were verified. Minimum-one floor unresolved, no introduced rule. Full acceptance-metadata commit and merged main CI still required; no visual/spatial content added.
 
 Acceptance ledger commit ba7c24632adfb1130f36ecd7aae22da27c08eb02 records qualified v0.4.338; this follow-up invokes separate required acceptance-metadata CI before any main promotion.
+
+## v0.4.343 — bounded surprise/Measure verification
+
+Eight dedicated embedded regressions add 648 opposed-dice/side/band/intent cases,
+legal first-contact preferences, impossible geometry, six independent opponents,
+surprise expiry, absent raw dice, pure RAW isolation and save migration. They run
+in the full deterministic and four fresh Chromium gates. The existing ordered
+2316 core identities and bodies are preserved; totals are 2324 core and 1240
+focused, four 581-test slices. No extra attacks or dice are introduced.
+
+The required native smoke job additionally runs
+`node validation/surprise-measure-native-v0.4.343.mjs`: two exact-production public
+command scenarios, native pending/resolved saves and real reloads, 32 assertions,
+zero external network or browser errors. Fixture adapters remain ephemeral. The
+synchronous automatic foe surprise period carries a temporary active-side marker;
+the existing saved PC pending period remains authoritative, and historical
+encounter surprise flags never prolong either period. Old-save dice stay absent.
+
+Local supplementary browser evidence may use an installed Chromium 140 headless
+shell if the workspace cannot obtain the pinned browser. Such local evidence is
+not the pinned GitHub acceptance run; promotion still requires every exact-SHA
+CI job using the repository's unchanged Playwright dependency. Native Acceptance
+v2 and the immutable v0.4.333 reference continue unchanged.
