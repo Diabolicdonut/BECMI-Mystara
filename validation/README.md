@@ -243,3 +243,25 @@ assertions, plus embedded assertions; no browser/console/network errors. Earlier
 gates and Native Acceptance v2 remain required unchanged. New physical facts are
 separate from damage mode, player knowledge and the later scene-coordinate work.
 See `design/context-matrix/OVERSIZED-WEAPON-CLEARANCE-CONTRACT.md`.
+
+
+## v0.4.346 — direction-independent current-Measure Size
+
+Eight new embedded definitions test 9,720 all-d6/Size/band/direction/intent
+comparisons and 3,888 actual wolf/weapon comparisons, sidearm switching, six
+independent opponents, surprise/unknown dice/contact/barrier boundaries, casting,
+unusable weapons, pure RAW and old/repeat migration. Totals are 2348 core, 1264
+focused and 587 names in each of four fresh Chromium processes.
+
+`node validation/measure-size-native-v0.4.346.mjs` runs those eight definitions
+and four exact-production command cases: Close dagger Open, Far spear Press,
+neutral normal-sword control and pure RAW bypass. Native movement choice reuses
+the original saved initiative dice; the actual equipment command switches a
+carried sidearm in the ordinary window, and real save/reload preserves pair
+Measure, initiative, actual equipment, RNG, independent rule choices and ships.
+The inherited 1080-case mode gate and 20-case Measure gate remain required. Three
+values in the latter change for the expressly superseded intent/natural-point
+restrictions; no case or assertion is removed. Local Chromium 140 is supplemental
+only; exact-SHA GitHub acceptance retains the unchanged pinned Playwright browser.
+See `design/context-matrix/CURRENT-MEASURE-SIZE-CONTRACT.md`. Ferocity and natural
+proximity damage remain later independently accepted checkpoints.

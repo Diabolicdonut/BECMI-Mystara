@@ -509,7 +509,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.345';
+  const APP_VERSION='0.4.346';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -25391,9 +25391,16 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return `${pcs} vs ${foes}`;
   }
 
-  // v0.4.339 — Longer at Far, neutral at Normal, shorter at Close when
-  // actively pursuing. Existing initiative rolls only. This does NOT affect
+  // v0.4.346 — Longer at Far, neutral at Normal, shorter at Close.
+  // Existing initiative rolls only. This does NOT affect
   // attack damage, monster preferred attack measure, Power or Handling.
+  // Governing catalogue: Mentzer Basic p.39; compatible RC p.212. This
+  // identifies the normal wolf's actual bite for Size-0 control only, without
+  // inventing preferred/legal Measures or modifying its published damage.
+  const MEASURE_NATURAL_SIZE0_SOURCE_FACTS=Object.freeze({
+    wolf_normal:{recordId:'MON-0104',attackName:'bite',damage:'1d6',source:'Mentzer Basic D&D',sourcePage:39,secondarySource:'Rules Cyclopedia',secondarySourcePage:212}
+  });
+
   function meleeControlActorRating(pc,monster){
     if(pc){
       if(pc.dead||Number(pc.hp)<=0)return null;
@@ -25411,50 +25418,40 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     const attacks=Array.isArray(monster.attacks)?monster.attacks:[];
     // Only identified natural melee attacks get the neutral Size 0 default;
     // mixed, absent or unresolved attack deliveries confer no Size bonus.
-    if(!attacks.length||attacks.some(a=>a?.attackContext?.delivery!=='natural'||
-      a?.attackContext?.contextualWeaponDamageEligible!==false))return null;
+    const fact=MEASURE_NATURAL_SIZE0_SOURCE_FACTS[monster.type],profile=COMBAT_MONSTERS[monster.type];
+    const sourcedBite=Boolean(fact&&monster.recordId===fact.recordId&&profile?.recordId===fact.recordId&&
+      profile.source===fact.source&&profile.sourcePage===fact.sourcePage&&attacks.length===1&&
+      attacks[0]?.name===fact.attackName&&attacks[0]?.damage===fact.damage&&
+      !Object.prototype.hasOwnProperty.call(attacks[0],'attackContext'));
+    if(!sourcedBite&&(!attacks.length||attacks.some(a=>a?.attackContext?.delivery!=='natural'||
+      a?.attackContext?.contextualWeaponDamageEligible!==false)))return null;
     return {size:0,verifiedWeapon:false};
   }
 
-  function meleeControlSizeContext(group,measure,intents){
+  // v0.4.346: current Measure determines Size advantage. Intention only
+  // selects the winner's permitted outcome; it never changes the comparison.
+  function meleeControlSizeContext(group,measure){
     const neutral=why=>({bonus:{},why});
+    if(pureBecmiRawCombat())return neutral('pure RAW');
     if(measure==='normal')return neutral('Normal Size-neutral');
     if(measure!=='far'&&measure!=='close')return neutral('unknown measure');
-    // One verified opposing pair, never connected-component reach propagation.
     if(group.pcNames.length!==1||group.monsterIds.length!==1)
       return neutral('invalid pair relationship');
     const pc=state.party.find(p=>p.name.toLowerCase()===group.pcNames[0]);
-    const mon=state.combat.monsters.find(m=>m.id===group.monsterIds[0]);
+    const mon=state.combat?.monsters.find(m=>m.id===group.monsterIds[0]);
     if(!pc||!mon||!atMeleeContact(pc,mon))return neutral('contact not verified');
     const ps=pcInitiativeSideId(pc),ms=monsterInitiativeSideId(mon);
     if(ps===ms)return neutral('same-side actors');
     const a=meleeControlActorRating(pc,null),b=meleeControlActorRating(null,mon);
     if(!a||!b)return neutral('attack Size unresolved');
-    const diff=a.size-b.size,steps=n=>Math.min(3,Math.abs(n));
-    const pi=intents[ps]||'hold',mi=intents[ms]||'hold';
-    if(measure==='far'){
-      // A neutral natural Size 0 is not itself proof of an active Far
-      // weapon point; the longer defender must hold a real melee weapon.
-      if(diff>0&&pi==='hold'&&mi==='press'&&a.verifiedWeapon&&
-        !masteryCannotAttack(pc)&&
-        state.combat.pcOrders[pc.name.toLowerCase()]?.action!=='spell')
-        return {bonus:{[ps]:steps(diff)},why:'longer weapon Holds at Far'};
-      if(diff<0&&mi==='hold'&&pi==='press'&&b.verifiedWeapon&&
-        !masteryCannotAttack(mon))
-        return {bonus:{[ms]:steps(-diff)},why:'longer weapon Holds at Far'};
-      return neutral('no verified Far threat');
-    }
-    // Close advantage is ONLY active Press against Open, never passive
-    // grapple, a free grab, or a replacement for actual BECMI withdrawal.
-    if(diff<0&&pi==='press'&&mi==='open'&&!masteryCannotMove(pc)&&
-      !masteryCannotAttack(pc)&&
-      state.combat.pcOrders[pc.name.toLowerCase()]?.action!=='spell')
-      return {bonus:{[ps]:steps(-diff)},why:'shorter attack pursues at Close'};
-    if(diff>0&&mi==='press'&&pi==='open'&&!masteryCannotMove(mon)&&
-      !masteryCannotAttack(mon)&&
-      state.combat.monsterOrders[mon.id]?.action==='melee')
-      return {bonus:{[ms]:steps(diff)},why:'shorter attack pursues at Close'};
-    return neutral('no verified Close pursuit');
+    const diff=a.size-b.size;
+    if(diff===0)return neutral('equal attack Size');
+    const pcAdvantaged=measure==='far'?diff>0:diff<0;
+    const actor=pcAdvantaged?pc:mon,side=pcAdvantaged?ps:ms;
+    const order=pcAdvantaged?state.combat.pcOrders?.[pc.name.toLowerCase()]:state.combat.monsterOrders?.[mon.id];
+    if(masteryCannotAttack(actor)||order?.action==='spell')return neutral('actor cannot provide control');
+    return {bonus:{[side]:Math.min(3,Math.abs(diff))},
+      why:measure==='far'?'longer reach at Far':'shorter attack handles Close'};
   }
 
   // v0.4.340: opponent relationships, not attacker slots or capacity.
@@ -25511,7 +25508,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
         applied=uniqueIntents[0];
         reason=applied==='hold'?'all sides hold':'all sides '+applied;
       }else{
-        const context=meleeControlSizeContext({pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id]},before,intents);
+        const context=meleeControlSizeContext({pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id]},before);
         measureBonuses=context.bonus;
         const score=id=>rolls[id]+(measureBonuses[id]||0),high=Math.max(...sideIds.map(score));
         const leaders=sideIds.filter(id=>score(id)===high);
@@ -25525,8 +25522,7 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       const next=applied==='press'?Math.max(0,idx-1):applied==='open'?Math.min(RANGE_ORDER.length-1,idx+1):idx;
       const after=RANGE_ORDER[next];
       pair.range=after;
-      const intentText=sideIds.map(id=>sideLabel(id)+' '+intents[id].toUpperCase()+
-        ' (init '+rolls[id]+(measureBonuses[id]?' + Size '+measureBonuses[id]:'')+')').join('; ');
+      const intentText=sideIds.map(id=>sideLabel(id)+' '+intents[id].toUpperCase()).join('; ');
       write('MELEE DISTANCE — '+pc.name+' vs '+mon.name+': '+intentText+'. '+reason+'; '+
         before.toUpperCase()+(after!==before?' → '+after.toUpperCase():' holds')+'.','system');
       void refereeLog('MELEE DISTANCE — pair '+pc.name+' vs '+mon.name+'; '+before+' → '+after,
@@ -26424,7 +26420,7 @@ GROUP / SIDE MODEL:
 - Referee monster groups may share a side or belong to separate sides. Example: skeleton infantry and skeleton archers under one commander can share one initiative side; wild wolves attacking independently can be another side.
 
 MELEE CONTACT:
-Hand-to-hand attacks are legal after hostile Influence Spheres make valid 3D contact. One connected hostile-contact component is one melee and has ONE shared Close/Normal/Far state even when several groups attack from different directions. Multiple independent sides can participate in that same melee. Each participating side declares Press/Hold/Open. If preferences conflict, the participating side with the highest initiative controls the one shared measure; if the initiative leaders are tied but want different measures, the distance holds.
+Hand-to-hand attacks require physically legal contact. Each opposing pair keeps its own Close/Normal/Far Measure, including when several opponents surround one combatant. Press closes one band, Open loosens one band, and Hold keeps the current band when that combatant wins control; ties keep the current band. Longer reach helps control an exchange at Far, and a compact weapon helps at Close, regardless of the chosen intention. Normal favors neither. Surprise and verified uncovered approaches can establish a preferred Measure without opposition. Ordinary withdrawal and retreat remain separate actions.
 
 PLAYER-VISIBLE MATRIX INFORMATION:
 - Every hostile is shown with its current description, Monster/Vessel/Structure size profile, and Soft/Hard protection. These are decision inputs, not hidden referee statistics.
@@ -31624,9 +31620,9 @@ PLAYER: ${String(playerInput||'').slice(0,800)}`;
       'Unified module ration procedure: food and ordinary drinking water are subsumed into one ration unit per living character every 24 hours. A character without rations loses 1d2 hp per missed day and cannot recover hp through ordinary rest until consuming a ration again. At 25/50/75% maximum HP lost to ration deprivation, movement becomes ¾/½/¼ and attack penalties become −2/−4/−6, with 8/10/12 hours overnight rest required. Filled waterskins remain physical utility items for adventure interactions but are not a separate daily survival currency.',
       'Temporary jungle works are module procedures, not published BECMI rules: blazing costs twice the crossing time and lasts 1d6+3 unused days; a cut half-mile path costs about four hours, later gives the BECMI trail speed factor, and lasts 2d6+7 unused days; signs and cairns cost 30/60 minutes and last 1d6+3 or 2d6+7 unused days. Use refreshes the originally rolled inactivity lifetime.',
       'Persistent procedural-content policy: regional context, narrative theme, and physical form are separate data layers so later Mystara regions can supply their own terrain, culture, density, and form weights. Kai Besil secretly seeds four or five well-spaced generated-site hexes plus two or three one-time event hexes among otherwise unkeyed land. Dungeon forms follow the Moldvay/Mentzer sequence: choose a coherent scenario and setting, place a signature encounter, create form-appropriate geometry, then stock remaining areas with the B/X two-roll monster/trap/special/empty and conditional-treasure table while preserving empty pacing. Theme-specific histories constrain inhabitants, wandering encounters, traps, specials, obstructions, treasure containers, and rewards. AD&D DMG Appendix A contributes secondary physical variety only; it never replaces B/X/BECMI mechanics or campaign facts. Sites are revealed only on first entry; they may be open two-to-four-area camps, three-to-five-floor towers, five-to-eight-area caves/grottos, or branching ruins/manors. Every generated layout, area, stock roll, NPC, encounter, treasure, discovery, and resolved event is stored in the campaign save. Published keyed scenarios are excluded from this generator. Pirate Camp is permanently the module’s described shore scenario: fifteen pirates and Captain Harshaw, six lean-tos, the repair shore, the beached Sorrowful Gull, and 750 gp of portable valuables aboard her—never a generated cave or cache.',
-      'Combat position is tracked in exact 3D x/y/z feet beneath the text interface. Each combatant is a point surrounded by an Influence Sphere; an ordinary Medium humanoid uses a 2.5 ft radius (5 ft diameter). Hostile sphere contact stops free movement and creates melee engagement. Connected hostile contacts define one melee. Every melee has one shared Close/Normal/Far state; exact coordinates remain active for blocking, line of sight, elevation, and ranged distance. Ordinary first contact begins at Far unless encounter circumstances specify otherwise.',
+      'Combat position is tracked in exact 3D x/y/z feet beneath the text interface. Hostile contact establishes independent opposing-pair Close/Normal/Far Measures. Coordinates, barriers and applicable directional weapon coverage determine legal contact; Measure records the prevailing control within that engagement. Surprise or a verified uncovered legal approach can establish the acting combatant’s preferred Measure. No artificial engagement capacity is imposed.',
       'Arms Across Eras target information is explicitly player-visible in this build. Every encountered target supplies Small/Medium/Large at all three attack scales—Monster, Vessel, and Structure—plus Soft or Hard protection and an observable description. Combat equipment readouts always give exact encounter separation. An equipped melee-capable weapon gives a Close/Normal/Far band only while engaged; an equipped missile or throwable weapon gives Short/Medium/Long whenever a target exists. Hybrid melee/thrown weapons show both when applicable. These classifications are never to be hidden by the AI referee.',
-      'Custom melee-distance procedure in this build: one physical melee has one shared Close/Normal/Far state even when groups attack from different directions. Each independent initiative side in that melee chooses Press, Hold, or Open. When intentions conflict, the participating side with the highest initiative controls the shared measure; a tied initiative lead with conflicting intentions means the distance holds.',
+      'Optional contextual Measure is pairwise. Press, Hold and Open choose the desired outcome. Current Far favors longer reach, Close favors shorter handling, and Normal neither; the advantage applies regardless of intention. Existing original initiative dice settle opposed control, with ties holding Measure and later changes limited to one band. Pure BECMI RAW does not use this procedure.',
       'Group/side model in this build: Side = initiative/coordination; Group = independent movement, encounter position, formation, target and order unit. Ordinary coordinated PC groups remain one PC initiative side, so merely splitting or naming formations never grants extra initiative. The surround exception is declared before initiative and referee-adjudicated from actual melee contact, space, relative encounter speed, and numbers; a narrow corridor can make it impossible and success is not automatic. On success the two encircling fronts and the surrounded side each roll and receive phases, capped at three initiative sides in that physical melee. Opponents may attempt the same procedure. Failure leaves the original sides intact.',
       'Monster/NPC combat behavior uses applicable FlexAI concepts as a referee decision aid, not as a replacement rules engine: each creature receives a tactical role, current stance, d20 outcome category, and context-weighted target. JavaScript records the choice and then resolves it through BECMI movement, morale, initiative, attacks, saves, and damage. The referee rejects or reinterprets an outcome that is physically or fictionally inappropriate; FlexAI surges, lulls, and its own resolution mechanics are not imported.',
       'Front/rear roles in this build are abstract exposure roles inside one melee group. Everyone is FRONT unless explicitly assigned REAR. Both positions remain engaged and share Close/Normal/Far; each REAR member has half the ordinary hostile target weight of a FRONT member, without immunity from deliberate targeting.',
@@ -32564,8 +32560,118 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
     return {pc,mon,c};
   }
 
+  function harnessMeasureSizeFixture346({weapon='spear',foeWeapon=null,type='wolf',band='far',count=1}={}){
+    installHarnessFixture({distance:0,type,count});state.party=state.party.slice(0,1);
+    if(type==='wolf')state.combat.monsters=Array.from({length:count},(_,i)=>createCombatMonster('wolf',i+1));
+    state.rules.combatProcedureMode='CONTEXTUAL';
+    const pc=state.party[0],c=state.combat,mon=c.monsters[0];
+    pc.hp=pc.maxHp=500;pc.equippedWeapon={itemId:weapon,name:SHOP_ITEMS[weapon].name,matrixId:SHOP_ITEMS[weapon].matrixId};
+    pc.inventory=['spear','sword_normal','sword_short','dagger'].map(id=>({...memberItemRecord(id),qty:1}));
+    setCombatPcVector(pc,{x:0,y:0,z:0});
+    c.monsters.forEach((m,i)=>{m.hp=m.maxHp=500;m.influenceRadiusFt=2.5;setCombatMonsterVector(m,{x:4*Math.cos(i*2*Math.PI/count),y:4*Math.sin(i*2*Math.PI/count),z:0});if(foeWeapon){m.noWeapons=false;m.weaponId=foeWeapon;m.attacks=null;m.naturalDamage=null;}});
+    refreshSpatialEngagements();c.round=2;c.surprise={pcsSurprised:false,foesSurprised:false};c.surpriseRoundPending=null;delete c.surpriseRoundActive;
+    for(const m of c.monsters){setEngagement(pc,m,band);getEngagement(pc,m).formedRound=1;}
+    c.pcOrders={[pc.name.toLowerCase()]:{action:'melee',movement:'hold',rangeIntent:'hold',targetId:mon.id}};
+    c.monsterOrders=Object.fromEntries(c.monsters.map(m=>[m.id,{action:'melee',movement:'hold',rangeIntent:'press',targetName:pc.name}]));
+    c.initiative={rawRolls:{pc:4,foes:5},rolls:{pc:104,foes:-95}};c.meleeDistanceResolvedRound=0;
+    return {pc,mon,c,pair:getEngagement(pc,mon),group:{pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id]}};
+  }
+
+
   function coreHarnessTestDefinitions(){
     return [
+      {name:'v0.4.346 all opposed d6 Size differences bands and intentions use current Measure only',run:()=>{
+        const entries=[['sword_normal','sword_normal',0],['pike','spear',1],['spear','sword_normal',2],['pike','sword_normal',3],['pike','dagger',5]],intents=['press','hold','open'];let cases=0;
+        for(const [long,short,diff] of entries)for(const longPc of [true,false])for(const band of RANGE_ORDER){
+          const {pc,mon,c,pair,group}=harnessMeasureSizeFixture346({weapon:longPc?long:short,foeWeapon:longPc?short:long,type:'goblin',band});
+          const seed=state.seed,init=JSON.stringify(c.initiative.rolls),hp=[pc.hp,mon.hp],idx=RANGE_ORDER.indexOf(band),adv=Math.min(3,diff);
+          for(const pi of intents)for(const mi of intents)for(let a=1;a<=6;a++)for(let b=1;b<=6;b++){
+            getEngagement(pc,mon).range=band;c.meleeDistanceResolvedRound=0;c.pcOrders[pc.name.toLowerCase()].rangeIntent=pi;c.monsterOrders[mon.id].rangeIntent=mi;c.initiative.rawRolls={pc:a,foes:b};
+            const owner=diff===0||band==='normal'?null:band==='far'?(longPc?'pc':'foes'):(longPc?'foes':'pc');
+            const bonus=meleeControlSizeContext(group,band,{pc:pi,foes:mi}).bonus;
+            harnessAssert((bonus.pc||0)===(owner==='pc'?adv:0)&&(bonus.foes||0)===(owner==='foes'?adv:0),'Intent changed current-band Size advantage');
+            const pa=a+(owner==='pc'?adv:0),ma=b+(owner==='foes'?adv:0),applied=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi;
+            const expected=RANGE_ORDER[Math.max(0,Math.min(2,idx+(applied==='press'?-1:applied==='open'?1:0)))];
+            resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range===expected,`${band}/${pi}/${mi}/${a}/${b}/${diff}/${longPc} wrong Size control`);
+            harnessAssert(state.seed===seed&&c.initiative.rawRolls.pc===a&&c.initiative.rawRolls.foes===b&&JSON.stringify(c.initiative.rolls)===init&&pc.hp===hp[0]&&mon.hp===hp[1],'Size contest changed dice damage or ordinary initiative');cases++;
+          }
+        }
+        harnessAssert(cases===9720,'Incomplete all-d6 intent matrix');
+      }},
+      {name:'v0.4.346 spear sword short sword and dagger compare symmetrically against an actual Size-zero wolf',run:()=>{
+        let cases=0;for(const [weapon,size] of [['spear',2],['sword_normal',0],['sword_short',-1],['dagger',-2]])for(const band of RANGE_ORDER){
+          const {pc,mon,c,pair,group}=harnessMeasureSizeFixture346({weapon,band});
+          harnessAssert(meleeControlActorRating(null,mon)?.size===0&&!meleeControlActorRating(null,mon)?.verifiedWeapon,'Source-identified wolf is not neutral natural Size zero');
+          const original=JSON.stringify(mon.attacks),seed=state.seed;
+          for(const pi of ['press','hold','open'])for(const mi of ['press','hold','open'])for(let a=1;a<=6;a++)for(let b=1;b<=6;b++){
+            c.pcOrders[pc.name.toLowerCase()].rangeIntent=pi;c.monsterOrders[mon.id].rangeIntent=mi;c.initiative.rawRolls={pc:a,foes:b};getEngagement(pc,mon).range=band;c.meleeDistanceResolvedRound=0;
+            const sign=band==='far'?size:band==='close'?-size:0,pa=a+(sign>0?Math.abs(size):0),ma=b+(sign<0?Math.abs(size):0),intent=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi,idx=RANGE_ORDER.indexOf(band);
+            resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range===RANGE_ORDER[Math.max(0,Math.min(2,idx+(intent==='press'?-1:intent==='open'?1:0)))],'Weapon/wolf intent or Size mismatch');
+            harnessAssert(state.seed===seed&&JSON.stringify(mon.attacks)===original,'Wolf control changed natural damage or RNG');cases++;
+          }
+          harnessAssert(Object.values(meleeControlSizeContext(group,band,{}).bonus).every(x=>x>=0&&x<=3),'Size cap exceeded');
+        }harnessAssert(cases===3888,'Incomplete wolf d6 matrix');
+      }},
+      {name:'v0.4.346 Close dagger opens or holds with its advantage and switching grants no free Measure',run:()=>{
+        const {pc,mon,c,pair,group}=harnessMeasureSizeFixture346({weapon:'spear',band:'close'}),seed=state.seed;
+        const before=meleeControlSizeContext(group,'close',{}).bonus;
+        harnessAssert(before.foes===2,'Shorter natural attack lost Close control against spear');
+        c.awaitingWeaponChanges=true;const init=JSON.stringify(c.initiative);
+        harnessAssert(switchPcWeaponInCombat(pc,'dagger')&&getEngagement(pc,mon).range==='close'&&state.seed===seed&&JSON.stringify(c.initiative)===init,'Ordinary sidearm change granted free range or dice');
+        c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';c.monsterOrders[mon.id].rangeIntent='press';c.initiative.rawRolls={pc:4,foes:5};resolveMeleeDistanceContests();
+        harnessAssert(getEngagement(pc,mon).range==='normal'&&state.seed===seed,'Dagger could not use Close advantage while opening');
+        getEngagement(pc,mon).range='close';c.meleeDistanceResolvedRound=0;c.pcOrders[pc.name.toLowerCase()].rangeIntent='hold';c.monsterOrders[mon.id].rangeIntent='open';resolveMeleeDistanceContests();
+        harnessAssert(getEngagement(pc,mon).range==='close','Dagger could not use Close advantage while holding');
+        c.awaitingWeaponChanges=false;harnessAssert(!switchPcWeaponInCombat(pc,'spear')&&pc.equippedWeapon.itemId==='dagger'&&getEngagement(pc,mon).range==='close','Size correction bypassed ordinary switch window');
+      }},
+      {name:'v0.4.346 six armed opponents keep independent Measure and control with no engagement capacity',run:()=>{
+        const {pc,c}=harnessMeasureSizeFixture346({weapon:'spear',foeWeapon:'dagger',type:'goblin',count:6});
+        const bands=['far','normal','close','far','normal','close'];c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';
+        c.monsters.forEach((m,i)=>{getEngagement(pc,m).range=bands[i];c.monsterOrders[m.id].rangeIntent=i===3?'hold':i===4?'open':'press';});
+        const seed=state.seed;resolveMeleeDistanceContests();const ranges=c.monsters.map(m=>getEngagement(pc,m)?.range);
+        harnessAssert(harnessFingerprint(ranges)===harnessFingerprint(['far','close','close','far','far','close'])&&Object.keys(c.engagements).length===6,'One pair propagated control or occupied a slot');
+        resolveMeleeDistanceContests();harnessAssert(harnessFingerprint(c.monsters.map(m=>getEngagement(pc,m)?.range))===harnessFingerprint(ranges)&&state.seed===seed,'Pair control resolved twice or rolled extra dice');
+      }},
+      {name:'v0.4.346 surprise unknown dice new contact and impossible geometry preserve existing boundaries',run:()=>{
+        const {pc,mon,c,pair,group}=harnessMeasureSizeFixture346({weapon:'dagger',band:'close'}),seed=state.seed;
+        c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';c.monsterOrders[mon.id].rangeIntent='press';
+        for(const raw of [undefined,null,false,0,{}, {pc:0,foes:6},{pc:null,foes:6},{pc:4,foes:false}]){c.initiative.rawRolls=raw;c.meleeDistanceResolvedRound=0;resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='close'&&state.seed===seed,'Unknown raw dice fabricated control');}
+        c.initiative.rawRolls={pc:1,foes:6};c.surpriseRoundPending='pc';c.meleeDistanceResolvedRound=0;resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='normal'&&state.seed===seed,'Surprised opponent contested current Measure');
+        c.surpriseRoundPending=null;getEngagement(pc,mon).range='far';getEngagement(pc,mon).formedRound=c.round;c.meleeDistanceResolvedRound=0;resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range==='far','New contact immediately received a second band contest');
+        setCombatMonsterVector(mon,{x:100,y:0,z:0});harnessAssert(Object.keys(meleeControlSizeContext(group,'close',{}).bonus).length===0,'Size invented distant contact');
+        setCombatMonsterVector(mon,{x:4,y:0,z:0});c.spatialBarriers=[{active:true,minX:1,maxX:3,minY:-2,maxY:2,minZ:-2,maxZ:2}];harnessAssert(Object.keys(meleeControlSizeContext(group,'close',{}).bonus).length===0,'Size ignored a physical barrier');
+      }},
+      {name:'v0.4.346 unusable weapons unknown attacks casting and disabled actors confer no Size advantage',run:()=>{
+        const {pc,mon,c,group}=harnessMeasureSizeFixture346({weapon:'pike',band:'far'});
+        c.rigidWeaponClearance={siteId:null,confined:true};harnessAssert(Object.keys(meleeControlSizeContext(group,'far',{}).bonus).length===0,'Unusable dungeon pike retained Size advantage');
+        delete c.rigidWeaponClearance;pc.equippedWeapon={itemId:'spear',name:SHOP_ITEMS.spear.name,matrixId:SHOP_ITEMS.spear.matrixId};
+        c.pcOrders[pc.name.toLowerCase()].action='spell';harnessAssert(Object.keys(meleeControlSizeContext(group,'far',{}).bonus).length===0,'Casting supplied a weapon threat');
+        c.pcOrders[pc.name.toLowerCase()].action='hold';pc.paralyzed=true;harnessAssert(Object.keys(meleeControlSizeContext(group,'far',{}).bonus).length===0,'Disabled actor supplied a weapon advantage');
+        pc.paralyzed=false;mon.attacks=null;mon.weaponId=null;harnessAssert(Object.keys(meleeControlSizeContext(group,'far',{}).bonus).length===0,'Unknown attack inferred Size zero');
+        harnessAssert(Object.keys(meleeControlSizeContext({pcNames:[pc.name.toLowerCase(), 'absent'],monsterIds:[mon.id]},'far',{}).bonus).length===0,'Invalid pair propagated a Size bonus');
+      }},
+      {name:'v0.4.346 pure RAW bypass and weapon damage modes preserve inactive Measure and combat facts',run:()=>{
+        for(const mode of ['RAW','AAE','CONTEXT_MATRIX']){
+          const {pc,mon,c,pair,group}=harnessMeasureSizeFixture346({weapon:'dagger',band:'close'});state.rules.weaponDamageMode=mode;state.rules.combatProcedureMode='RAW';
+          const before=harnessFingerprint({pairs:c.engagements,initiative:c.initiative,seed:state.seed,inventory:pc.inventory,attacks:mon.attacks,ships:state.dmr2ShipRosterContracts});
+          c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';resolveMeleeDistanceContests();
+          harnessAssert(getEngagement(pc,mon).range==='close'&&Object.keys(meleeControlSizeContext(group,'close',{}).bonus).length===0&&before===harnessFingerprint({pairs:c.engagements,initiative:c.initiative,seed:state.seed,inventory:pc.inventory,attacks:mon.attacks,ships:state.dmr2ShipRosterContracts}),'Contextual Size leaked into pure RAW or changed damage preferences');
+          harnessAssert(state.rules.weaponDamageMode===mode,'RAW erased inactive damage selection');
+        }
+      }},
+      {name:'v0.4.346 migration retains pairwise Measure original dice literal unknowns and independent preferences',run:()=>{
+        const {pc,mon,c}=harnessMeasureSizeFixture346({weapon:'dagger',band:'close'});c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';
+        c.initiative.rawRolls={pc:4,foes:5};c.initiative.modifiers={pc:100,foes:-100};
+        c.rigidWeaponClearance={siteId:null,confined:false,transportFt:0,deployFt:null,attackFt:false};
+        recordDmr2ShipRosterContract('size346',harnessDmr2ShipAddedCatapultTargetRangesConfig284());
+        migrateSave(harnessClone(state));const original=harnessClone(state),loaded=migrateSave(original),again=migrateSave(harnessClone(loaded));
+        for(const s of [loaded,again]){
+          harnessAssert(s.combat.engagements[engagementKey(pc.name,mon.id)].range==='close'&&s.combat.pcOrders[pc.name.toLowerCase()].rangeIntent==='open','Migration collapsed pair or intent');
+          harnessAssert(harnessFingerprint(s.combat.initiative)===harnessFingerprint(original.combat.initiative)&&harnessFingerprint(s.combat.rigidWeaponClearance)===harnessFingerprint(original.combat.rigidWeaponClearance),'Migration inferred dice or physical facts');
+          harnessAssert(harnessFingerprint(s.rules)===harnessFingerprint(original.rules)&&harnessFingerprint(s.dmr2ShipRosterContracts)===harnessFingerprint(original.dmr2ShipRosterContracts),'Migration changed independent preferences or planning-only ships');
+        }
+        delete original.combat.initiative.rawRolls;harnessAssert(!Object.prototype.hasOwnProperty.call(migrateSave(original).combat.initiative,'rawRolls'),'Legacy missing raw die was fabricated');
+      }},
       {name:'v0.4.345 unusable dungeon pikes provide no attacks Size or directional coverage',run:()=>{
         const {pc,mon,c}=harnessSurpriseMeasureFixture343();c.surpriseRoundPending=null;c.rigidWeaponClearance={siteId:null,confined:true};
         pc.equippedWeapon={itemId:'pike',name:SHOP_ITEMS.pike.name,matrixId:SHOP_ITEMS.pike.matrixId};

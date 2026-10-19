@@ -12,6 +12,10 @@ Current accepted build: **v0.4.345** — **FULLY ACCEPTED AND DEPLOYED** on main
 
 **Session closed at its ceiling:** This continuation newly accepted and deployed v0.4.343, v0.4.344 and v0.4.345. The three-checkpoint limit is reached; no further game checkpoint is included in this session. A fresh continuation recovers exact accepted main before v0.4.346. Current-Measure Size correction, Ferocity and natural proximity remain pending. Do not replay or roll back newer accepted work.
 
+## Current bounded continuation — v0.4.346 candidate
+
+**v0.4.346 — NOT ACCEPTED.** The user’s new continuation resumes after the prior three-checkpoint session closed. Recovery confirmed exact v0.4.345 main `211bd6d95425d778fd4f9dfb67099eaf44e8a1b2`, all ten required jobs on 39314424824 and Pages 39314424204 green. Only direction-independent current-Measure Size is in this candidate. Far favors larger Size, Normal neither, Close smaller Size, with the existing source-identified natural Size 0 comparison, min(3, absolute difference), and original initiative dice. Casting, disabled/unusable weapons, unknown attacks, physical contact, independent pairs, surprise, one-band transitions and ordinary retreat remain bounded. Numeric contest details stay in the referee trace; player narration describes reach and handling. Three historical native expectation values change for the explicitly superseded old restrictions, retaining all test identities and checks. New all-d6/all-intent, wolf, switching, multiple-opponent, mode and persistence evidence is required. This continuation may accept at most three new checkpoints: v346 Size, then separate source-reviewed Ferocity and natural proximity checkpoints. No later mechanic is implemented here.
+
 ## Historical v0.4.344 recovery and prior pipeline snapshots
 
 Historical fully accepted build: **v0.4.344** — **FULLY ACCEPTED AND DEPLOYED** on main `696d5e7ca453ef5393e3d58b489c2af816fdd075`, PR #9. Exact-main acceptance **39309419726** and Pages **39309419242** passed after exact-metadata `dc24cf9e85b8a77422d9a73149291b55c6de2d3d` passed ten-job push **39308225177** and PR **39308230789**. Production bytes remain unchanged.
