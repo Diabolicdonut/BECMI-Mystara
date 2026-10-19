@@ -154,7 +154,7 @@ try{
    return preserved;
  });
  await page.reload({waitUntil:'load'});
- const migratedRules=await page.evaluate(()=>window.KnownWorldTestHarness.getDebugPayload().campaign.fullState.rules);
+ const migratedRules=await page.evaluate(async()=>(await window.KnownWorldTestHarness.getDebugPayload()).campaign.fullState.rules);
  check(migratedRules.combatProcedureMode,'CONTEXTUAL','real legacy save without procedure field retains previously accepted contextual semantics');
  check(migratedRules.weaponDamageMode,oldSave.weaponDamageMode,'legacy save preserves separately configured damage');
  check(migratedRules.initiativeMode,oldSave.initiativeMode,'legacy save preserves initiative preference');
