@@ -16564,26 +16564,48 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     c.spatialBarriers=Array.isArray(c.spatialBarriers)?c.spatialBarriers:[];
     return c;
   }
+  // RAW uses a separate encounter-position record. Contextual x/y/z may still
+  // be retained for legacy saves and presentation but no longer controls RAW
+  // melee eligibility or movement after encounter setup.
+  function ensureRawCombatPositions(c){
+    if(!pureBecmiRawCombat()||!c)return null;
+    c.rawPositions3d=c.rawPositions3d&&typeof c.rawPositions3d==='object'?c.rawPositions3d:{pcs:{},monsters:{}};
+    const row=c.rawPositions3d;
+    row.pcs=row.pcs&&typeof row.pcs==='object'?row.pcs:{};
+    row.monsters=row.monsters&&typeof row.monsters==='object'?row.monsters:{};
+    for(const pc of state.party){
+      const key=pc.name.toLowerCase();
+      if(!row.pcs[key]||typeof row.pcs[key]!=='object')
+        row.pcs[key]=normalizedSpatialVector(c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
+    }
+    for(const mon of c.monsters||[]){
+      if(!row.monsters[mon.id]||typeof row.monsters[mon.id]!=='object')
+        row.monsters[mon.id]=normalizedSpatialVector(c.positions3d.monsters[mon.id],combatUnitsToFeet(Number(c.positions.monsters[mon.id])||0));
+    }
+    return row;
+  }
   function combatPcVector(pc){
     if(!combatActive()||!pc) return {x:0,y:0,z:0};
     const c=ensureCombatSpatialState(),key=pc.name.toLowerCase();
-    return normalizedSpatialVector(c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
+    return normalizedSpatialVector(pureBecmiRawCombat()?ensureRawCombatPositions(c).pcs[key]:c.positions3d.pcs[key],combatUnitsToFeet(Number(c.positions.pcs[key])||0));
   }
   function combatMonsterVector(monster){
     if(!combatActive()||!monster) return {x:0,y:0,z:0};
     const c=ensureCombatSpatialState();
-    return normalizedSpatialVector(c.positions3d.monsters[monster.id],combatUnitsToFeet(Number(c.positions.monsters[monster.id])||0));
+    return normalizedSpatialVector(pureBecmiRawCombat()?ensureRawCombatPositions(c).monsters[monster.id]:c.positions3d.monsters[monster.id],combatUnitsToFeet(Number(c.positions.monsters[monster.id])||0));
   }
   function setCombatPcVector(pc,value){
     if(!combatActive()||!pc) return;
     const c=ensureCombatSpatialState(),key=pc.name.toLowerCase(),before=combatPcVector(pc),after=normalizedSpatialVector(value,before.x);
     if(before.x!==after.x||before.y!==after.y||before.z!==after.z){if(pc.stealthState?.skill==='halflingHide')delete pc.stealthState;rawBreakPhantasmalForce(pc,'caster moved');rawBreakFifthLevelConcentration(pc,'caster moved',{movementFeet:vectorDistanceFt(before,after)});}
+    if(pureBecmiRawCombat())ensureRawCombatPositions(c).pcs[key]={...after};
     c.positions3d.pcs[key]=after;
     c.positions.pcs[key]=feetToCombatUnits(after.x);
   }
   function setCombatMonsterVector(monster,value){
     if(!combatActive()||!monster) return;
     const c=ensureCombatSpatialState(),after=normalizedSpatialVector(value,combatMonsterVector(monster).x);
+    if(pureBecmiRawCombat())ensureRawCombatPositions(c).monsters[monster.id]={...after};
     c.positions3d.monsters[monster.id]=after;
     c.positions.monsters[monster.id]=feetToCombatUnits(after.x);
   }
