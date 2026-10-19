@@ -21,7 +21,7 @@ assert.equal(named('Sling').rangeProfile,'Long-Slight');
 const embedded=html.match(/const CONTEXT_MATRIX_DATA = Object\.freeze\((\{.*?\})\);\s+const RC_WEAPON_MATRIX/s);
 assert(embedded,'Production embedded profile object not found');
 assert.deepEqual(JSON.parse(embedded[1]),data,'Runtime profile data and canonical repository JSON differ');
-assert(html.includes("rules:{weaponDamageMode:'RAW',weaponAudit:true"),'New campaign mode is not RAW');
+assert(html.includes("rules:{weaponDamageMode:'RAW',combatProcedureMode:'CONTEXTUAL',weaponAudit:true"),'New campaign mode is not RAW');
 assert(html.includes("if(active==='RAW'||active==='CONTEXT_MATRIX')"),'CONTEXT_MATRIX must use old RAW damage/RNG branch');
 assert(html.includes("appliedBase=(active==='RAW'||active==='CONTEXT_MATRIX')?rawBase:matrixBase"),'Context mastery must be RAW');
 assert(html.includes("['MATRIX','AAE'].includes(dmg?.active)"),'AAE mastery must use existing matrix');
