@@ -12,6 +12,18 @@ const fixture=`window.__kwOriginal341=function(mode){
     const seed=state.seed,init=rollCombatInitiativeSides(),ids=Object.keys(init.rolls);
     return {seed,after:state.seed,raw:init.rawRolls,rolls:init.rolls,mods:init.modifiers,ids};
   }
+  if(mode==='rawSave'){
+    installHarnessFixture({distance:0,type:'goblin',count:1});
+    state.party=state.party.slice(0,1);
+    state.rules.combatProcedureMode='RAW';
+    state.rules.weaponDamageMode='AAE';
+    state.rules.initiativeMode='PHASED';
+    const pc=state.party[0],mon=state.combat.monsters[0];
+    setCombatPcVector(pc,{x:0,y:0,z:0});
+    setCombatMonsterVector(mon,{x:4,y:0,z:0});
+    setEngagement(pc,mon,'far');
+    return {saveKey:STORAGE.save,state:harnessClone(state),pc:pc.name,monsterId:mon.id};
+  }
   if(mode==='raw'){
     installHarnessFixture({distance:0,type:'goblin',count:6});
     state.party=state.party.slice(0,1);
@@ -34,7 +46,7 @@ const fixture=`window.__kwOriginal341=function(mode){
     const seed=state.seed,oldRanges=Object.fromEntries(Object.entries(state.combat.engagements).map(([k,v])=>[k,v.range]));
     resolveMeleeDistanceContests();
     const afterRanges=Object.fromEntries(Object.entries(state.combat.engagements).map(([k,v])=>[k,v.range]));
-    const farBefore=combatSeparation(pc,mon);setCombatMonsterVector(mon,{x:15,y:0,z:0});
+    const farBefore=combatSeparation(pc,mon);const rawLedgerBefore=JSON.stringify(state.combat.rawPositions3d);state.combat.positions3d.monsters[mon.id]={x:1000,y:0,z:0};const rawPositionIndependent=combatSeparation(pc,mon)===farBefore&&JSON.stringify(state.combat.rawPositions3d)===rawLedgerBefore;setCombatMonsterVector(mon,{x:15,y:0,z:0});
     mon.influenceRadiusFt=100;
     const farRaw=combatUnitsToFeet(combatSeparation(pc,mon)),blockedRaw=atMeleeContact(pc,mon);
     const blockers=movementHostileBlockers('pc',pc).length;
@@ -45,7 +57,7 @@ const fixture=`window.__kwOriginal341=function(mode){
     const legacy=ensureBecmRuleOptions({weaponDamageMode:'AAE',initiativeMode:'PHASED'});
     const rawDamage=effectiveWeaponDamageMode(),rawInit=effectiveInitiativeMode();
     return {count,oldRanges,afterRanges,seedPreserved:seed===state.seed,
-      farBefore,farRaw,farContext,blockedRaw,blockers,refused,retained,
+      farBefore,farRaw,farContext,rawPositionIndependent,blockedRaw,blockers,refused,retained,
       rawDamage,rawInit,legacyMode:legacy.combatProcedureMode,
       savedDamage:state.rules.weaponDamageMode,savedInitiative:state.rules.initiativeMode};
   }
@@ -172,6 +184,7 @@ try{
  check(raw.seedPreserved,true,'RAW Measure bypass consumes no initiative dice or RNG');
  check(raw.blockers,0,'RAW cannot impose contextual movement ZOI blockers');
  check(raw.farRaw,10,'RAW melee contact derives from fixed ordinary distance not creature ZOI');
+ check(raw.rawPositionIndependent,true,'RAW distance and eligibility do not read mutable contextual position records');
  check(raw.farContext,0,'Contextual influence size remains distinct and intact');
  check(raw.blockedRaw,false,'RAW long-range contact remains physically illegal');
  check(raw.refused,false,'Mid-combat procedure switch is explicitly refused');
@@ -198,6 +211,21 @@ try{
  const old=await page.evaluate(()=>window.__kwOriginal341('missing'));
  check(old.band,'normal','missing raw dice from old mid-round saves cannot infer control');
  check(old.unchanged,true,'old-save unknown no new dice');
+ const fixture=await page.evaluate(()=>window.__kwOriginal341('rawSave'));
+ check(Boolean(fixture.state.combat.rawPositions3d?.monsters?.[fixture.monsterId]),true,'pure RAW fixture owns independent combat position data');
+ await page.evaluate(f=>localStorage.setItem(f.saveKey,JSON.stringify(f.state)),fixture);
+ await page.goto(origin+'/index.html',{waitUntil:'load'});
+ await page.waitForFunction(()=>Boolean(window.KnownWorldTestHarness));
+ const snapshot=async()=> (await page.evaluate(async()=>window.KnownWorldTestHarness.getDebugPayload())).campaign.fullState;
+ const loaded=await snapshot();
+ check(loaded.rules.combatProcedureMode,'RAW','native old/active combat file preserves pure RAW selection');
+ check(loaded.rules.weaponDamageMode,'AAE','native RAW encounter persists inactive contextual AAE preference');
+ check(loaded.combat.rawPositions3d?.monsters?.[fixture.monsterId],fixture.state.combat.rawPositions3d.monsters[fixture.monsterId],'native RAW encounter position ledger survives production boot');
+ await page.locator('#command').fill('save');await page.locator('#command').press('Enter');
+ await page.reload({waitUntil:'load'});
+ const reloaded=await snapshot();
+ check(reloaded.rules.combatProcedureMode,'RAW','active RAW combat selection persists through real save and reload');
+ check(reloaded.combat.rawPositions3d?.monsters?.[fixture.monsterId],loaded.combat.rawPositions3d.monsters[fixture.monsterId],'independent RAW position ledger survives exact real save/reload');
  check(errors,[],'browser clean');
  console.log(JSON.stringify({status:'PASS',version:'0.4.342',scenarios:1082,assertions,errors}));
 }catch(e){console.error(e.stack||String(e));process.exitCode=1}
