@@ -32612,7 +32612,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
 
   function harnessMeasureSizeFixture346({weapon='spear',foeWeapon=null,type='wolf',band='far',count=1}={}){
     installHarnessFixture({distance:0,type,count});state.party=state.party.slice(0,1);
-    if(type==='wolf')state.combat.monsters=Array.from({length:count},(_,i)=>createCombatMonster('wolf',i+1));
+    if(type==='wolf'||type==='berserker')state.combat.monsters=Array.from({length:count},(_,i)=>createCombatMonster(type,i+1));
     state.rules.combatProcedureMode='CONTEXTUAL';
     const pc=state.party[0],c=state.combat,mon=c.monsters[0];
     pc.hp=pc.maxHp=500;pc.equippedWeapon={itemId:weapon,name:SHOP_ITEMS[weapon].name,matrixId:SHOP_ITEMS[weapon].matrixId};
@@ -32666,14 +32666,14 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       {name:'v0.4.347 missing null false zero and malformed creature overrides remain distinct',run:()=>{
         const {mon,c,group}=harnessMeasureSizeFixture346({weapon:'sword_normal',foeWeapon:'sword_normal',type:'berserker'});
         for(const value of [null,false,0,'true',{}, {ferocious:null},{ferocious:false},{ferocious:0},{ferocious:'true'}]){
-          mon.measureTraits=value;
-          harnessAssert(!measureCreatureFerocious(mon)&&!meleeControlFerocityContext(group,'normal').bonus.foes,'Invalid override became true');
+          const current=state.combat.monsters.find(m=>m.id===mon.id);current.measureTraits=value;
+          harnessAssert(!measureCreatureFerocious(current)&&!meleeControlFerocityContext(group,'normal').bonus.foes,'Invalid override became true');
           const loaded=migrateSave(harnessClone(state));
           harnessAssert(harnessFingerprint(loaded.combat.monsters[0].measureTraits)===harnessFingerprint(value),'Migration corrupted literal');
         }
-        delete mon.measureTraits;
+        const current=state.combat.monsters.find(m=>m.id===mon.id);delete current.measureTraits;
         const loaded=migrateSave(harnessClone(state));
-        harnessAssert(measureCreatureFerocious(mon)&&!Object.prototype.hasOwnProperty.call(loaded.combat.monsters[0],'measureTraits')&&measureCreatureFerocious(loaded.combat.monsters[0]),'Sparse old-save fact mutated');
+        harnessAssert(measureCreatureFerocious(current)&&!Object.prototype.hasOwnProperty.call(loaded.combat.monsters[0],'measureTraits')&&measureCreatureFerocious(loaded.combat.monsters[0]),'Sparse old-save fact mutated');
       }},
       {name:'v0.4.347 Ferocity belongs to creature not weapon attack or temperament',run:()=>{
         const {mon,c,group}=harnessMeasureSizeFixture346({weapon:'sword_normal',foeWeapon:'sword_normal',type:'berserker'});
@@ -32707,7 +32707,8 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         const {mon,c}=harnessMeasureSizeFixture346({weapon:'dagger',band:'close'});
         recordDmr2ShipRosterContract('ferocity347',harnessDmr2ShipAddedCatapultTargetRangesConfig284());
         for(const value of [undefined,null,false,0,{ferocious:true},{ferocious:false}]){
-          if(value===undefined)delete mon.measureTraits;else mon.measureTraits=value;
+          const current=state.combat.monsters.find(m=>m.id===mon.id);
+          if(value===undefined)delete current.measureTraits;else current.measureTraits=value;
           const loaded=migrateSave(migrateSave(harnessClone(state))),stored=loaded.combat.monsters.find(m=>m.id===mon.id);
           harnessAssert(Object.prototype.hasOwnProperty.call(stored,'measureTraits')===(value!==undefined),'Missing vs supplied field confused');
           if(value!==undefined)harnessAssert(harnessFingerprint(stored.measureTraits)===harnessFingerprint(value),'Explicit value corrupted');
