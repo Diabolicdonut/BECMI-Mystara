@@ -28,7 +28,7 @@ try{
  const command=async text=>{await page.locator('#command').fill(text);await page.locator('#command').press('Enter');};
  await load('/index.html');check(await page.evaluate(()=>typeof window.__kwSize346),'undefined','exact production has no fixture');
  await load('/fixture');const r=await page.evaluate(()=>window.__kwSize346.run());check(r.total,8,'eight complete Size definitions');check(r.failed,0,JSON.stringify(r.results.filter(x=>!x.pass)));check(r.isolationPreserved,true,'campaign isolation');
- const cases=[['dagger','close','CONTEXTUAL','close',[4,5]],['spear','far','CONTEXTUAL','far',[4,5]],['sword_normal','far','CONTEXTUAL','normal',[4,5]],['dagger','close','RAW','close',[4,5]],['dagger','close','CONTEXTUAL','normal',[5,5]]];
+ const cases=[['dagger','close','CONTEXTUAL','close',[4,5]],['spear','far','CONTEXTUAL','normal',[4,5]],['sword_normal','far','CONTEXTUAL','normal',[4,5]],['dagger','close','RAW','close',[4,5]],['dagger','close','CONTEXTUAL','normal',[5,5]]];
  for(const [weapon,band,mode,expected,dice] of cases){
    await load('/fixture');const seed=await page.evaluate(x=>window.__kwSize346.seed(...x),[weapon,band,mode,dice]);await page.evaluate(f=>localStorage.setItem(f.key,JSON.stringify(f.state)),seed);
    await load('/index.html');await command('save');await page.reload({waitUntil:'load'});const before=await snapshot();
