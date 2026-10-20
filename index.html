@@ -32740,7 +32740,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
           const original=JSON.stringify(mon.attacks),seed=state.seed;
           for(const pi of ['press','hold','open'])for(const mi of ['press','hold','open'])for(let a=1;a<=6;a++)for(let b=1;b<=6;b++){
             c.pcOrders[pc.name.toLowerCase()].rangeIntent=pi;c.monsterOrders[mon.id].rangeIntent=mi;c.initiative.rawRolls={pc:a,foes:b};getEngagement(pc,mon).range=band;c.meleeDistanceResolvedRound=0;
-            const sign=band==='far'?size:band==='close'?-size:0,pa=a+(sign>0?Math.abs(size):0),ma=b+(sign<0?Math.abs(size):0),intent=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi,idx=RANGE_ORDER.indexOf(band);
+            const sign=band==='far'?size:band==='close'?-size:0,pa=a+(sign>0?Math.abs(size):0),ma=b+(sign<0?Math.abs(size):0)+(measureCreatureFerocious(mon)?1:0),intent=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi,idx=RANGE_ORDER.indexOf(band);
             resolveMeleeDistanceContests();harnessAssert(getEngagement(pc,mon).range===RANGE_ORDER[Math.max(0,Math.min(2,idx+(intent==='press'?-1:intent==='open'?1:0)))],'Weapon/wolf intent or Size mismatch');
             harnessAssert(state.seed===seed&&JSON.stringify(mon.attacks)===original,'Wolf control changed natural damage or RNG');cases++;
           }
@@ -32753,7 +32753,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         harnessAssert(before.foes===2,'Shorter natural attack lost Close control against spear');
         c.awaitingWeaponChanges=true;const init=JSON.stringify(c.initiative);
         harnessAssert(switchPcWeaponInCombat(pc,'dagger')&&getEngagement(pc,mon).range==='close'&&state.seed===seed&&JSON.stringify(c.initiative)===init,'Ordinary sidearm change granted free range or dice');
-        c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';c.monsterOrders[mon.id].rangeIntent='press';c.initiative.rawRolls={pc:4,foes:5};resolveMeleeDistanceContests();
+        c.pcOrders[pc.name.toLowerCase()].rangeIntent='open';c.monsterOrders[mon.id].rangeIntent='press';c.initiative.rawRolls={pc:5,foes:5};resolveMeleeDistanceContests();
         harnessAssert(getEngagement(pc,mon).range==='normal'&&state.seed===seed,'Dagger could not use Close advantage while opening');
         getEngagement(pc,mon).range='close';c.meleeDistanceResolvedRound=0;c.pcOrders[pc.name.toLowerCase()].rangeIntent='hold';c.monsterOrders[mon.id].rangeIntent='open';resolveMeleeDistanceContests();
         harnessAssert(getEngagement(pc,mon).range==='close','Dagger could not use Close advantage while holding');
