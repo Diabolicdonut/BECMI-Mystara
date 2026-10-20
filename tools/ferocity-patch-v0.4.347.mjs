@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 const path='index.html';let s=fs.readFileSync(path,'utf8');
 function replaceOnce(a,b,label){const n=s.split(a).length-1;if(n!==1)throw Error(label+' anchor count='+n);s=s.replace(a,b);}
-const mechanics=String.raw\`
+const mechanics=String.raw`
   // v0.4.347: bounded source-reviewed creature Ferocity, not a weapon/attack bonus.
   // Mentzer Basic pp. 26-27, 39. A source list is not a blanket monster trait.
   const MEASURE_FEROCITY_FACTS=Object.freeze({
@@ -48,13 +48,13 @@ const mechanics=String.raw\`
     return {bonus};
   }
 
-\`;
+`;
 replaceOnce('  // v0.4.346: current Measure determines Size advantage.',mechanics+'  // v0.4.346: current Measure determines Size advantage.','mechanics');
 replaceOnce('    monster.sourcePage=p.sourcePage??null;\n    monster.directCombatEligible',
 '    monster.sourcePage=p.sourcePage??null;\n    if(measureFerocitySourceVerified(monster))monster.measureTraits={ferocious:true};\n    monster.directCombatEligible','spawn');
 replaceOnce('        const context=meleeControlSizeContext({pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id]},before);\n        measureBonuses=context.bonus;\n        const score=id=>rolls[id]+(measureBonuses[id]||0),high=Math.max(...sideIds.map(score));',
 '        const group={pcNames:[pc.name.toLowerCase()],monsterIds:[mon.id]};\n        const sizeContext=meleeControlSizeContext(group,before),ferocity=meleeControlFerocityContext(group,before);\n        measureBonuses={...sizeContext.bonus};\n        for(const [side,bonus] of Object.entries(ferocity.bonus))measureBonuses[side]=(measureBonuses[side]||0)+bonus;\n        const context={why:sizeContext.why+(Object.keys(ferocity.bonus).length?"; source-reviewed Ferocity":"")};\n        const score=id=>rolls[id]+(measureBonuses[id]||0),high=Math.max(...sideIds.map(score));','sum separate bonuses');
-const tests=String.raw\`
+const tests=String.raw`
       {name:'v0.4.347 source-reviewed animal and exceptional berserker trait assignment only',run:()=>{
         for(const type of ['wolf','black_bear','grizzly_bear','boar','berserker']){
           const m=createCombatMonster(type,1);
@@ -138,7 +138,7 @@ const tests=String.raw\`
           harnessAssert(harnessFingerprint(loaded.combat.initiative)===harnessFingerprint(c.initiative)&&harnessFingerprint(loaded.dmr2ShipRosterContracts)===harnessFingerprint(state.dmr2ShipRosterContracts),'Migration altered dice/ships');
         }
       }},
-\`;
+`;
 replaceOnce('  function coreHarnessTestDefinitions(){\n    return [\n','  function coreHarnessTestDefinitions(){\n    return [\n'+tests,'regression suite');
 fs.writeFileSync(path,s);
 const names=[...tests.matchAll(/name:'(v0\.4\.347 [^']+)'/g)].map(m=>m[1]);
