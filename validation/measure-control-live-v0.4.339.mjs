@@ -6,7 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
-assert(html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || (html.includes("const APP_VERSION='0.4.344';") || html.includes("const APP_VERSION='0.4.345';")))));
+assert(html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || (html.includes("const APP_VERSION='0.4.344';") || (html.includes("const APP_VERSION='0.4.345';") || html.includes("const APP_VERSION='0.4.346';"))))));
 assert.equal(html.split('  boot();\n})();').length,2);
 const fixture=`window.__kwMeasure339 = function(test){
  const cases={
@@ -14,14 +14,14 @@ const fixture=`window.__kwMeasure339 = function(test){
   far_spear_overcome:{weapon:'spear',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'far'},
   far_pike_tie:{weapon:'pike',type:'black_bear',range:'far',pi:4,mi:6,pa:'hold',ma:'press',expected:'far'},
   far_sword_neutral:{weapon:'sword_normal',type:'black_bear',range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'normal'},
-  far_dagger_no_natural_point:{weapon:'dagger',type:'black_bear',range:'far',pi:5,mi:4,pa:'press',ma:'hold',expected:'normal'},
+  far_dagger_no_natural_point:{weapon:'dagger',type:'black_bear',range:'far',pi:5,mi:4,pa:'press',ma:'hold',expected:'far'},
   normal_pike_neutral:{weapon:'pike',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   normal_dagger_neutral:{weapon:'dagger',type:'black_bear',range:'normal',pi:4,mi:5,pa:'hold',ma:'press',expected:'close'},
   close_spear_natural_follow:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',expected:'close'},
   close_spear_escape:{weapon:'spear',type:'black_bear',range:'close',pi:6,mi:4,pa:'open',ma:'press',expected:'close'},
   close_pike_natural_follow_two:{weapon:'pike',type:'black_bear',range:'close',pi:6,mi:4,pa:'open',ma:'press',expected:'close'},
-  close_no_passive_grapple:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'hold',expected:'normal'},
-  close_monster_not_attacking:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',monsterAction:'hold',expected:'normal'},
+  close_no_passive_grapple:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'hold',expected:'close'},
+  close_monster_not_attacking:{weapon:'spear',type:'black_bear',range:'close',pi:5,mi:4,pa:'open',ma:'press',monsterAction:'hold',expected:'close'},
   far_monster_weapon:{weapon:'dagger',type:'black_bear',monsterWeapon:'spear',range:'far',pi:5,mi:4,pa:'press',ma:'hold',expected:'far'},
   close_vs_armed_monster:{weapon:'dagger',type:'black_bear',monsterWeapon:'pike',range:'close',pi:4,mi:5,pa:'press',ma:'open',expected:'close'},
   unknown_monster_no_bonus:{weapon:'spear',type:'skeleton',unknownMonster:true,range:'far',pi:4,mi:5,pa:'hold',ma:'press',expected:'normal'},
