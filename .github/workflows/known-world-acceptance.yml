@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required Ferocity source-review and native Measure save/reload
+        run: node validation/ferocity-native-v0.4.347.mjs
       - name: Required current-Measure Size all-intent native control and save reload
         run: node validation/measure-size-native-v0.4.346.mjs
       - name: Required rigid-weapon entry attack refusal and physical-fact save/reload
