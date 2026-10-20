@@ -1,0 +1,48 @@
+name: Known World measure-control design calibration
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'lib/measure-control-prototype.mjs'
+      - 'validation/measure-control-*.mjs'
+      - 'validation/measure-control-native-fixture-v0.4.txt'
+      - 'design/context-matrix/MEASURE-CONTROL-*.md'
+      - '.github/workflows/measure-control-design.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pure-design-tests:
+    name: Pure measure-control design checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Existing exhaustive measure-control tests
+        run: node validation/measure-control-prototype.mjs
+      - name: v0.2 calibrated combat scenarios and repeated-round analysis
+        run: node validation/measure-control-calibration-v0.2.mjs
+      - name: v0.3 Far-only versus Far-and-Normal with no Handling
+        run: node validation/measure-control-far-only-v0.3.mjs
+      - name: v0.5 Symmetric measure and neutral monster attack Size
+        run: node validation/measure-control-monsters-symmetric-v0.5.mjs
+
+  native-integration-boundary:
+    name: Existing production combat boundary probes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - name: Native spatial, shared-melee, phase and withdrawal boundaries
+        run: node validation/measure-control-native-boundary-v0.4.mjs
