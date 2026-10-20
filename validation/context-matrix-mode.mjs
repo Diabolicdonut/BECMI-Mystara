@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {chromium} from 'playwright';
 const html=fs.readFileSync('index.html','utf8');
 const data=JSON.parse(fs.readFileSync('data/context-matrix-weapon-profiles.json','utf8'));
-assert(html.includes("const APP_VERSION='0.4.338';") || html.includes("const APP_VERSION='0.4.339';") || html.includes("const APP_VERSION='0.4.340';") || html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || (html.includes("const APP_VERSION='0.4.344';") || (html.includes("const APP_VERSION='0.4.345';") || html.includes("const APP_VERSION='0.4.346';"))))));
+assert(html.includes("const APP_VERSION='0.4.338';") || html.includes("const APP_VERSION='0.4.339';") || html.includes("const APP_VERSION='0.4.340';") || html.includes("const APP_VERSION='0.4.341';") || (html.includes("const APP_VERSION='0.4.342';") || (html.includes("const APP_VERSION='0.4.343';") || (html.includes("const APP_VERSION='0.4.344';") || (html.includes("const APP_VERSION='0.4.345';") || html.includes("const APP_VERSION='0.4.346';") || html.includes("const APP_VERSION='0.4.347';"))))));
 assert.equal(data.weapons.length,46);
 assert.equal(data.calibration.referenceProtection,'Soft');
 assert.equal(data.calibration.stepsPerDamagePoint,2);
