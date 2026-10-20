@@ -1,0 +1,50 @@
+name: Known World v0.4.347 historical wolf expectation alignment
+on:
+  push:
+    branches: ['work/v0.4.347-ferocity']
+    paths: ['.github/workflows/known-world-ferocity-size-expectation.yml']
+permissions:
+  contents: write
+jobs:
+  align:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/v0.4.347-ferocity
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Preserve Size regression while accounting for independently authorized wolf Ferocity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('index.html');s=p.read_text()
+          a="const sign=band==='far'?size:band==='close'?-size:0,pa=a+(sign>0?Math.abs(size):0),ma=b+(sign<0?Math.abs(size):0),intent=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi"
+          b="const sign=band==='far'?size:band==='close'?-size:0,pa=a+(sign>0?Math.abs(size):0),ma=b+(sign<0?Math.abs(size):0)+(measureCreatureFerocious(mon)?1:0),intent=pi===mi?pi:pa===ma?'hold':pa>ma?pi:mi"
+          if s.count(a)!=1:raise RuntimeError('Unexpected wolf original-d6 Size matrix anchor')
+          s=s.replace(a,b)
+          old="c.monsterOrders[mon.id].rangeIntent='press';c.initiative.rawRolls={pc:4,foes:5};resolveMeleeDistanceContests();"
+          new="c.monsterOrders[mon.id].rangeIntent='press';c.initiative.rawRolls={pc:5,foes:5};resolveMeleeDistanceContests();"
+          if s.count(old)!=1:raise RuntimeError('Unexpected dagger control scenario anchor')
+          s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Update only candidate hash in existing full manifest
+        run: |
+          node --input-type=module - <<'JS'
+          import fs from 'node:fs';import {createHash} from 'node:crypto';
+          const path='validation/manifests/v0.4.347.json',m=JSON.parse(fs.readFileSync(path,'utf8'));
+          if(m.version!=='0.4.347'||m.core.length<2350)throw Error('Unexpected manifest');
+          m.productionSha256=createHash('sha256').update(fs.readFileSync('index.html')).digest('hex');
+          fs.writeFileSync(path,JSON.stringify(m,null,2)+'\n');
+          JS
+      - name: Commit exact historical expectation alignment
+        run: |
+          git config user.name known-world-ci
+          git config user.email known-world-ci@users.noreply.github.com
+          git add index.html validation/manifests/v0.4.347.json
+          git diff --cached --check
+          git commit -m "test(v0.4.347): preserve full Size matrix with new wolf Ferocity"
+          git push origin HEAD:work/v0.4.347-ferocity
