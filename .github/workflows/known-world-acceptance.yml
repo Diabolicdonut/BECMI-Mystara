@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required source natural proximity native save/reload
+        run: node validation/natural-proximity-native-v0.4.348.mjs
       - name: Required Ferocity source-review and native Measure save/reload
         run: node validation/ferocity-native-v0.4.347.mjs
       - name: Required current-Measure Size all-intent native control and save reload
