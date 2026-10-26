@@ -265,3 +265,7 @@ restrictions; no case or assertion is removed. Local Chromium 140 is supplementa
 only; exact-SHA GitHub acceptance retains the unchanged pinned Playwright browser.
 See `design/context-matrix/CURRENT-MEASURE-SIZE-CONTRACT.md`. Ferocity and natural
 proximity damage remain later independently accepted checkpoints.
+
+## Candidate v0.4.348
+
+Eight additional embedded regressions (2364 core / 1280 focused / 591 per Chromium slice) and the dedicated natural-proximity-native gate plus every inherited accepted suite must pass. No acceptance without exact-SHA CI and merged-main Pages verification.

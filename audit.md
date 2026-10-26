@@ -1,5 +1,10 @@
 # Known World BECMI Engine Audit
 
+## Candidate v0.4.348 — NOT ACCEPTED
+
+Source-verified per-hit conventional physical natural damage at pairwise Measure; pure RAW, poison, manufactured weapons and all other specials unaffected. Candidate SHA-256 `5803903751a29f7b668c2d08eb6bccf747500cee7a277242e2d2ad308f8de74b`; eight embedded and one native gate added; all inherited tests required. No CI or deployment pass yet.
+
+
 Build: **0.4.347** — **FULLY ACCEPTED AND DEPLOYED** on main `0e65802c833f00f56265883efedfb79ed8922d84` via PR #12. Exact-main ten-job CI 40328221430 and Pages deployment 40328221817 both passed. Production SHA-256 `273192aed4a07bc27fe57dd975c9ea4506301e9dd94de4ccd9bc1e43a92c806f`.
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
