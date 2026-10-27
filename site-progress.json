@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "project": "BECMI-Mystara",
+  "asOf": "2026-10-26",
+  "revision": "v0.4.347",
+  "revisionSource": {
+    "type": "text",
+    "file": "pipeline-state.md",
+    "pattern": "Current accepted build:\\s*\\*\\*v([0-9.]+)",
+    "prefix": "v"
+  },
+  "progress": {
+    "label": "Tracked delivery gates",
+    "completed": 4,
+    "total": 7,
+    "basis": "Tracked gates: deployed browser engine, deterministic rules validation, mapped exploration, and save/turn continuity. Remaining gates are cross-module integration, broader module support, and manual acceptance.",
+    "note": "Editorial roadmap tracker, not a measured fraction of every BECMI rule or module."
+  }
+}
