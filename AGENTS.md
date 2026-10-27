@@ -41,7 +41,9 @@ evidence separately from inherited historical acceptance results.
 
 **Single authoritative whole-product roadmap:** [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md).
 Its complete 100-point gate ledger is mirrored in [site-progress.json](site-progress.json),
-which powers [status.html](status.html) through `site-progress.js`.
+which powers [status.html](status.html) and the optional [playable status view](play.html)
+through `site-progress.js`. The full-screen production `index.html` is unchanged
+by that optional view; an iframe is presentation, not a new rules engine.
 The long-form [Design 21](BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md)
 establishes the approved ultimate OSR service vision. Its **historical**
 v0.4.223 launch checkpoint is not current; current accepted main and the top
@@ -65,7 +67,9 @@ On **every accepted gameplay, infrastructure, or scope milestone**:
    current revision, reviewed date, bounded milestone, gate status/evidence
    and total weighted completion. Preserve all 100 points and unique gate IDs.
    Do not confuse the completion of one checkpoint with overall scope.
-4. Run `node validation/roadmap-governance.mjs` in addition to the full
+4. Run `node validation/roadmap-governance.mjs` and
+   `node validation/roadmap-playable-status.mjs` (Playwright/Chromium) in
+   addition to the full
    required ten-job CI. A green roadmap check validates ledger consistency,
    **not** the truth of a claim of gameplay completion; underlying game
    acceptance tests and reviewed evidence remain mandatory.
