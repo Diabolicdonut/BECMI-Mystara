@@ -3,6 +3,7 @@
 // --check refuses stale UI without changing production bytes. No app state touched.
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
 
 const START = '<!-- KNOWN-WORLD-ROADMAP-STATUS-START -->';
 const END = '<!-- KNOWN-WORLD-ROADMAP-STATUS-END -->';
@@ -57,7 +58,14 @@ if(process.argv.includes('--check')) {
   console.log('In-game revision and whole-vision weighted progress are synchronized: '+version+', '+number+'%');
 } else if(updated !== html) {
   fs.writeFileSync(file,updated);
-  console.log('Updated in-game accepted revision '+version+' and full roadmap '+number+'%');
+  const manifestPath='validation/manifests/'+version+'.json';
+  const manifestText=fs.readFileSync(manifestPath,'utf8');
+  const hash=createHash('sha256').update(updated).digest('hex');
+  const checksumPattern=/("productionSha256"\s*:\s*")[a-f0-9]{64}("?)/;
+  assert(checksumPattern.test(manifestText),'Accepted-version manifest checksum missing');
+  const refreshed=manifestText.replace(checksumPattern,(_match,head,tail)=>head+hash+tail);
+  fs.writeFileSync(manifestPath,refreshed);
+  console.log('Updated in-game accepted revision '+version+', full roadmap '+number+'% and production manifest SHA-256 '+hash);
 } else {
   console.log('Game header roadmap badge already current');
 }
