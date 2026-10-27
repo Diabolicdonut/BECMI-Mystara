@@ -90,6 +90,26 @@
       revisionFor(config), countFor(config)
     ]);
     const roadmap = roadmapFor(config);
+    // The dedicated status view has an above-the-fold summary; reuse this
+    // validated manifest calculation rather than inventing a second counter.
+    const overview = document.querySelector('[data-progress-overview]');
+    if (overview) {
+      const revisionBox = make('div');
+      revisionBox.append(make('h2', '', 'Accepted gameplay revision'));
+      revisionBox.append(make('p', '', revision));
+      const roadmapBox = make('div');
+      roadmapBox.append(make('h2', '', 'Whole-product roadmap'));
+      roadmapBox.append(make('p', '', roadmap ?
+        roadmap.percent + '% — ' + roadmap.done + ' of 100 weighted points accepted' :
+        'Accounting unavailable — consult the authoritative roadmap'));
+      const nextBox = make('div');
+      nextBox.append(make('h2', '', 'Current development milestone'));
+      nextBox.append(make('p', '', String(config.progress?.label || 'Not recorded')));
+      nextBox.append(make('p', '', count.percent === null ?
+        'Acceptance count not recorded' :
+        count.done + ' of ' + count.total + ' accepted (' + count.percent + '%)'));
+      overview.replaceChildren(revisionBox, roadmapBox, nextBox);
+    }
     const style = document.createElement('style');
     style.textContent = `
 #project-progress-status{position:fixed;bottom:12px;right:12px;z-index:2147483000;
