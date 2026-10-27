@@ -4,7 +4,8 @@ This repository is exclusively the Known World / BECMI Text RPG project.
 
 ## Recovery and authority
 
-GitHub `main` at its newest accepted commit, together with `pipeline-state.md`,
+GitHub `main` at its newest accepted commit, together with `ROADMAP-COVERAGE.md`,
+`site-progress.json`, `pipeline-state.md`,
 the production `index.html`, and the newest/topmost accepted `audit.md` entry,
 is the authoritative development ledger. Known World Project Library copies are
 recovery/reference material. Inspect main, active `work/...` branches, CI results,
@@ -36,18 +37,58 @@ skip failures, or substitute supplemental smoke checks for an unrecovered native
 suite. No temporary validation bridge belongs in production HTML. Record new
 evidence separately from inherited historical acceptance results.
 
-## Current continuation authorization
+## Whole-product roadmap — REQUIRED for all workers
 
-The one-time migration is complete. The 2026-10-16 user instruction explicitly
-authorizes a documented prospective Native Acceptance v2 baseline if the bounded
-attempt cannot recover the historical 523-runner. Historical totals must never
-be relabeled as reruns. Run the new suite on accepted v0.4.333 and v0.4.334, then
-accept and merge v0.4.334 only after every required check is green.
+**Single authoritative whole-product roadmap:** [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md).
+Its complete 100-point gate ledger is mirrored in [site-progress.json](site-progress.json),
+which powers [status.html](status.html) through `site-progress.js`.
+The long-form [Design 21](BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md)
+establishes the approved ultimate OSR service vision. Its **historical**
+v0.4.223 launch checkpoint is not current; current accepted main and the top
+pipeline/audit record control the next executable dependency.
 
-After that, implement Context Matrix in separate checkpoints: v0.4.335 data/mode
-only; v0.4.336 pure calculator only; v0.4.337 live damage integration. The workbook
-is primary design authority, Atlas v0.4 supports it, v0.1 is exploratory only.
-RAW remains the default; RAW and AAE stay isolated. No more than three newly
-accepted checkpoints per session, including v0.4.334 if accepted here. The next
-checkpoint is always governed by the current pipeline and newest accepted audit.
-Hidden-world cartography is preserved but no graphical map work is authorized.
+On **every development continuation**, read the roadmap, the manifest, the
+latest accepted main/pipeline/audit and the current Actions state *before*
+choosing a checkpoint. The roadmap defines total scope and gate acceptance;
+the pipeline defines immediate work order. Neither replaces the other.
+Do not merge the separate 110-point `work/roadmap-whole-product-status` draft
+into the approved 100-point ledger: it omits the later generalized OSR product
+scope and has a different progress denominator.
+
+On **every accepted gameplay, infrastructure, or scope milestone**:
+1. Record the checkpoint and exact evidence in the newest audit and pipeline
+   entry using the existing acceptance process.
+2. Review the applicable approved roadmap gate(s), acceptance criteria, phase
+   dependencies and actual evidence. Reclassify a gate only when its **entire**
+   exit criterion is met; partial work never earns the whole gate weight.
+3. Update `ROADMAP-COVERAGE.md` and `site-progress.json` together:
+   current revision, reviewed date, bounded milestone, gate status/evidence
+   and total weighted completion. Preserve all 100 points and unique gate IDs.
+   Do not confuse the completion of one checkpoint with overall scope.
+4. Run `node validation/roadmap-governance.mjs` in addition to the full
+   required ten-job CI. A green roadmap check validates ledger consistency,
+   **not** the truth of a claim of gameplay completion; underlying game
+   acceptance tests and reviewed evidence remain mandatory.
+5. Verify exact-main required CI and Pages before claiming deployment.
+   Publish roadmap changes on the same accepted branch/promotion path; do
+   not bump the displayed game revision on a documentation-only change.
+
+Changes to total scope, gate weight, status criteria, or versioning policy must
+be explicit, justified, versioned in the roadmap change log and reflected in
+the machine-readable manifest and CI. Never auto-increment roadmap progress from
+a version number, task count, or unreviewed code presence.
+
+## Current continuation
+
+As of the **2026-10-27** roadmap review, game **v0.4.347** remains accepted
+and deployed. The **v0.4.348** contextual physical natural-attack damage
+checkpoint is the next pipeline-prescribed gameplay dependency, in a separate
+source-reviewed acceptance. The full product roadmap reports **20/100
+conservatively accepted points**, *not* 20% of code implemented. Current
+source/procedure authority must be recovered from main at each session rather
+than assuming these historical snapshot numbers remain current.
+
+The earlier v0.4.334–337 migration instructions are historical, not current
+authorization. Preserve original workbook/source hierarchy and RAW/AAE/context
+isolation. Do not silently expand scope, lower acceptance gates, or attempt
+unapproved graphical cartography while implementing the current dependency.
