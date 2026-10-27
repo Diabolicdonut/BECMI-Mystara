@@ -1,4 +1,6 @@
-# Known World / BECMI — Current Approved Full Delivery Roadmap
+# Known World / BECMI — Whole-Vision Weighted Delivery Scorecard
+
+**Authoritative future phase dependencies and comprehensive scope:** [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). This file is its **accepted-evidence scorecard**, not a replacement for the full milestone hierarchy. Any worker adding a scope item, completing a gate or changing its weight must reconcile the two documents and site-progress.json in the same checkpoint. The score stays constant through individual accepted micro-checkpoints until their gate is independently closed.
 
 **Reviewed 2026-10-27, GitHub main `14f9cfbe9bc96c7f6ea9795e40022caf85045762`.** The latest *accepted game rules checkpoint* remains **v0.4.347**, verified in `pipeline-state.md`, with source-defined Ferocity adjudication and the stated **v0.4.348 conventional natural attack damage** as the next narrow milestone. This review **does not upgrade the game build or alter any BECMI rule**. Large historical audit/design prose (including older builds 0.4.223 and below) is development history; latest `main` and top pipeline record supersede its old "current" headings.
 

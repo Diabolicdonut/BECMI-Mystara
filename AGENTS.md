@@ -1,5 +1,11 @@
 # Known World development ledger
 
+## Authoritative long-term roadmap and compulsory maintenance
+
+[DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md) is the repository's **authoritative prospective product vision, phase dependency and milestone instruction** for all Known World AI workers. Read it before selecting a task. [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md) and [site-progress.json](site-progress.json) are its weighted whole-product coverage record; together these drive the accepted revision / overall-completion indicator in the game header and separate status page. The latest accepted main, top audit and pipeline remain authoritative for implemented facts and precise next checkpoint. Never use the roadmap to claim an unaccepted feature is implemented.
+
+With *every* new user scope decision, accepted milestone or changed definition of done, update the roadmap in the same checkpoint, reconcile scorecard/manifest when warranted, and run `node tools/sync-progress-status.mjs` to refresh the in-game status badge. `node tools/sync-progress-status.mjs --check` is a required acceptance assertion. Future revisions may stay at the same overall percentage if no entire weighted gate has been accepted. Preserve the full long-term OSR vision; do not narrow the denominator to the latest combat milestone.
+
 This repository is exclusively the Known World / BECMI Text RPG project.
 
 ## Recovery and authority

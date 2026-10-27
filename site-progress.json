@@ -19,8 +19,8 @@
   "roadmap": {
     "label": "Full approved Known World / OSR delivery roadmap",
     "scope": "Source-faithful Mentzer BECMI/Mystara reference engine followed by explicit architecture separation, generic old-school referee/adventure generation and eventual hosted service.",
-    "document": "ROADMAP-COVERAGE.md",
-    "note": "Validated accepted weights only; partial or planned work earns no weighted completion. Immutable historical source and native acceptance baselines remain authoritative.",
+    "document": "DEVELOPMENT-ROADMAP.md",
+    "note": "Full 100-point long-term vision, not just the current v0.4.347 checkpoint. Accepted gates only; partial/planned work earns zero until explicit exit validation. See DEVELOPMENT-ROADMAP.md for authoritative phase instructions.",
     "gates": [
       {
         "id": "validated-becmi-baseline",
@@ -92,6 +92,7 @@
         "status": "planned",
         "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
       }
-    ]
+    ],
+    "coverageDocument": "ROADMAP-COVERAGE.md"
   }
 }

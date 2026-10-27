@@ -15,7 +15,8 @@
     "validate:native-smoke": "node validation/browser-run.mjs native-smoke",
     "validate:native-established": "node validation/established-native.mjs",
     "validate:coverage": "node validation/verify-coverage.mjs",
-    "validate:native-v2": "node validation/native-v2.mjs"
+    "validate:native-v2": "node validation/native-v2.mjs",
+    "validate:roadmap": "node tools/sync-progress-status.mjs --check"
   },
   "devDependencies": {
     "playwright": "1.64.1"

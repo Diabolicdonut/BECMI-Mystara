@@ -6,6 +6,9 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {html, version, manifest, productionSha256, saveReport} from './common.mjs';
 
+const statusGate = spawnSync(process.execPath, ['tools/sync-progress-status.mjs', '--check'], {encoding:'utf8'});
+assert.equal(statusGate.status, 0, statusGate.stderr || statusGate.stdout);
+
 const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)].filter(match=>{
   const type=match[1].match(/\btype\s*=\s*["']([^"']+)["']/i)?.[1]?.toLowerCase();
   return !type || ['text/javascript','application/javascript'].includes(type);
