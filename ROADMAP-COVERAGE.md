@@ -21,7 +21,7 @@
 | Procedural old-school adventure grammar and world forge | 10 | planned | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |
 | Integrated UX, persistence, multiplayer service and release QA | 13 | planned | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |
 
-**Overall currently accepted:** 20/100 = **20%**. **Active bounded v0.4.347 Ferocity checkpoint: 1/1 accepted (100%)**, while v0.4.348 remains unimplemented.
+**Overall currently accepted:** 20/100 = **20%**. **Latest completed bounded checkpoint:** v0.4.347 Ferocity, accepted 1/1. **Current next checkpoint:** v0.4.348 conventional natural physical damage, 0/1 accepted. The milestone progress is distinct from the overall 20%.
 
 **Required next sequence:** Complete the exact v0.4.348 natural-attack damage milestone under existing source/validation boundaries; retain the current huge self-contained HTML game and canonical source untouched during this accounting pass. Then continue source-first narrow combat completion, map architecture, rules extraction and adventure/compiler work as the latest project controller authorizes. Do not replace Mentzer RAW with another edition, fabricate mechanics, convert procedural goals into a fake 100%-complete checkbox, or weaken all ten existing CI acceptance jobs.
 
