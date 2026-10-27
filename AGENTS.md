@@ -43,8 +43,9 @@ evidence separately from inherited historical acceptance results.
 The full 100-point accepted-evidence gate ledger lives in [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md)
 and is mirrored in [site-progress.json](site-progress.json),
 which powers [status.html](status.html) and the optional [playable status view](play.html)
-through `site-progress.js`. The full-screen production `index.html` is unchanged
-by that optional view; an iframe is presentation, not a new rules engine.
+through `site-progress.js`. The full-screen production `index.html` contains a self-contained, generated
+revision/whole-roadmap header badge; its game-rule JavaScript is unchanged.
+The optional `play.html` iframe is presentation, not a second rules engine.
 The complete prospective [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md)
 controls detailed phase ordering and remaining objectives; its 100-point
 status accounting is exclusively governed by the weighted evidence scorecard.
@@ -67,7 +68,7 @@ On **every accepted gameplay, infrastructure, or scope milestone**:
 2. Review the applicable approved roadmap gate(s), acceptance criteria, phase
    dependencies and actual evidence. Reclassify a gate only when its **entire**
    exit criterion is met; partial work never earns the whole gate weight.
-3. Update `ROADMAP-COVERAGE.md` and `site-progress.json` together:
+3. Update `DEVELOPMENT-ROADMAP.md`, `ROADMAP-COVERAGE.md` and `site-progress.json` together:
    current revision, reviewed date, bounded milestone, gate status/evidence
    and total weighted completion. Preserve all 100 points and unique gate IDs.
    Do not confuse the completion of one checkpoint with overall scope.
