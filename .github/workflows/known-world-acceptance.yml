@@ -151,6 +151,9 @@ jobs:
     env:
       JOB_RESULTS: ${{ toJSON(needs) }}
     steps:
+      - uses: actions/checkout@v4
+      - name: Validate whole-product roadmap and published status ledger
+        run: node validation/roadmap-governance.mjs
       - name: Every required procedure must pass
         run: |
           node -e 'const jobs=JSON.parse(process.env.JOB_RESULTS); const failed=Object.entries(jobs).filter(([,j])=>j.result!=="success"); if(failed.length){console.error("Acceptance blocked:",failed.map(([name,j])=>`${name}: ${j.result}`).join(", "));process.exit(1);} console.log("All required procedures passed; acceptance audit/pipeline update and reviewed merge are still required.");'
