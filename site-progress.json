@@ -10,17 +10,17 @@
     "prefix": "v"
   },
   "progress": {
-    "label": "Source-validated Ferocity checkpoint v0.4.347",
-    "completed": 1,
+    "label": "Next milestone v0.4.348 — contextual natural-attack proximity damage",
+    "completed": 0,
     "total": 1,
-    "basis": "The already accepted current bounded monster Ferocity source/rule milestone; next v0.4.348 natural-hit damage is not yet accepted.",
-    "note": "Do not confuse this 1/1 completed checkpoint with the entire Known World/OSR roadmap."
+    "basis": "No accepted v0.4.348 gameplay checkpoint on main; the latest accepted build is v0.4.347 (Ferocity). This progress tracks acceptance, not partial implementation effort.",
+    "note": "Overall 20% is measured against all 100 long-term delivery points, not this one gameplay checkpoint."
   },
   "roadmap": {
     "label": "Full approved Known World / OSR delivery roadmap",
     "scope": "Source-faithful Mentzer BECMI/Mystara reference engine followed by explicit architecture separation, generic old-school referee/adventure generation and eventual hosted service.",
     "document": "ROADMAP-COVERAGE.md",
-    "note": "Validated accepted weights only; partial or planned work earns no weighted completion. Immutable historical source and native acceptance baselines remain authoritative.",
+    "note": "Strict accepted-only completion of the 100-point full OSR product roadmap; partial and planned gates receive zero until evidenced. ROADMAP-COVERAGE.md R2 defines gate acceptance and mandatory update protocol.",
     "gates": [
       {
         "id": "validated-becmi-baseline",
@@ -93,5 +93,6 @@
         "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
       }
     ]
-  }
+  },
+  "roadmapRevision": "R2"
 }
