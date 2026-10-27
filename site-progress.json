@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "project": "BECMI-Mystara",
+  "asOf": "2026-10-27",
+  "revision": "v0.4.347",
+  "revisionSource": {
+    "type": "text",
+    "file": "pipeline-state.md",
+    "pattern": "Current accepted build:\\s*\\*\\*v([0-9.]+)",
+    "prefix": "v"
+  },
+  "progress": {
+    "label": "Source-validated Ferocity checkpoint v0.4.347",
+    "completed": 1,
+    "total": 1,
+    "basis": "The already accepted current bounded monster Ferocity source/rule milestone; next v0.4.348 natural-hit damage is not yet accepted.",
+    "note": "Do not confuse this 1/1 completed checkpoint with the entire Known World/OSR roadmap."
+  },
+  "roadmap": {
+    "label": "Full approved Known World / OSR delivery roadmap",
+    "scope": "Source-faithful Mentzer BECMI/Mystara reference engine followed by explicit architecture separation, generic old-school referee/adventure generation and eventual hosted service.",
+    "document": "ROADMAP-COVERAGE.md",
+    "note": "Validated accepted weights only; partial or planned work earns no weighted completion. Immutable historical source and native acceptance baselines remain authoritative.",
+    "gates": [
+      {
+        "id": "validated-becmi-baseline",
+        "label": "Mentzer BECMI RAW core with accepted source-derived adjudication",
+        "weight": 12,
+        "status": "accepted",
+        "evidence": "pipeline-state.md (v0.4.347); validation/"
+      },
+      {
+        "id": "state-and-validation",
+        "label": "Deterministic saves, migration and extensive native/Chromium acceptance",
+        "weight": 8,
+        "status": "accepted",
+        "evidence": "pipeline-state.md; validation/; .github/workflows/known-world-acceptance.yml"
+      },
+      {
+        "id": "travel-cartography",
+        "label": "Wilderness, dungeon mapping, true hex and travel continuity",
+        "weight": 8,
+        "status": "partial",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "contextual-combat",
+        "label": "Context Matrix attack/size/measure and full source-damage parity",
+        "weight": 10,
+        "status": "partial",
+        "evidence": "pipeline-state.md; next v0.4.348"
+      },
+      {
+        "id": "generic-rules-kernel",
+        "label": "Fully separated rules, setting, adventure and persistence layers",
+        "weight": 10,
+        "status": "partial",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "autonomous-party",
+        "label": "Independent AI characters with Party/Focus/Spectator control modes",
+        "weight": 9,
+        "status": "partial",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "private-ai-referee",
+        "label": "Referee authority, secure interpretation and source-grounded exceptions",
+        "weight": 10,
+        "status": "planned",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "module-compiler",
+        "label": "Validated old-school source adventure compiler and modules",
+        "weight": 10,
+        "status": "partial",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "generation-forge",
+        "label": "Procedural old-school adventure grammar and world forge",
+        "weight": 10,
+        "status": "planned",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      },
+      {
+        "id": "hosted-osr-service",
+        "label": "Integrated UX, persistence, multiplayer service and release QA",
+        "weight": 13,
+        "status": "planned",
+        "evidence": "BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md"
+      }
+    ]
+  }
+}
