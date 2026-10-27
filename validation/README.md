@@ -265,3 +265,11 @@ restrictions; no case or assertion is removed. Local Chromium 140 is supplementa
 only; exact-SHA GitHub acceptance retains the unchanged pinned Playwright browser.
 See `design/context-matrix/CURRENT-MEASURE-SIZE-CONTRACT.md`. Ferocity and natural
 proximity damage remain later independently accepted checkpoints.
+
+## R3 roadmap and game-header acceptance
+
+For any accepted gameplay revision or whole-product scope/weight/status change, maintain the authoritative `DEVELOPMENT-ROADMAP.md`, human-evidenced `ROADMAP-COVERAGE.md`, machine-readable `site-progress.json`, current `pipeline-state.md` and topmost `audit.md` consistently. The accepted-only roadmap must total 100 weighted points; partial/planned gates are not counted. Do not confuse the next bounded gameplay checkpoint with the whole-product score.
+
+The accepted game UI includes a short self-contained generated header badge (offline compatible) reading the same manifest data; `status.html` shows the full evidence and `play.html` provides an optional same-origin playable status layout. To update the badge, run `node tools/sync-progress-status.mjs`, which also updates the exact `validation/manifests/vX.Y.Z.json` production SHA-256. Do not update the manifest hash independently of the actual production HTML bytes or weaken the existing immutable baseline checks.
+
+The full required CI now includes `node tools/sync-progress-status.mjs --check` via syntax/static checks; `node validation/roadmap-governance.mjs` via final acceptance; and `node validation/roadmap-playable-status.mjs` via exact-production Chromium/native smoke. They verify unique gate IDs, weights totaling 100, revision/roadmap parity, detailed eleven-phase scope, direct game-header badge, playable same-origin game boot and mobile/desktop layout. They **do not** substitute for gameplay regression, source review, native save/reload, or branch/PR/main/Pages acceptance. The old v0.4.347 gameplay rule engine remains distinct from presentation-only HTML changes; document any new shell checksum and test the exact production bytes.
