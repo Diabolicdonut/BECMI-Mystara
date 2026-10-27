@@ -39,17 +39,21 @@ evidence separately from inherited historical acceptance results.
 
 ## Whole-product roadmap — REQUIRED for all workers
 
-**Single authoritative whole-product roadmap:** [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md).
-Its complete 100-point gate ledger is mirrored in [site-progress.json](site-progress.json),
+**Single authoritative prospective whole-product roadmap:** [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md).
+The full 100-point accepted-evidence gate ledger lives in [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md)
+and is mirrored in [site-progress.json](site-progress.json),
 which powers [status.html](status.html) and the optional [playable status view](play.html)
 through `site-progress.js`. The full-screen production `index.html` is unchanged
 by that optional view; an iframe is presentation, not a new rules engine.
+The complete prospective [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md)
+controls detailed phase ordering and remaining objectives; its 100-point
+status accounting is exclusively governed by the weighted evidence scorecard.
 The long-form [Design 21](BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md)
 establishes the approved ultimate OSR service vision. Its **historical**
 v0.4.223 launch checkpoint is not current; current accepted main and the top
 pipeline/audit record control the next executable dependency.
 
-On **every development continuation**, read the roadmap, the manifest, the
+On **every development continuation**, read the detailed roadmap, the weighted scorecard, the manifest, the
 latest accepted main/pipeline/audit and the current Actions state *before*
 choosing a checkpoint. The roadmap defines total scope and gate acceptance;
 the pipeline defines immediate work order. Neither replaces the other.
@@ -67,7 +71,10 @@ On **every accepted gameplay, infrastructure, or scope milestone**:
    current revision, reviewed date, bounded milestone, gate status/evidence
    and total weighted completion. Preserve all 100 points and unique gate IDs.
    Do not confuse the completion of one checkpoint with overall scope.
-4. Run `node validation/roadmap-governance.mjs` and
+4. Run `node tools/sync-progress-status.mjs` to regenerate the self-contained
+   in-game badge and exact production manifest after a material accepted
+   revision or scope change; `node tools/sync-progress-status.mjs --check`
+   is mandatory CI. Also run `node validation/roadmap-governance.mjs` and
    `node validation/roadmap-playable-status.mjs` (Playwright/Chromium) in
    addition to the full
    required ten-job CI. A green roadmap check validates ledger consistency,
