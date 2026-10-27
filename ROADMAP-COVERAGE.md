@@ -1,6 +1,6 @@
 # Known World / BECMI — Authoritative Full-Product Development Roadmap
 
-**Roadmap revision:** R2 (governance and crosswalk clarification, 2026-10-27). **Single scope ledger:** the 10 gates below, mirrored verbatim in `site-progress.json`. This roadmap governs the full product rather than just the latest gameplay build.
+**Roadmap revision:** R3 (playable status-view delivery, 2026-10-27). **Single scope ledger:** the 10 gates below, mirrored verbatim in `site-progress.json`. This roadmap governs the full product rather than just the latest gameplay build.
 
 **Reviewed 2026-10-27, GitHub main `14f9cfbe9bc96c7f6ea9795e40022caf85045762`.** The latest *accepted game rules checkpoint* remains **v0.4.347**, verified in `pipeline-state.md`, with source-defined Ferocity adjudication and the stated **v0.4.348 conventional natural attack damage** as the next narrow milestone. This review **does not upgrade the game build or alter any BECMI rule**. Large historical audit/design prose (including older builds 0.4.223 and below) is development history; latest `main` and top pipeline record supersede its old "current" headings.
 
@@ -25,7 +25,7 @@
 
 **Required next sequence:** Complete the exact v0.4.348 natural-attack damage milestone under existing source/validation boundaries; retain the current huge self-contained HTML game and canonical source untouched during this accounting pass. Then continue source-first narrow combat completion, map architecture, rules extraction and adventure/compiler work as the latest project controller authorizes. Do not replace Mentzer RAW with another edition, fabricate mechanics, convert procedural goals into a fake 100%-complete checkbox, or weaken all ten existing CI acceptance jobs.
 
-**Status UI:** `site-progress.json` is the published read-only scoped manifest, `site-progress.js` is shared with the five other sites. This documentation does not prove manual modern-browser interaction; production Pages/CI are independently required before claiming deployment.
+**Status UI:** `site-progress.json` is the published read-only scoped manifest, `site-progress.js` is shared with the five other sites. The `play.html` route embeds the unchanged production `index.html` in a same-origin frame below the live revision, whole-product progress and next-milestone summary. The full-screen `index.html` remains the unchanged authoritative game: this addition is a separate optional presentation, not a gameplay milestone. This documentation does not prove manual modern-browser interaction; production Pages/CI are independently required before claiming deployment.
 
 ## Approved long-term development sequence (Design 21 crosswalk)
 
@@ -54,7 +54,7 @@ The source-of-vision is [Design 21](BECMI-Text-RPG-Design-21-Long-Term-Project-D
 - **Rules/source boundaries:** Mentzer Basic/Expert/Companion/Master primary, compatible Rules Cyclopedia secondary, module-specific source authority for module content; Immortals excluded. RAW must remain default, contextual rules opt-in, and deterministic records must retain missing/null/zero/false semantics. Keep canonical data, saved state, migration, nonnumeric Special and planning-only ship contracts intact. Public repo must not redistribute copyrighted scans/books/adventures.
 - **A gate is ACCEPTED only after its full exit criteria are evidenced:** exact production version, source review, regression coverage, full applicable CI, native play/restore where required, audit record and accepted GitHub main. Partial construction or green subtests alone do not earn the gate's weight.
 - **Accounting definition:** fixed **100** weighted points. Overall completion = sum of weights for `accepted` gates / 100; `partial` or `planned` yield zero pending gate closure. The current **20%** is a conservative *completed-deliverables measure*, not a subjective estimate of functional coverage or a forecast of remaining effort. Separately show the status of the bounded current milestone; do not blend the two percentages.
-- **Single-source publication:** `ROADMAP-COVERAGE.md` is the human-readable authoritative plan, `site-progress.json` its machine-readable mirror, `status.html` its read-only Pages view and `site-progress.js` the browser renderer. `AGENTS.md` tells every worker to follow this contract. Don't add a conflicting second ledger or an alternative denominator.
+- **Single-source publication:** `ROADMAP-COVERAGE.md` is the human-readable authoritative plan, `site-progress.json` its machine-readable mirror, `status.html` its full read-only Pages view, `play.html` its optional same-origin game-and-status view and `site-progress.js` the browser renderer. `AGENTS.md` tells every worker to follow this contract. Don't add a conflicting second ledger or an alternative denominator.
 
 ## Required roadmap change and AI-worker handoff protocol
 
@@ -69,3 +69,5 @@ The source-of-vision is [Design 21](BECMI-Text-RPG-Design-21-Long-Term-Project-D
 
 - **R1 — 2026-10-27:** approved full 10-gate, 100-point scope ledger, initial acceptance evidence totaling 20 points, companion page and read-only site manifest.
 - **R2 — 2026-10-27:** clarified complete Design 21 eleven-phase crosswalk, authority among human/machine ledgers, provenance of the 20% denominator, AI-worker handoff, future change discipline and gate-level progress invariants. **No scope weights, statuses or accepted game version changed.**
+
+- **R3 — 2026-10-27:** added an optional playable `play.html` status view with above-game accepted revision, 20%-of-full-product roadmap and next unaccepted milestone; status page links to the playable view, the original self-contained game remains byte-for-byte unchanged. Added native browser boot/layout/progress verification to mandatory CI; no gate weight, gate status, overall 20%, or accepted game revision changed.
