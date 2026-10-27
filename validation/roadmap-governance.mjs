@@ -22,8 +22,12 @@ insist(manifest.project === 'BECMI-Mystara', 'Wrong project identity');
 insist(typeof manifest.roadmapRevision === 'string' &&
   roadmap.includes('Roadmap revision:** ' + manifest.roadmapRevision),
   'Human/machine roadmap revision mismatch');
-insist(manifest.roadmap?.document === 'ROADMAP-COVERAGE.md',
-  'Roadmap link must point to authoritative human ledger');
+insist(manifest.roadmap?.document === 'DEVELOPMENT-ROADMAP.md' &&
+  manifest.roadmap?.coverageDocument === 'ROADMAP-COVERAGE.md',
+  'Full roadmap and weighted coverage documents must be uniquely assigned');
+insist(read('DEVELOPMENT-ROADMAP.md').includes('## 4. Whole-product implementation sequence') &&
+  read('DEVELOPMENT-ROADMAP.md').includes('## 6. Required update protocol'),
+  'Authoritative whole-product roadmap is missing phases or update protocol');
 
 const pipelineRev = pipeline.match(/^Current accepted build:\s*\*\*(v\d+\.\d+\.\d+)\*\*/m)?.[1];
 insist(Boolean(pipelineRev), 'Missing top accepted pipeline revision');
@@ -74,7 +78,7 @@ insist(roadmap.includes('**' + earned + '%**') || roadmap.includes('**' + earned
 
 const phases = roadmap.split('\n').filter(line => /^\| (?:[1-9]|10|11)\. /.test(line));
 insist(phases.length === 11, 'Long-term Design 21 phases 1-11 must be represented');
-insist(agents.includes('ROADMAP-COVERAGE.md') && agents.includes('site-progress.json') &&
+insist(agents.includes('DEVELOPMENT-ROADMAP.md') && agents.includes('ROADMAP-COVERAGE.md') && agents.includes('site-progress.json') &&
   agents.includes('roadmap-governance.mjs'), 'Worker contract does not require roadmap sync');
 insist(statusHtml.includes('site-progress.js') && renderer.includes('site-progress.json'),
   'Published status page is disconnected from machine-readable ledger');
