@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "roadmap_revision": "R1",
+  "roadmap": "DEVELOPMENT-ROADMAP.md",
+  "game_revision": "v0.4.347",
+  "accepted_main_sha": "14f9cfbe9bc96c7f6ea9795e40022caf85045762",
+  "progress": {
+    "status": "audit_required",
+    "percent": null,
+    "accepted_weight": 3,
+    "total_weight": 110,
+    "note": "Do not display a numerical whole-product completion percentage until implemented features are mapped to audited subgates."
+  },
+  "current_milestone": "v0.4.348 — contextual natural physical proximity damage",
+  "milestone_status": "not_started",
+  "updated_at": "2026-10-27"
+}
