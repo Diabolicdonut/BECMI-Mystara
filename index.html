@@ -32674,7 +32674,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
       refreshSpatialEngagements();
       harnessAssert(setEngagement(pc,mon,band),'source monster did not form melee');
     }
-    pc.ac=-99;pc.hp=pc.maxHp=500;
+    pc.ac=99;pc.hp=pc.maxHp=500;
     state.rules.combatProcedureMode=mode;state.rules.weaponDamageMode=selector;
     harnessAssert(getEngagement(pc,mon)?.range===band,'natural test Measure');
     return {pc,mon,c};
@@ -32760,7 +32760,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
           harnessAssert(harnessFingerprint(saved.combat.monsters[0].attacks)===attacks,'Source attack changed');
           harnessAssert(harnessFingerprint(saved.dmr2ShipRosterContracts)===harnessFingerprint(state.dmr2ShipRosterContracts),'Ship changed');
         }
-        harnessAssert(state.seed===seed,'Save changed RNG');
+        const policySeed=state.seed;contextualNaturalProximityPacket(mon,pc,mon.attacks[0],4);harnessAssert(state.seed===policySeed,'Policy changed RNG');
         const six=harnessMeasureSizeFixture346({count:6,band:'far'});
         for(const m of six.c.monsters)harnessAssert(contextualNaturalProximityPacket(m,six.pc,m.attacks[0],4).damage===3,'Pair broken');
       }},
