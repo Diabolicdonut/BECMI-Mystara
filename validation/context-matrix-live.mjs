@@ -12,7 +12,7 @@ const library=fs.readFileSync('lib/context-matrix-calculator.mjs','utf8')
 const runtime=html.split('  const CONTEXT_MATRIX_RUNTIME=(()=>{')[1]?.split('    return Object.freeze({calculateContextMatrix});')[0];
 assert(runtime,'Accepted calculator must be present in production HTML');
 assert.equal(runtime.split('\n').map(line=>line.replace(/^    /,'')).join('\n').trim(),library.trim(),'Embedded calculator must match accepted v0.4.336 implementation exactly');
-assert(/const APP_VERSION='0\.4\.(?:338|339|340|341|342|343|344|345|346|347)';/.test(html));
+assert(/const APP_VERSION='0\.4\.(?:338|339|340|341|342|343|344|345|346|347|348)';/.test(html));
 assert(html.includes("dmg=applyLiveContextMatrixDamage(dmg,item,pc,monster,kind,null,band)"));
 assert(html.includes('applyLiveContextMatrixDamage({applied:damage,rawExpr:masteryDamageAudit'));
 const digest=createHash('sha256').update(html).digest('hex');
