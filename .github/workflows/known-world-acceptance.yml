@@ -86,6 +86,8 @@ jobs:
         run: node validation/combat-procedure-native-v0.4.342.mjs
       - name: Required native pairwise Measure, six-goblin swarm and save reload
         run: node validation/measure-pairwise-live-v0.4.340.mjs
+      - name: Verify playable roadmap status and exact production game browser boot
+        run: node validation/roadmap-playable-status.mjs
       - run: npm run validate:native-smoke
       - run: node validation/context-matrix-mode.mjs
       - run: node validation/context-matrix-calculator.mjs

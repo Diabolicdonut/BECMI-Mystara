@@ -1,5 +1,29 @@
 # Known World BECMI Engine Audit
 
+
+## 2026-10-27 — R3 whole-project roadmap and in-game status: exact-source qualified; MERGE/MAIN VERIFICATION PENDING
+
+**Accepted gameplay baseline remains v0.4.347.** This is an independently reviewed presentation/roadmap qualification, not a v0.4.348 gameplay release. The immutable R2 accepted-main baseline is `b7234fd40663f6b866c9f7a57071cb8411aef633` (exact-main CI 40604451083 and Pages 40604450175 both SUCCESS). R3's qualified implementation is PR #18, branch `work/roadmap-playable-status-page`, exact production candidate commit `a4c854788a5bc73b6577bd94c9232d94b6282e97`.
+
+**Mandatory candidate acceptance proof:** All ten required jobs SUCCESS on the exact implementation in push [40605665914](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40605665914) and PR [40605673010](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40605673010). The suite includes complete deterministic core/focused, four fresh Chromium slices, native production/browser status and command/save/reload, prospective Native Acceptance v2, coverage/isolation and the final required acceptance gate. The in-game badge is a five-line HTML header-only addition; accepted gameplay scripts, dice, RAW/contextual rules, canonical source and persistence are unchanged. Both candidate `index.html` and its validation manifest pin SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f`. The approved R3 roadmap models the complete BECMI-to-OSR service and still credits 20/100 weight; next gameplay dependency v0.4.348 remains unaccepted.
+
+**Promotion gate:** This annotation records *qualified acceptance metadata only*. Rerun all ten jobs on the exact metadata commit and PR head; merge only if both are green, preserving the production source hash. Then verify ten-job exact merged-main CI and Pages success before declaring R3 fully deployed. Append immutable post-merge evidence. Never relabel this as a new rules checkpoint.
+
+---
+
+
+## 2026-10-27 — R3 whole-project roadmap and in-game status candidate — NOT YET ACCEPTED
+
+**Recovery:** Last fully accepted game-rule release remains **v0.4.347** and latest accepted governance main prior to this candidate is `b7234fd40663f6b866c9f7a57071cb8411aef633` (R2 roadmap governance; exact-main ten-job acceptance 40604451083, Pages 40604450175, both SUCCESS). Active candidate PR #18 is `work/roadmap-playable-status-page`; full push/PR review and exact merged-main acceptance remain mandatory before promotion.
+
+**Scope:** This is a display/roadmap-only candidate. The approved full product includes the Mentzer BECMI reference engine and longer-term generalized OSR kernel, adventure compiler, procedural worlds, autonomous party and referee, and eventual multiplayer service. `DEVELOPMENT-ROADMAP.md` is the detailed prospective authority; `ROADMAP-COVERAGE.md` and `site-progress.json` agree on ten gates totaling 100 points, with precisely 20 accepted. A separate optional `play.html` renders the same full game in a same-origin frame beneath live revision/progress/milestone details. Production `index.html` incorporates the five-line static header status indicator previously qualified on PR #16. `tools/sync-progress-status.mjs --check` and enhanced native browser/roadmap checks are added to the unreduced ten-job acceptance.
+
+**Exact source boundary:** No application JavaScript, mechanics, dice/RNG, character/monster data, save format or RAW/contextual behavior changed in this candidate. The **production HTML checksum nevertheless changes** from accepted v0.4.347 original `273192aed4a07bc27fe57dd975c9ea4506301e9dd94de4ccd9bc1e43a92c806f` to presentation-shell candidate `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f`; the version manifest pins the latter exact bytes. This does not accept the new **v0.4.348** source-reviewed natural physical damage rule; that remains the next gameplay dependency, still pending separate CI and source validation.
+
+**Acceptance pending:** PR #18 requires both push and pull-request ten-job suite green on exact candidate, followed by review, merge, and exact-main ten-job CI plus Pages. Prior PR #16 source checks establish precedent but do not substitute for PR #18's qualification. Until all required checks finish, this record is candidate evidence only, not a replacement for the accepted build record immediately below.
+
+---
+
 Build: **0.4.347** — **FULLY ACCEPTED AND DEPLOYED** on main `0e65802c833f00f56265883efedfb79ed8922d84` via PR #12. Exact-main ten-job CI 40328221430 and Pages deployment 40328221817 both passed. Production SHA-256 `273192aed4a07bc27fe57dd975c9ea4506301e9dd94de4ccd9bc1e43a92c806f`.
 Primary authority reviewed: **Mentzer D&D - BECM.pdf**, consolidating Mentzer Basic Player, Basic Dungeon Master, Expert, Companion Player, Companion Dungeon Master, Master Player, and Master Dungeon Master.  
 Secondary authority: **Rules Cyclopedia.pdf** is used for consolidation/clarification where compatible; it does not replace or override Mentzer BECM when the two differ.  
