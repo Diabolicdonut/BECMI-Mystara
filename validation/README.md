@@ -281,3 +281,5 @@ Eight additional embedded regressions (2364 core / 1280 focused / 591 per Chromi
 ## Promoted v0.4.348
 
 The source-scoped natural physical proximity checkpoint and native save/reload are mandatory, together with all inherited ten-job tests, exact game manifest digest and R3 website status consistency. PR #20 qualification precedes final accepted main and Pages verification.
+
+**Promotion qualification:** The final accepted-branch candidate uses gameplay v0.4.348 plus R3 accepted-revision header v0.4.348. The full 100-point roadmap remains 20/100. Check the exact staged production digest, all new and inherited native/browser regressions, and exact-main deployment before declaring a public release.
