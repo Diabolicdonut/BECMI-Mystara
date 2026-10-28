@@ -1,0 +1,32 @@
+name: Promote v0.4.348 accepted metadata after reviewed CI
+on:
+  push:
+    branches: ['work/v0.4.348-r3-reconciled']
+    paths: ['tools/promote-natural-proximity-v0.4.348-r3.mjs','.github/workflows/promote-natural-proximity-v0.4.348-r3.yml']
+permissions:
+  contents: write
+jobs:
+  promotion:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Require source and metadata qualification evidence
+        run: |
+          node tools/promote-natural-proximity-v0.4.348-r3.mjs
+          npm ci --ignore-scripts
+          npm run validate:syntax
+          node validation/roadmap-governance.mjs
+      - name: Commit staged accepted records for full exact-SHA requalification
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html validation/manifests/v0.4.348.json site-progress.json ROADMAP-COVERAGE.md DEVELOPMENT-ROADMAP.md pipeline-state.md audit.md validation/roadmap-playable-status.mjs validation/README.md
+          git diff --cached --check
+          git commit -m "Stage accepted v0.4.348 metadata and live R3 revision badge"
+          git push origin HEAD:refs/heads/work/v0.4.348-r3-reconciled
