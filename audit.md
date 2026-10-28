@@ -1,5 +1,10 @@
 # Known World BECMI Engine Audit
 
+## Candidate v0.4.348 — NOT ACCEPTED
+
+Source-verified per-hit conventional physical natural damage at pairwise Measure; pure RAW, poison, manufactured weapons and all other specials unaffected. Candidate SHA-256 `f29aff988347f7f3ac1d56934856a2e209bf9880db8744dedb48af44a8610e1a`; eight embedded and one native gate added; all inherited tests required. No CI or deployment pass yet.
+
+
 ## 2026-10-27 — R3 authoritative whole-product roadmap and in-game status — FULLY ACCEPTED/DEPLOYED
 
 **Promotion:** Documentation/presentation R3, not a new gameplay rules checkpoint. PR [#18](https://github.com/Diabolicdonut/BECMI-Mystara/pull/18) merged at exact main `5d71c63b51c951b4e900f868bd2dad14b7c6275d`. The unmodified accepted gameplay rule set remains **v0.4.347**. Both required **exact-main ten-job acceptance [40614289906](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289906) — SUCCESS** and **GitHub Pages [40614289493](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289493) — SUCCESS** were checked after merge. The same ten jobs passed on the exact acceptance metadata PR/push commit `e6f3f288bbe34b181b63abb6e76835badb597ee1` via push [40613433390](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613433390) and PR [40613441037](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613441037). Immutable in-game presentation-shell production SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f` is recorded in `validation/manifests/v0.4.347.json`; the accepted rules JavaScript, RNG, player/creature data, saves and RAW isolation remain unchanged.

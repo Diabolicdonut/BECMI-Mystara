@@ -514,7 +514,7 @@
 (() => {
   'use strict';
 
-  const APP_VERSION='0.4.347';
+  const APP_VERSION='0.4.348';
   const WORKER_URL = 'https://becmi-mystara.diabolicdonut.workers.dev';
   const STORAGE = {
     save: 'knownWorldRefereeSave',
@@ -21320,6 +21320,40 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
     return {damage:resolved,applied:true,multiplier,base,rule};
   }
 
+
+  // v0.4.348: source-verified ordinary natural physical melee only.
+  function contextualNaturalProximityPacket(monster,pc,spec,damage,{weaponAttack=false}={}){
+    const neutral=reason=>({damage,modifier:0,applied:false,reason});
+    if(pureBecmiRawCombat()||state.rules?.combatProcedureMode!=='CONTEXTUAL')
+      return neutral('pure RAW or unknown combat procedure');
+    if(!state.combat?.active||!monster||!pc||!spec||weaponAttack||!Number.isFinite(damage)||damage<0)
+      return neutral('not a natural physical hit');
+    const profile=COMBAT_MONSTERS[monster.type],attacks=monster.attacks;
+    if(!profile||!Array.isArray(attacks)||!Array.isArray(profile.attacks))
+      return neutral('source profile unavailable');
+    const i=attacks.indexOf(spec),original=profile.attacks[i];
+    if(i<0||!original||monster.recordId!==profile.recordId||
+       monster.source!==profile.source||Number(monster.sourcePage)!==Number(profile.sourcePage)||
+       spec.name!==original.name||spec.damage!==original.damage)
+      return neutral('source identity or attack changed');
+    const c=spec.attackContext,p=original.attackContext;
+    const annotated=Boolean(c&&p&&typeof c==='object'&&!Array.isArray(c)&&
+      c.delivery==='natural'&&c.contextualWeaponDamageEligible===false&&
+      c.provenance?.source===p.provenance?.source&&c.provenance?.page===p.provenance?.page);
+    const wolf=MEASURE_NATURAL_SIZE0_SOURCE_FACTS[monster.type];
+    const wolfBite=Boolean(wolf&&attacks.length===1&&i===0&&
+      monster.recordId===wolf.recordId&&profile.recordId===wolf.recordId&&
+      profile.source===wolf.source&&Number(profile.sourcePage)===wolf.sourcePage&&
+      spec.name===wolf.attackName&&spec.damage===wolf.damage&&
+      !Object.prototype.hasOwnProperty.call(spec,'attackContext')&&
+      !Object.prototype.hasOwnProperty.call(original,'attackContext'));
+    if(!annotated&&!wolfBite)return neutral('unverified anatomy');
+    const measure=getEngagement(pc,monster)?.range;
+    if(!RANGE_ORDER.includes(measure))return neutral('no established melee Measure');
+    const modifier=measure==='far'?-1:measure==='close'?1:0;
+    return {damage:Math.max(0,damage+modifier),modifier,measure,applied:modifier!==0,reason:'natural physical proximity'};
+  }
+
   function monsterAttack(monster,pc,phaseEligible=true,simultaneous=false){
     if(!phaseEligible || (!simultaneous && !monsterCanFight(monster)) || !pc || (!simultaneous && (pc.dead || pc.hp<=0))) return;
     if(isMesmerMonster(monster))clearMesmerHypnosis(pc,monster,{reason:'attacked by the Mesmer',announce:true});
@@ -21424,6 +21458,8 @@ This is an explicit combat-engine test encounter, not a keyed campaign encounter
       if(rawGrowthAnimalEffect(monster)&&damage>0){damage*=2;write(`${monster.name}'s Growth of Animal doubles its normal damage to ${damage}.`,'system');}
       if(swoopContext&&damage>0){damage*=2;write(`${monster.name}'s represented surprise Swoop doubles this attack's damage to ${damage}.`,'system');}
       if(damage>0){const charged=applyMonsterSourceChargeDamage(monster,damage);damage=charged.damage;}
+      const proximity=contextualNaturalProximityPacket(monster,pc,spec,damage,{weaponAttack:ordinaryWeapon});
+      if(proximity.applied){damage=proximity.damage;void refereeLog('NATURAL PROXIMITY: '+monster.name+' ' +attackName+' at '+proximity.measure+' ('+proximity.modifier+' physical damage)',{type:'contextual_natural_proximity',monsterId:monster.id,target:pc.name,attackName,measure:proximity.measure,modifier:proximity.modifier,finalPhysicalDamage:damage});}
       // Only an explicit normal carried weapon is eligible; anatomical attacks bypass.
       if(weapon&&!spec.damage&&!monster.naturalDamage&&!spec.hephaestonFist&&
          (!spec.name||/^weapon$/i.test(spec.name)||String(spec.name).toLowerCase()===String(weapon.name).toLowerCase())){
@@ -32633,8 +32669,107 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
   }
 
 
+
+  function harnessNaturalProximityFixture348({type='wolf',band='normal',mode='CONTEXTUAL',selector='RAW'}={}){
+    const seed=harnessMeasureSizeFixture346({band}),{pc,c}=seed;
+    let mon=seed.mon;
+    if(type!=='wolf'){
+      mon=createCombatMonster(type,1);mon.hp=mon.maxHp=500;
+      setCombatMonsterVector(mon,{x:4,y:0,z:0});c.monsters=[mon];
+      refreshSpatialEngagements();
+      harnessAssert(setEngagement(pc,mon,band),'source monster did not form melee');
+    }
+    pc.ac=99;pc.hp=pc.maxHp=500;
+    state.rules.combatProcedureMode=mode;state.rules.weaponDamageMode=selector;
+    harnessAssert(getEngagement(pc,mon)?.range===band,'natural test Measure');
+    return {pc,mon,c};
+  }
+
   function coreHarnessTestDefinitions(){
     return [
+
+      {name:'v0.4.348 source verified anatomical hits and altered-source refusal',run:()=>{
+        for(const type of ['black_bear','grizzly_bear','lion','tiger','owl_bear','spider_giant_black_widow']){
+          const {pc,mon}=harnessNaturalProximityFixture348({type,band:'close'});
+          const spec=mon.attacks.find(x=>x.attackContext?.delivery==='natural');
+          harnessAssert(spec&&contextualNaturalProximityPacket(mon,pc,spec,5).damage===6,'Source '+type);
+          harnessAssert(!contextualNaturalProximityPacket(mon,pc,{...spec,damage:'9d9'},5).applied,'Changed source accepted');
+        }
+      }},
+      {name:'v0.4.348 Far Normal Close exact ordinary physical packet',run:()=>{
+        for(const band of RANGE_ORDER)for(const value of [0,1,2,5,19]){
+          const {pc,mon}=harnessNaturalProximityFixture348({band});
+          const result=contextualNaturalProximityPacket(mon,pc,mon.attacks[0],value);
+          const mod=band==='far'?-1:band==='close'?1:0;
+          harnessAssert(result.damage===Math.max(0,value+mod)&&result.modifier===mod,'Bad '+band+'/'+value);
+        }
+      }},
+      {name:'v0.4.348 grizzly three successful physical attacks adjust separately',run:()=>{
+        for(const band of RANGE_ORDER){
+          const {pc,mon}=harnessNaturalProximityFixture348({type:'grizzly_bear',band});
+          const start=state.seed,original=harnessFingerprint(mon.attacks);
+          const result=mon.attacks.map(x=>contextualNaturalProximityPacket(mon,pc,x,4).damage);
+          harnessAssert(result.length===3&&result.every(x=>x===(band==='far'?3:band==='close'?5:4)),'Multi-hit failed');
+          harnessAssert(state.seed===start&&harnessFingerprint(mon.attacks)===original,'Extra rolls or changed attacks');
+        }
+      }},
+      {name:'v0.4.348 physical poison bite isolated from riders and manufactured weapons',run:()=>{
+        const {pc,mon}=harnessNaturalProximityFixture348({type:'spider_giant_black_widow',band:'close'});
+        const spec=mon.attacks[0],before=harnessFingerprint(spec);
+        harnessAssert(contextualNaturalProximityPacket(mon,pc,spec,6).damage===7,'Physical component not adjusted');
+        harnessAssert(harnessFingerprint(spec)===before,'Source poison metadata mutated');
+        harnessAssert(!contextualNaturalProximityPacket(mon,pc,spec,6,{weaponAttack:true}).applied,'Weapon modifier leak');
+        for(const name of ['poison','breath','spell','oil','holy water'])
+          harnessAssert(!contextualNaturalProximityPacket(mon,pc,{name,damage:'2d6'},6).applied,'Special damage inferred');
+      }},
+      {name:'v0.4.348 missing null false zero and malformed anatomical facts fail neutral',run:()=>{
+        const {pc,mon,c}=harnessNaturalProximityFixture348({type:'black_bear',band:'close'});
+        const spec=mon.attacks[0],saved=spec.attackContext;
+        for(const value of [null,false,0,{}, {delivery:'weapon'},{delivery:'natural',contextualWeaponDamageEligible:true}]){
+          spec.attackContext=value;harnessAssert(!contextualNaturalProximityPacket(mon,pc,spec,5).applied,'Explicit unsupported context');
+        }
+        delete spec.attackContext;harnessAssert(!contextualNaturalProximityPacket(mon,pc,spec,5).applied,'Missing inferred');
+        spec.attackContext=saved;c.active=false;
+        harnessAssert(!contextualNaturalProximityPacket(mon,pc,spec,5).applied,'Inactive encounter modified');
+      }},
+      {name:'v0.4.348 live source wolf bite receives modifier with original RNG',run:()=>{
+        const attack=(band,seed)=>{const {pc,mon}=harnessNaturalProximityFixture348({band});state.seed=seed;
+          const hp=pc.hp;monsterAttack(mon,pc);return {dealt:hp-pc.hp,seed:state.seed};};
+        let seed=1,base;
+        while(seed<=100){base=attack('normal',seed);if(base.dealt>=2)break;seed++;}
+        harnessAssert(seed<=100,'No source wolf hit');
+        const far=attack('far',seed),close=attack('close',seed);
+        harnessAssert(far.dealt===base.dealt-1&&close.dealt===base.dealt+1,'Live physical wrong');
+        harnessAssert(far.seed===base.seed&&close.seed===base.seed,'Extra RNG');
+      }},
+      {name:'v0.4.348 pure BECMI RAW and weapon damage mode preserve natural source dice',run:()=>{
+        const attack=(band,mode,selector,seed)=>{const {pc,mon}=harnessNaturalProximityFixture348({band,mode,selector});state.seed=seed;
+          const hp=pc.hp;monsterAttack(mon,pc);return {dealt:hp-pc.hp,seed:state.seed};};
+        let seed=1,base;while(seed<=100){base=attack('normal','RAW','RAW',seed);if(base.dealt>=2)break;seed++;}
+        harnessAssert(seed<=100,'No RAW wolf hit');
+        for(const selector of ['RAW','AAE','CONTEXT_MATRIX']){
+          for(const band of ['far','close']){const raw=attack(band,'RAW',selector,seed);
+            harnessAssert(raw.dealt===base.dealt&&raw.seed===base.seed,'Pure RAW leak');}
+          const context=attack('close','CONTEXTUAL',selector,seed);
+          harnessAssert(context.dealt===base.dealt+1&&context.seed===base.seed,'Weapon damage selector affected natural policy');
+        }
+      }},
+      {name:'v0.4.348 save migration source attack and six independent pairwise Measures',run:()=>{
+        const {pc,mon}=harnessNaturalProximityFixture348({band:'far'});
+        recordDmr2ShipRosterContract('natural348',harnessDmr2ShipAddedCatapultTargetRangesConfig284());
+        const attacks=harnessFingerprint(mon.attacks),seed=state.seed;
+        for(const band of RANGE_ORDER){
+          getEngagement(pc,mon).range=band;
+          const saved=migrateSave(migrateSave(harnessClone(state)));
+          harnessAssert(saved.combat.engagements[engagementKey(pc.name,mon.id)].range===band,'Pair lost');
+          harnessAssert(harnessFingerprint(saved.combat.monsters[0].attacks)===attacks,'Source attack changed');
+          harnessAssert(harnessFingerprint(saved.dmr2ShipRosterContracts)===harnessFingerprint(state.dmr2ShipRosterContracts),'Ship changed');
+        }
+        const policySeed=state.seed;contextualNaturalProximityPacket(mon,pc,mon.attacks[0],4);harnessAssert(state.seed===policySeed,'Policy changed RNG');
+        const six=harnessMeasureSizeFixture346({count:6,band:'far'});
+        for(const m of six.c.monsters)harnessAssert(contextualNaturalProximityPacket(m,six.pc,m.attacks[0],4).damage===3,'Pair broken');
+      }},
+
 
       {name:'v0.4.347 source-reviewed animal and exceptional berserker trait assignment only',run:()=>{
         for(const type of ['wolf','black_bear','grizzly_bear','boar','berserker']){

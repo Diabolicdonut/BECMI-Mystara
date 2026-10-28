@@ -1,5 +1,10 @@
 # Known World / BECMI Text RPG — Pipeline State
 
+## v0.4.348 — UNACCEPTED CANDIDATE
+
+Parent accepted main v0.4.347 `14f9cfbe9bc96c7f6ea9795e40022caf85045762`. Candidate source-reviewed natural melee physical proximity damage Far -1 / Normal 0 / Close +1, per successful hit in contextual mode; no RAW, weapon Matrix, poison, specials or new rolls. Production SHA-256 `f29aff988347f7f3ac1d56934856a2e209bf9880db8744dedb48af44a8610e1a`. Eight new embedded regressions, dedicated native Chromium and all inherited ten-job CI are mandatory. **Not accepted or deployed.**
+
+
 > **R3 WHOLE-PRODUCT ROADMAP AND IN-GAME STATUS — FULLY ACCEPTED AND DEPLOYED.** PR [#18](https://github.com/Diabolicdonut/BECMI-Mystara/pull/18) merged on main `5d71c63b51c951b4e900f868bd2dad14b7c6275d`, followed by exact-main ten-job acceptance [40614289906](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289906) **SUCCESS** and Pages deployment [40614289493](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289493) **SUCCESS**. Push [40613433390](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613433390) and PR [40613441037](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613441037) full 10/10 qualification also passed on exact staged metadata. Presentation-shell source SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f` matches the exact accepted v0.4.347 manifest; underlying rules JavaScript, source, dice, saves and RAW/contextual logic unchanged. Authoritative `DEVELOPMENT-ROADMAP.md`, weighted `ROADMAP-COVERAGE.md`, status site, optional playable overview and direct game-header badge are deployed. Accepted whole-product roadmap = **20/100**, not 100% of v0.4.347 and not a measure of code volume. **Next bounded gameplay dependency: v0.4.348 conventional natural physical melee proximity (-1/0/+1 by established Measure), still NOT ACCEPTED.** Historical staging notes below describe the now-promoted R3 candidate and must not override this accepted closeout. This documentation-only closeout itself requires fresh exact-main CI and Pages after its later promotion.
 
 
