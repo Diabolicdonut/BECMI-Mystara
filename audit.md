@@ -1,5 +1,17 @@
 # Known World BECMI Engine Audit
 
+
+## 2026-10-27 — R3 whole-project roadmap and in-game status: exact-source qualified; MERGE/MAIN VERIFICATION PENDING
+
+**Accepted gameplay baseline remains v0.4.347.** This is an independently reviewed presentation/roadmap qualification, not a v0.4.348 gameplay release. The immutable R2 accepted-main baseline is `b7234fd40663f6b866c9f7a57071cb8411aef633` (exact-main CI 40604451083 and Pages 40604450175 both SUCCESS). R3's qualified implementation is PR #18, branch `work/roadmap-playable-status-page`, exact production candidate commit `a4c854788a5bc73b6577bd94c9232d94b6282e97`.
+
+**Mandatory candidate acceptance proof:** All ten required jobs SUCCESS on the exact implementation in push [40605665914](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40605665914) and PR [40605673010](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40605673010). The suite includes complete deterministic core/focused, four fresh Chromium slices, native production/browser status and command/save/reload, prospective Native Acceptance v2, coverage/isolation and the final required acceptance gate. The in-game badge is a five-line HTML header-only addition; accepted gameplay scripts, dice, RAW/contextual rules, canonical source and persistence are unchanged. Both candidate `index.html` and its validation manifest pin SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f`. The approved R3 roadmap models the complete BECMI-to-OSR service and still credits 20/100 weight; next gameplay dependency v0.4.348 remains unaccepted.
+
+**Promotion gate:** This annotation records *qualified acceptance metadata only*. Rerun all ten jobs on the exact metadata commit and PR head; merge only if both are green, preserving the production source hash. Then verify ten-job exact merged-main CI and Pages success before declaring R3 fully deployed. Append immutable post-merge evidence. Never relabel this as a new rules checkpoint.
+
+---
+
+
 ## 2026-10-27 — R3 whole-project roadmap and in-game status candidate — NOT YET ACCEPTED
 
 **Recovery:** Last fully accepted game-rule release remains **v0.4.347** and latest accepted governance main prior to this candidate is `b7234fd40663f6b866c9f7a57071cb8411aef633` (R2 roadmap governance; exact-main ten-job acceptance 40604451083, Pages 40604450175, both SUCCESS). Active candidate PR #18 is `work/roadmap-playable-status-page`; full push/PR review and exact merged-main acceptance remain mandatory before promotion.
