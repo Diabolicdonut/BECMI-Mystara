@@ -1,5 +1,14 @@
 # Known World BECMI Engine Audit
 
+## 2026-10-28 — v0.4.349 source-parity closure audit CANDIDATE (no gameplay change)
+
+Branch: `work/v0.4.349-contextual-source-audit`, parent accepted main `7e212e878575df9365907f6532c4fcda07265dd9`. **Not accepted, merged, or promoted by this entry.** The last playable version remains **v0.4.348**, with original contextual natural physical proximity and separate title-only production SHA-256 `9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3`. The post-brand main ten-job acceptance [40726651263](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40726651263) and Pages [40726651828](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40726651828) are both **SUCCESS**; this supersedes the earlier title-patch prospective-language below.
+
+This candidate adds `design/context-matrix/SOURCE-PARITY-AUDIT-v0.4.349.md`, a read-only `validation/contextual-source-parity-v0.4.349.mjs` required within the unweakened ten-job Actions suite, and historical contract clarifications. Canonical source/production inventory: 46 weapon profiles; 19 published Mentzer Basic monster profiles with 41 precisely annotated anatomical attacks; independently authorized MON-0104 wolf bite; source ledger 494 excluded/57 ambiguous records retained unresolved. It checks embedded JSON equality, exact source provenance and runtime boundaries including pure RAW exclusion, physical-versus-special separation, current pairwise Measure and original nonnegative damage. No monster-source inference, new attack, novel melee rule, RNG, save/migration, UI HTML or game-version bump is authorized. Future source-specific parity additions remain separately gated; Context Matrix whole-product gate still partial and whole-product score **20/100**.
+
+**Pending promotion evidence:** require source-audit gate PASS, all ten branch and PR CI jobs, acceptance ledger review and merge, exact merged-main CI plus Pages. Candidate CI success alone will not constitute gameplay v0.4.349 acceptance. Do not publish a v0.4.349 game revision from this documentation-only work.
+
+
 ## 2026-10-28 — The Known World project branding (presentation-only v0.4.348)
 
 Project masthead, browser title and startup banner now say **The Known World**. The current-adventure subtitle explicitly retains **The Smoking Pillar of Lan Yu**; all Kai Besil story, module source identities, adventure records, encounter logic, save and migration formats, combat procedures, native identifiers and accepted test names are preserved. The playable/status wrappers also use the full project title. This is not a gameplay-version bump or a completed whole-product delivery gate.
