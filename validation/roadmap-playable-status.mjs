@@ -43,9 +43,9 @@ try{
   await page.goto(origin+'/play.html',{waitUntil:'load'});
   await page.waitForFunction(()=>document.querySelector('[data-progress-overview]')?.textContent.includes('20%'));
   const stats=await page.locator('[data-progress-overview]').innerText();
-  assertCheck(stats.includes('v0.4.347'),true,'Accepted v0.4.347 visible above game');
+  assertCheck(stats.includes('v0.4.348'),true,'Accepted v0.4.347 visible above game');
   assertCheck(stats.includes('20%'),true,'100-point full-product accepted progress visible');
-  assertCheck(stats.includes('v0.4.348'),true,'Unaccepted next milestone shown');
+  assertCheck(stats.includes('v0.4.349'),true,'Unaccepted next milestone shown');
   assertCheck(stats.includes('0 of 1 accepted'),true,'Next milestone not marked complete');
   const frame=page.frameLocator('iframe#game');
   await frame.locator('#command').waitFor({state:'attached',timeout:30000});
@@ -53,7 +53,7 @@ try{
   const inline=frame.locator('#known-world-roadmap-summary');
   assertCheck(await inline.count(),1,'Direct production game contains a single roadmap badge');
   const inlineText=await inline.innerText();
-  assertCheck(inlineText.includes('Rev v0.4.347'),true,'Direct game header displays accepted revision');
+  assertCheck(inlineText.includes('Rev v0.4.348'),true,'Direct game header displays accepted revision');
   assertCheck(inlineText.includes('Full roadmap 20%'),true,'Direct game header displays total-vision progress');
   assertCheck(await inline.locator('progress').getAttribute('value'),'20',
     'Offline header progress value matches approved weighted accepted count');

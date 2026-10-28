@@ -1,5 +1,12 @@
 # Known World BECMI Engine Audit
 
+## v0.4.348 — Source-qualified contextual natural physical proximity, acceptance metadata
+
+Build: **0.4.348**
+
+Reconciled PR #20 onto R3 accepted main; no pre-R3 HTML regression. Source-gated eligible conventional natural melee by existing pairwise Measure Far −1 / Normal unchanged / Close +1. Separate physical hit component; no new rolls, attacks, special riders or pure RAW changes. Eight new core/focused tests and native Chromium save/reload, all prior regression gates preserved. Candidate PR qualification 40617772885. Production SHA-256 d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10. Whole-product R3 remains 20/100; next v0.4.349 requires independent source audit and bounded authorization. Exact-main CI/Pages verification follows merge; do not claim it preemptively.
+
+
 ## 2026-10-27 — R3 authoritative whole-product roadmap and in-game status — FULLY ACCEPTED/DEPLOYED
 
 **Promotion:** Documentation/presentation R3, not a new gameplay rules checkpoint. PR [#18](https://github.com/Diabolicdonut/BECMI-Mystara/pull/18) merged at exact main `5d71c63b51c951b4e900f868bd2dad14b7c6275d`. The unmodified accepted gameplay rule set remains **v0.4.347**. Both required **exact-main ten-job acceptance [40614289906](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289906) — SUCCESS** and **GitHub Pages [40614289493](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289493) — SUCCESS** were checked after merge. The same ten jobs passed on the exact acceptance metadata PR/push commit `e6f3f288bbe34b181b63abb6e76835badb597ee1` via push [40613433390](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613433390) and PR [40613441037](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613441037). Immutable in-game presentation-shell production SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f` is recorded in `validation/manifests/v0.4.347.json`; the accepted rules JavaScript, RNG, player/creature data, saves and RAW isolation remain unchanged.

@@ -2,7 +2,7 @@
 
 **Roadmap revision:** R3 (in-game and playable status-view delivery, 2026-10-27). **Authoritative detailed development plan:** [DEVELOPMENT-ROADMAP.md](DEVELOPMENT-ROADMAP.md). **Single weighted scope/evidence ledger:** the 10 gates below, mirrored in `site-progress.json`. This scorecard measures the entire approved product and supports—not replaces—the detailed phase-by-phase roadmap.
 
-**Reference review 2026-10-27, accepted gameplay v0.4.347; latest approved governance main `b7234fd40663f6b866c9f7a57071cb8411aef633` (R2).** The latest *accepted game rules checkpoint* remains **v0.4.347**, verified in `pipeline-state.md`, with source-defined Ferocity adjudication and the stated **v0.4.348 conventional natural attack damage** as the next narrow milestone. This review **does not upgrade the game build or alter any BECMI rule**. Large historical audit/design prose (including older builds 0.4.223 and below) is development history; latest `main` and top pipeline record supersede its old "current" headings.
+**Reference review 2026-10-27, accepted gameplay v0.4.348; latest approved governance main `b7234fd40663f6b866c9f7a57071cb8411aef633` (R2).** The latest *accepted game rules checkpoint* remains **v0.4.348**, verified in `pipeline-state.md`, with source-defined Ferocity and v0.4.348 natural physical proximity accepted; remaining contextual source closure is next. This review **does not upgrade the game build or alter any BECMI rule**. Large historical audit/design prose (including older builds 0.4.223 and below) is development history; latest `main` and top pipeline record supersede its old "current" headings.
 
 **Finite approved roadmap scope:** Preserve the Mentzer BECMI RAW reference game, the real hex/wilderness/dungeon worlds, natural-language interface, full module-compatible rules, source authority and deterministic native validation, and eventually separate RULES / SETTING / ADVENTURE / AGENCY / REFEREE / UI state layers. The approved wider Design 21 also includes a generic OSR kernel, autonomous parties, AI referee, adventure compiler, procedural grammar and world generation, and hosted multiplayer service. **All are represented; none of the latter is presumed already built.**
 
@@ -10,10 +10,10 @@
 
 | Delivery gate | Weight | Status | Authority |
 |---|---:|---|---|
-| Mentzer BECMI RAW core with accepted source-derived adjudication | 12 | accepted | `pipeline-state.md (v0.4.347); validation/` |
+| Mentzer BECMI RAW core with accepted source-derived adjudication | 12 | accepted | `pipeline-state.md (v0.4.348); validation/` |
 | Deterministic saves, migration and extensive native/Chromium acceptance | 8 | accepted | `pipeline-state.md; validation/; .github/workflows/known-world-acceptance.yml` |
 | Wilderness, dungeon mapping, true hex and travel continuity | 8 | partial | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |
-| Context Matrix attack/size/measure and full source-damage parity | 10 | partial | `pipeline-state.md; next v0.4.348` |
+| Context Matrix attack/size/measure and full source-damage parity | 10 | partial | `pipeline-state.md; v0.4.348 natural physical proximity accepted; remaining parity partial` |
 | Fully separated rules, setting, adventure and persistence layers | 10 | partial | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |
 | Independent AI characters with Party/Focus/Spectator control modes | 9 | partial | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |
 | Referee authority, secure interpretation and source-grounded exceptions | 10 | planned | `BECMI-Text-RPG-Design-21-Long-Term-Project-Direction-v6.md` |

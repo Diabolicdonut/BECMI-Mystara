@@ -1,6 +1,6 @@
 # Known World — Authoritative Development Roadmap
 
-**Status:** Active project-wide instruction and delivery roadmap (R3, 2026-10-27). **Last scope reconciliation:** 2026-10-27. **Accepted gameplay build:** v0.4.347 (verify current GitHub main before every change). **Whole-vision accepted coverage:** 20 of 100 weighted delivery points, as evidenced in [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md) and [site-progress.json](site-progress.json).
+**Status:** Active project-wide instruction and delivery roadmap (R3, 2026-10-27). **Last scope reconciliation:** 2026-10-27. **Accepted gameplay build:** v0.4.348 (verify current GitHub main before every change). **Whole-vision accepted coverage:** 20 of 100 weighted delivery points, as evidenced in [ROADMAP-COVERAGE.md](ROADMAP-COVERAGE.md) and [site-progress.json](site-progress.json).
 
 ## 1. Mandate and precedence for every AI worker
 
@@ -77,7 +77,7 @@ Keep the recovered accepted manifest, core/focused isolation, four fresh Chromiu
 
 Retain 46 verified canonical weapon profiles and their authority, optional Context Matrix damage model, weapon Size against current Far/Normal/Close Measure, opposed original initiative d6, positional pair independence, natural Size-0 fallbacks only where sourced, physical approach coverage, oversized rigid-weapon clearance and source-reviewed Ferocity. Ordinary RAW and alternative modes remain isolated. Spatial and directional facts need genuine evidence; unknowns must not become favorable defaults. Weapon switches consume existing handling opportunities.
 
-**Next specifically authorized rule checkpoint:** **v0.4.348 — conventional physical natural melee damage by current established pairwise Measure, Far −1 / Normal 0 / Close +1 per eligible successful hit only**. Exclude poison, breath, magical/special effects, substances and manufactured weapons; do not introduce novel damage floors, attacks, weapon-calculator participation or raw-mode changes. Follow the complete [source-specific combat instruction](design/context-matrix/CONTEXTUAL-COMBAT-COMPLETION-2026-10-19.md). Finish and accept it separately before broader spatial work.
+**Latest accepted rule checkpoint:** **v0.4.348 — conventional physical natural melee damage by established pairwise Measure (Far −1 / Normal 0 / Close +1) per source-eligible successful hit**; pure RAW and specials remain excluded. **Next bounded dependency:** v0.4.349 — source-audited contextual-combat closure only, with actual rule scope to be fixed from source evidence before implementation, not a general combat rewrite.
 
 ### Stage D — World truth, mapping, local scene and presentation
 
@@ -144,7 +144,7 @@ A status/dashboard-only change **does not** count as completion of unimplemented
 
 ## 7. Active dependency queue (as of reviewed main)
 
-1. **First:** v0.4.348 physical conventional natural-attack damage under existing contextual Measure; independent source-reviewed acceptance.
+1. **First:** v0.4.349 — bound and source-audit the next remaining contextual-combat parity item before any implementation; v0.4.348 natural physical proximity was independently accepted.
 2. **Then:** remaining bounded contextual-combat source closure, long-campaign/persistent-scene state validation and canonical provenance as authorized by newest pipeline (not a sweeping combat redesign).
 3. **Next architectural track:** physical scene coordinates and truth/knowledge/perception model; extend rather than replace verified wilderness/dungeon/campaign state.
 4. **Thereafter:** UX/cartography, explicit rules/settings/adventure layers, reusable compiler, autonomous agency and secure referee, with stage dependencies above.

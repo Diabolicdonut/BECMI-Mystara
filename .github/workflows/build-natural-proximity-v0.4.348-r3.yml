@@ -1,0 +1,32 @@
+name: Build reconciled v0.4.348 natural proximity on R3 main
+on:
+  push:
+    branches: ['work/v0.4.348-r3-reconciled']
+    paths: ['tools/build-natural-proximity-v0.4.348-r3.mjs','.github/workflows/build-natural-proximity-v0.4.348-r3.yml']
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Apply source-pinned natural-melee patch onto current R3 production
+        run: |
+          node --check tools/build-natural-proximity-v0.4.348-r3.mjs
+          node tools/build-natural-proximity-v0.4.348-r3.mjs
+          npm ci --ignore-scripts
+          npm run validate:syntax
+      - name: Commit candidate only if syntax and source anchors validated
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html validation/manifests/v0.4.348.json audit.md pipeline-state.md validation/README.md
+          git diff --cached --check
+          git commit -m "Build source-pinned unaccepted natural proximity v0.4.348 atop R3"
+          git push origin HEAD:refs/heads/work/v0.4.348-r3-reconciled
