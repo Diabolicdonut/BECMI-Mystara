@@ -1,5 +1,16 @@
 # Known World BECMI Engine Audit
 
+## 2026-10-27 — R3 authoritative whole-product roadmap and in-game status — FULLY ACCEPTED/DEPLOYED
+
+**Promotion:** Documentation/presentation R3, not a new gameplay rules checkpoint. PR [#18](https://github.com/Diabolicdonut/BECMI-Mystara/pull/18) merged at exact main `5d71c63b51c951b4e900f868bd2dad14b7c6275d`. The unmodified accepted gameplay rule set remains **v0.4.347**. Both required **exact-main ten-job acceptance [40614289906](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289906) — SUCCESS** and **GitHub Pages [40614289493](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40614289493) — SUCCESS** were checked after merge. The same ten jobs passed on the exact acceptance metadata PR/push commit `e6f3f288bbe34b181b63abb6e76835badb597ee1` via push [40613433390](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613433390) and PR [40613441037](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40613441037). Immutable in-game presentation-shell production SHA-256 `6fa1094c40ffdf82babd7e1456bda5c01ff1d7cdcba6e3f346098524ae22ed9f` is recorded in `validation/manifests/v0.4.347.json`; the accepted rules JavaScript, RNG, player/creature data, saves and RAW isolation remain unchanged.
+
+**Delivered:** `DEVELOPMENT-ROADMAP.md` is the authoritative prospective BECMI-to-generalized-OSR long-term plan. `ROADMAP-COVERAGE.md` and `site-progress.json` govern its ten evidence-weighted delivery gates totaling 100; accepted-only full product completion is **20/100**. The actual game header shows **Rev v0.4.347 / Full roadmap 20%** and links to `status.html`; `play.html` offers an optional playable overview. `AGENTS.md` requires all future workers to maintain the roadmap and the synchronized site manifest, validated by CI. The website display does **not** imply a finished BECMI reference campaign or generic OSR service.
+
+**Next rule checkpoint:** v0.4.348 ordinary source-verified natural physical melee damage by established contextual Measure remains **unaccepted**. An older PR #13 candidate branch exists and is undergoing repairs, but it predates R3 main and must be reconciled with accepted game bytes and governance before promotion. No candidate version counts toward delivered progress. This closeout documentation change does not modify production HTML; its own eventual main SHA requires fresh CI and Pages when promoted.
+
+---
+
+
 
 ## 2026-10-27 — R3 whole-project roadmap and in-game status: exact-source qualified; MERGE/MAIN VERIFICATION PENDING
 
