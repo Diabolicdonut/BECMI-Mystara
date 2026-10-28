@@ -72,6 +72,8 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Required v0.4.349 source-parity closure audit (read-only, no new combat rules)
+        run: node validation/contextual-source-parity-v0.4.349.mjs
       - name: Required v0.4.348 natural-attack physical proximity native and migrated saves
         run: node validation/natural-proximity-native-v0.4.348.mjs
       - name: Required Ferocity source-review and native Measure save/reload

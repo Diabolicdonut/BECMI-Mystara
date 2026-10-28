@@ -142,6 +142,10 @@ Every AI worker must, as part of the same bounded checkpoint:
 
 A status/dashboard-only change **does not** count as completion of unimplemented gameplay, does not trigger a new game-rule version and must still pass full CI before it is accepted. Keep published indicators accessible without external network services or secrets.
 
+## 2026-10-28 contextual source-audit continuation (v0.4.349 candidate)
+
+The latest accepted main is the **v0.4.348 gameplay build** plus presentation-only branding, with exact-main CI and Pages green. The next pipeline dependency is **source qualification rather than an additional approved combat rule**. The bounded [v0.4.349 source-parity audit](design/context-matrix/SOURCE-PARITY-AUDIT-v0.4.349.md) and its read-only CI guard inventory the currently 46 accepted weapon profiles, 41 individually verified natural slots across 19 source profiles, and the separate verified wolf case; they explicitly record unresolved coverage without inferring new eligibility. This is **candidate work pending full CI, acceptance and deployment**, does not bump the game revision, and does not award the partial contextual-combat 10-point gate. Whole-product accepted completion remains **20/100**. Each subsequent source exception needs its own authorization and source validation; absent such authorization, the next approved implementation dependency is persistent physical local-scene state, not graphics.
+
 ## 7. Active dependency queue (as of reviewed main)
 
 1. **First:** v0.4.349 — bound and source-audit the next remaining contextual-combat parity item before any implementation; v0.4.348 natural physical proximity was independently accepted.
