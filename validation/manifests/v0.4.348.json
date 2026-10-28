@@ -3653,7 +3653,7 @@
   "establishedNativeScript": "validation/native-v2.mjs",
   "nativeBlocker": null,
   "acceptedVersion": "0.4.348",
-  "productionSha256": "d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10",
+  "productionSha256": "9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3",
   "nativeAcceptanceBaseline": "Native Acceptance v2; established v0.4.333/v0.4.334; current required 33 scenarios / 508 assertions on immutable v0.4.333 and v0.4.348",
   "historical523Rerun": false
 }
