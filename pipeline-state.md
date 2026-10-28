@@ -1,5 +1,12 @@
 # Known World / BECMI Text RPG — Pipeline State
 
+## 2026-10-28 — v0.4.349 CONTEXTUAL SOURCE-AUDIT CANDIDATE (not accepted)
+
+The latest fully accepted and deployed gameplay remains **v0.4.348**. The presentation-only title amendment was subsequently accepted on main `7e212e878575df9365907f6532c4fcda07265dd9`: exact-main ten-job [40726651263](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40726651263) **SUCCESS**, Pages [40726651828](https://github.com/Diabolicdonut/BECMI-Mystara/actions/runs/40726651828) **SUCCESS**. Its exact accepted production SHA-256 is `9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3`.
+
+Separate work branch `work/v0.4.349-contextual-source-audit` prepares a **read-only source-parity inventory and CI gate**, not a newly authorized gameplay rule. See `design/context-matrix/SOURCE-PARITY-AUDIT-v0.4.349.md` and `validation/contextual-source-parity-v0.4.349.mjs`. Accepted production `index.html`, all original test definitions, existing modes and save semantics are unchanged. Source evidence: 46 canonical weapons, 41 source-verified annotated physical natural attacks across 19 Mentzer Basic profiles plus the separately verified wolf bite; 494 source-excluded and 57 ambiguous records in the source ledger remain **unresolved**, not newly accepted. Every original ten-job CI gate remains mandatory. Workstream remains partial and the full approved roadmap remains **20/100**. **Candidate must not be shown as game revision or described as accepted until branch/PR CI, audited promotion and exact-main+Pages pass**. After audit acceptance, a further source-specific combat parity rule still requires separate authorization; otherwise resume approved persistent local-scene physical state.
+
+
 ## 2026-10-28 — Presentation-only title correction, gameplay still v0.4.348
 
 The game/browser masthead and startup banner identify **The Known World**, with **The Smoking Pillar of Lan Yu** retained as the current adventure. Exact production SHA-256 `9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3` (prior accepted game `d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10`). No mechanics, adventure source, persisted game identifiers, or roadmap progress changed. This amendment requires branch and exact-main ten-job acceptance plus Pages; it does not authorize v0.4.349 rule changes.
