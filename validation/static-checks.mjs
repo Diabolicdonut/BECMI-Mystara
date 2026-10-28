@@ -6,6 +6,10 @@ import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {html, version, manifest, productionSha256, saveReport} from './common.mjs';
 
+assert(html.includes('<title>The Known World</title>'), 'Game document title must be The Known World');
+assert(html.includes('<h1>THE KNOWN WORLD</h1>'), 'Visible game masthead must be The Known World');
+assert(html.includes('Current adventure: The Smoking Pillar of Lan Yu'), 'Preserve Lan Yu as the named adventure');
+assert(html.includes('THE KNOWN WORLD — CAMPAIGN BUILD'), 'Startup banner must have the project title');
 const inGameStatusCheck = spawnSync(process.execPath, ['tools/sync-progress-status.mjs','--check'],{encoding:'utf8'});
 assert.equal(inGameStatusCheck.status,0,inGameStatusCheck.stderr||inGameStatusCheck.stdout);
 

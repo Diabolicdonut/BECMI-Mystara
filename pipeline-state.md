@@ -1,5 +1,9 @@
 # Known World / BECMI Text RPG — Pipeline State
 
+## 2026-10-28 — Presentation-only title correction, gameplay still v0.4.348
+
+The game/browser masthead and startup banner identify **The Known World**, with **The Smoking Pillar of Lan Yu** retained as the current adventure. Exact production SHA-256 `9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3` (prior accepted game `d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10`). No mechanics, adventure source, persisted game identifiers, or roadmap progress changed. This amendment requires branch and exact-main ten-job acceptance plus Pages; it does not authorize v0.4.349 rule changes.
+
 ## v0.4.348 — SOURCE-QUALIFIED ACCEPTED GAMEPLAY (PR #20)
 
 Conventional source-verified physical natural melee applies Far −1 / Normal 0 / Close +1 to each eligible successful physical hit in optional contextual combat. Pure Mentzer RAW, manufactured weapons, poison, specials and dice/RNG stay unchanged. Reconciled directly onto accepted R3 production (not stale PR #13 HTML), preserving the in-game full-product status widget. Eight embedded tests, dedicated native save/reload, and inherited ten-job qualification required. Full 100-point product progress **20/100** unchanged. **Next v0.4.349 — bounded source-audited contextual-combat closure; no new rule implementation preauthorized.** Production SHA-256 d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10; acceptance evidence PR #20 and qualification run 40617772885. Final promotion requires exact-main CI and Pages validation.

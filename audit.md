@@ -1,5 +1,11 @@
 # Known World BECMI Engine Audit
 
+## 2026-10-28 — The Known World project branding (presentation-only v0.4.348)
+
+Project masthead, browser title and startup banner now say **The Known World**. The current-adventure subtitle explicitly retains **The Smoking Pillar of Lan Yu**; all Kai Besil story, module source identities, adventure records, encounter logic, save and migration formats, combat procedures, native identifiers and accepted test names are preserved. The playable/status wrappers also use the full project title. This is not a gameplay-version bump or a completed whole-product delivery gate.
+
+The original accepted v0.4.348 production hash was `d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10`; the exact branding-only production HTML SHA-256 is `9bdef333cfb208dbcd4ca4e4eba1baa06f1f113cd6e6be9a4a0c8906764ea8a3`. The prior v0.4.348 gameplay acceptance evidence remains unchanged. This presentation patch must pass all ten required CI jobs on its work branch and exact merged main, plus GitHub Pages; no automatic acceptance is claimed by staging alone. Continue the separately authorized next v0.4.349 source audit, without skipping any acceptance gates.
+
 ## v0.4.348 — Source-qualified contextual natural physical proximity, acceptance metadata
 
 Build: **0.4.348**
