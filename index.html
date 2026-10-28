@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>The Smoking Pillar of Lan Yu</title>
+<title>The Known World</title>
 <style>
   :root {
     color-scheme: dark;
@@ -176,8 +176,8 @@
 <body>
 <div id="app">
   <header>
-    <h1>THE SMOKING PILLAR OF LAN YU</h1>
-    <div class="subtitle">A self-contained BECMI adventure on Kai Besil · Persistent campaign referee</div>
+    <h1>THE KNOWN WORLD</h1>
+    <div class="subtitle">Persistent BECMI campaigns in the Known World · The Smoking Pillar of Lan Yu adventure</div>
     <div class="statusbar">
       <span class="badge" id="whereBadge">Location: —</span>
       <span class="badge" id="timeBadge">Time: —</span>
@@ -41952,7 +41952,7 @@ PLAYER ACTION: ${String(playerInput||'').slice(0,650)}`;
         if(raw){ state=migrateSave(JSON.parse(raw)); localStorage.setItem(STORAGE.save,JSON.stringify(state)); }
       }catch{ state=initialState(); }
     }
-    write(`THE SMOKING PILLAR OF LAN YU — CAMPAIGN BUILD v${APP_VERSION}`,'system');
+    write(`THE KNOWN WORLD — CAMPAIGN BUILD v${APP_VERSION}`,'system');
     write('This build uses the regression/specification harness around the Universal Action Plan and deterministic engine. Developer Mode includes a full debug-session export containing transcript, hidden engine state, parser/AI diagnostics, and referee records; credentials are excluded.','system');
     if (location.protocol === 'file:') write('AI NOTE: This page is open as a local file. AI requests will work after index.html is uploaded and opened from your GitHub Pages address.','warning');
     write('');

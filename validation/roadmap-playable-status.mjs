@@ -49,6 +49,12 @@ try{
   assertCheck(stats.includes('0 of 1 accepted'),true,'Next milestone not marked complete');
   const frame=page.frameLocator('iframe#game');
   await frame.locator('#command').waitFor({state:'attached',timeout:30000});
+  assertCheck(await frame.locator('header h1').innerText(),'THE KNOWN WORLD',
+    'The main game displays the project identity');
+  assertCheck(await frame.locator('title').textContent(),'The Known World',
+    'The browser tab identifies the project');
+  assertCheck((await frame.locator('header .subtitle').innerText()).includes('The Smoking Pillar of Lan Yu'),
+    true,'The Lan Yu adventure remains featured');
   assertCheck(await frame.locator('#command').count(),1,'Actual game command input is available');
   const inline=frame.locator('#known-world-roadmap-summary');
   assertCheck(await inline.count(),1,'Direct production game contains a single roadmap badge');
