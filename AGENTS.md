@@ -90,6 +90,10 @@ be explicit, justified, versioned in the roadmap change log and reflected in
 the machine-readable manifest and CI. Never auto-increment roadmap progress from
 a version number, task count, or unreviewed code presence.
 
+## Current recovery correction — 2026-10-28
+
+Accepted gameplay has advanced to **v0.4.348**, with the branding-only title amendment accepted and deployed on exact main `7e212e878575df9365907f6532c4fcda07265dd9` (ten-job CI 40726651263; Pages 40726651828). The next candidate is a **v0.4.349 source-parity audit** with read-only validation and no preauthorized new combat rule; see `design/context-matrix/SOURCE-PARITY-AUDIT-v0.4.349.md`. Do not interpret the following 2026-10-27 v0.4.347/v0.4.348 account as a current continuation order. Accepted build and full-product weighted score remain v0.4.348 / 20-of-100 until separately reviewed acceptance changes them.
+
 ## Current continuation
 
 As of the **2026-10-27** roadmap review, game **v0.4.347** remains accepted
