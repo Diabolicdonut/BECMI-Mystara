@@ -18,9 +18,6 @@ one('      if(damage>0){const charged=applyMonsterSourceChargeDamage(monster,dam
 one('  function coreHarnessTestDefinitions(){',fixture+'  function coreHarnessTestDefinitions(){');
 one('  function coreHarnessTestDefinitions(){\n    return [','  function coreHarnessTestDefinitions(){\n    return [\n'+tests);
 one("const APP_VERSION='0.4.347'","const APP_VERSION='0.4.348'");
-one("<strong>Rev v0.4.347</strong>","<strong>Rev v0.4.348</strong>");
-one('aria-label="Revision v0.4.347, overall roadmap 20 percent. Open development status"',
-    'aria-label="Revision v0.4.348, overall roadmap 20 percent. Open development status"');
 if(!html.includes('<!-- KNOWN-WORLD-ROADMAP-STATUS-START -->')||!html.includes('Full roadmap 20%'))throw Error('R3 in-game progress badge missing');
 const script=html.slice(html.indexOf('<script>')+8,html.indexOf('</script>',html.indexOf('<script>')+8));
 new Function(script);

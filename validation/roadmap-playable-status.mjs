@@ -53,7 +53,7 @@ try{
   const inline=frame.locator('#known-world-roadmap-summary');
   assertCheck(await inline.count(),1,'Direct production game contains a single roadmap badge');
   const inlineText=await inline.innerText();
-  assertCheck(inlineText.includes('Rev v0.4.348'),true,'Direct candidate game header displays candidate revision');
+  assertCheck(inlineText.includes('Rev v0.4.347'),true,'Direct game header displays accepted revision');
   assertCheck(inlineText.includes('Full roadmap 20%'),true,'Direct game header displays total-vision progress');
   assertCheck(await inline.locator('progress').getAttribute('value'),'20',
     'Offline header progress value matches approved weighted accepted count');

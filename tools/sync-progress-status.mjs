@@ -12,7 +12,13 @@ const html = fs.readFileSync(file, 'utf8');
 const model = JSON.parse(fs.readFileSync('site-progress.json', 'utf8'));
 const gameplayVersion = html.match(/const APP_VERSION='([^']+)'/)?.[1];
 assert(gameplayVersion, 'Missing application version');
-assert.equal(model.revision, 'v' + gameplayVersion, 'Published revision must equal accepted gameplay build');
+// Unaccepted work branches test newer game binaries without mislabeling the
+// last accepted revision shown in the published badge.
+const gameManifest=JSON.parse(fs.readFileSync('validation/manifests/v'+gameplayVersion+'.json','utf8'));
+const publishedVersion=gameManifest.acceptedVersion || gameplayVersion;
+assert.equal(model.revision, 'v' + publishedVersion,
+  'Published revision must match the last accepted manifest baseline');
+
 assert.equal(model.roadmap?.document, 'DEVELOPMENT-ROADMAP.md', 'Link to authoritative roadmap missing');
 assert(fs.existsSync(model.roadmap.document), 'Authoritative roadmap missing');
 const gates = model.roadmap.gates;
