@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "project": "BECMI-Mystara",
   "asOf": "2026-10-27",
-  "revision": "v0.4.347",
+  "revision": "v0.4.348",
   "revisionSource": {
     "type": "text",
     "file": "pipeline-state.md",
@@ -10,24 +10,24 @@
     "prefix": "v"
   },
   "progress": {
-    "label": "Next milestone v0.4.348 — contextual natural-attack proximity damage",
+    "label": "Next milestone v0.4.349 — bounded source-audited contextual-combat closure",
     "completed": 0,
     "total": 1,
-    "basis": "No accepted v0.4.348 gameplay checkpoint on main; the latest accepted build is v0.4.347 (Ferocity). This progress tracks acceptance, not partial implementation effort.",
-    "note": "Overall 20% is measured against all 100 long-term delivery points, not this one gameplay checkpoint."
+    "basis": "v0.4.348 source-reviewed natural physical proximity is accepted; v0.4.349 has not been implemented or accepted.",
+    "note": "20% is completed whole-product delivery gates, not percent of existing code or a functional estimate."
   },
   "roadmap": {
     "label": "Full approved Known World / OSR delivery roadmap",
     "scope": "Source-faithful Mentzer BECMI/Mystara reference engine followed by explicit architecture separation, generic old-school referee/adventure generation and eventual hosted service.",
     "document": "DEVELOPMENT-ROADMAP.md",
-    "note": "Approved whole-product scope is defined in DEVELOPMENT-ROADMAP.md; verified weighted gate evidence is recorded in ROADMAP-COVERAGE.md. Accepted-only 20/100; partial and planned work earn no whole-gate credit. Game v0.4.347 remains accepted and next v0.4.348 unaccepted.",
+    "note": "Whole-product scope remains the approved 100-point R3 roadmap; accepted gameplay v0.4.348, contextual-combat gate still partial. Next v0.4.349 source-audited closure is unaccepted.",
     "gates": [
       {
         "id": "validated-becmi-baseline",
         "label": "Mentzer BECMI RAW core with accepted source-derived adjudication",
         "weight": 12,
         "status": "accepted",
-        "evidence": "pipeline-state.md (v0.4.347); validation/"
+        "evidence": "pipeline-state.md (v0.4.348); validation/"
       },
       {
         "id": "state-and-validation",
@@ -48,7 +48,7 @@
         "label": "Context Matrix attack/size/measure and full source-damage parity",
         "weight": 10,
         "status": "partial",
-        "evidence": "pipeline-state.md; next v0.4.348"
+        "evidence": "pipeline-state.md; v0.4.348 natural physical proximity accepted; remaining parity partial"
       },
       {
         "id": "generic-rules-kernel",

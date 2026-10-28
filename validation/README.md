@@ -277,3 +277,7 @@ The full required CI now includes `node tools/sync-progress-status.mjs --check` 
 ## Candidate v0.4.348
 
 Eight additional embedded regressions (2364 core / 1280 focused / 591 per Chromium slice) and the dedicated natural-proximity-native gate plus every inherited accepted suite must pass. No acceptance without exact-SHA CI and merged-main Pages verification.
+
+## Promoted v0.4.348
+
+The source-scoped natural physical proximity checkpoint and native save/reload are mandatory, together with all inherited ten-job tests, exact game manifest digest and R3 website status consistency. PR #20 qualification precedes final accepted main and Pages verification.

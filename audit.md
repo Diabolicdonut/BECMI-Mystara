@@ -1,8 +1,10 @@
 # Known World BECMI Engine Audit
 
-## Candidate v0.4.348 — NOT ACCEPTED
+## v0.4.348 — Source-qualified contextual natural physical proximity, acceptance metadata
 
-Source-verified per-hit conventional physical natural damage at pairwise Measure; pure RAW, poison, manufactured weapons and all other specials unaffected. Candidate SHA-256 `f29aff988347f7f3ac1d56934856a2e209bf9880db8744dedb48af44a8610e1a`; eight embedded and one native gate added; all inherited tests required. No CI or deployment pass yet.
+Build: **0.4.348**
+
+Reconciled PR #20 onto R3 accepted main; no pre-R3 HTML regression. Source-gated eligible conventional natural melee by existing pairwise Measure Far −1 / Normal unchanged / Close +1. Separate physical hit component; no new rolls, attacks, special riders or pure RAW changes. Eight new core/focused tests and native Chromium save/reload, all prior regression gates preserved. Candidate PR qualification 40617772885. Production SHA-256 d20c0ca50235de3d4ab756ad612f7cb7cc05254e059f59c69c244812ce8ccb10. Whole-product R3 remains 20/100; next v0.4.349 requires independent source audit and bounded authorization. Exact-main CI/Pages verification follows merge; do not claim it preemptively.
 
 
 ## 2026-10-27 — R3 authoritative whole-product roadmap and in-game status — FULLY ACCEPTED/DEPLOYED
